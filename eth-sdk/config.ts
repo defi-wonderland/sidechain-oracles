@@ -3,7 +3,7 @@ import { defineConfig } from '@dethcrypto/eth-sdk';
 export default defineConfig({
   contracts: {
     mainnet: {
-      dai: '0x6b175474e89094c44da98b954eedeac495271d0f',
+      uniswapV3Factory: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
     },
   },
 });

@@ -38,16 +38,6 @@ contract OracleSidechain is IOracleSidechain {
   /// @inheritdoc IOracleSidechain
   Oracle.Observation[65535] public override observations;
 
-  /// @dev Mutually exclusive reentrancy protection into the pool to/from a method. This method also prevents entrance
-  /// to a function before the pool is initialized. The reentrancy guard is required throughout the contract because
-  /// we use balance checks to determine the payment status of interactions such as mint, swap and flash.
-  modifier lock() {
-    if (!slot0.unlocked) revert LOK();
-    slot0.unlocked = false;
-    _;
-    slot0.unlocked = true;
-  }
-
   /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
   function _blockTimestamp() internal view virtual returns (uint32) {
     return uint32(block.timestamp); // truncation is desired
@@ -67,7 +57,7 @@ contract OracleSidechain is IOracleSidechain {
     uint32 blockTimestamp,
     int24 tick,
     uint128 _liquidity
-  ) external lock returns (bool written) {
+  ) external returns (bool written) {
     Slot0 memory _slot0 = slot0;
     Oracle.Observation memory lastObservation = observations[_slot0.observationIndex];
     if (lastObservation.blockTimestamp != blockTimestamp) {
@@ -87,7 +77,7 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   /// @inheritdoc IOracleSidechain
-  function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external override lock {
+  function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external override {
     uint16 observationCardinalityNextOld = slot0.observationCardinalityNext; // for the event
     uint16 observationCardinalityNextNew = observations.grow(observationCardinalityNextOld, observationCardinalityNext);
     slot0.observationCardinalityNext = observationCardinalityNextNew;

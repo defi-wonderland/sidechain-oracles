@@ -75,7 +75,6 @@ interface IOracleSidechain {
 
   // CUSTOM ERRORS
 
-  error LOK();
   error AI();
 
   // FUNCTIONS

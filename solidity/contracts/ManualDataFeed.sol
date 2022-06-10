@@ -10,13 +10,9 @@ contract ManualDataFeed is IManualDataFeed {
     oracleSidechain = _oracleSidechain;
   }
 
-  function addObservation(
-    uint32 _blockTimestamp,
-    int24 _tick,
-    uint128 _liquidity
-  ) external {
-    if (oracleSidechain.write(_blockTimestamp, _tick, _liquidity)) {
-      emit ObservationAdded(msg.sender, _blockTimestamp, _tick, _liquidity);
+  function addObservation(uint32 _blockTimestamp, int24 _tick) external {
+    if (oracleSidechain.write(_blockTimestamp, _tick)) {
+      emit ObservationAdded(msg.sender, _blockTimestamp, _tick);
     } else {
       revert ObservationNotWritable(_blockTimestamp);
     }

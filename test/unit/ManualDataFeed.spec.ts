@@ -38,24 +38,21 @@ describe('ManualDataFeed.sol - unit testing', () => {
   describe('addObservation(...)', () => {
     let writeTimestamp: number;
     let tick = bn.toBN(100);
-    let liquidity = bn.toBN(500);
 
     beforeEach(async () => {
       writeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
-      oracleSidechain.write.whenCalledWith(writeTimestamp, tick, liquidity).returns(true);
+      oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(true);
     });
 
     it('should revert if the observation is not writable', async () => {
-      oracleSidechain.write.whenCalledWith(writeTimestamp, tick, liquidity).returns(false);
-      await expect(manualDataFeed.addObservation(writeTimestamp, tick, liquidity)).to.be.revertedWith(
-        `ObservationNotWritable(${writeTimestamp})`
-      );
+      oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(false);
+      await expect(manualDataFeed.addObservation(writeTimestamp, tick)).to.be.revertedWith(`ObservationNotWritable(${writeTimestamp})`);
     });
 
     it('should emit ObservationAdded', async () => {
-      await expect(manualDataFeed.connect(randomUser).addObservation(writeTimestamp, tick, liquidity))
+      await expect(manualDataFeed.connect(randomUser).addObservation(writeTimestamp, tick))
         .to.emit(manualDataFeed, 'ObservationAdded')
-        .withArgs(randomUser.address, writeTimestamp, tick, liquidity);
+        .withArgs(randomUser.address, writeTimestamp, tick);
     });
   });
 });

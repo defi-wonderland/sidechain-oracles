@@ -33,11 +33,6 @@ interface IOracleSidechain {
       bool unlocked
     );
 
-  /// @notice The currently in range liquidity available to the pool
-  /// @dev This value has no relationship to the total liquidity across all ticks
-  /// @return The liquidity at the current price of the pool
-  function liquidity() external view returns (uint128);
-
   /// @notice Returns data about a specific observation index
   /// @param index The element of the observations array to fetch
   /// @dev You most likely want to use #observe() instead of this method to get an observation as of some amount of time
@@ -71,7 +66,7 @@ interface IOracleSidechain {
   /// @param observationCardinalityNextNew The updated value of the next observation cardinality
   event IncreaseObservationCardinalityNext(uint16 observationCardinalityNextOld, uint16 observationCardinalityNextNew);
 
-  event ObservationWritten(address user, uint32 blockTimestamp, int24 tick, uint128 _liquidity);
+  event ObservationWritten(address user, uint32 blockTimestamp, int24 tick);
 
   // CUSTOM ERRORS
 
@@ -94,11 +89,7 @@ interface IOracleSidechain {
     view
     returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
 
-  function write(
-    uint32 blockTimestamp,
-    int24 tick,
-    uint128 _liquidity
-  ) external returns (bool written);
+  function write(uint32 blockTimestamp, int24 tick) external returns (bool written);
 
   /// @notice Sets the initial price for the pool
   /// @dev Price is represented as a sqrt(amountToken1/amountToken0) Q64.96 value

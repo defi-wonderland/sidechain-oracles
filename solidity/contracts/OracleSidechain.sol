@@ -33,9 +33,6 @@ contract OracleSidechain is IOracleSidechain {
   Slot0 public override slot0;
 
   /// @inheritdoc IOracleSidechain
-  uint128 public override liquidity;
-
-  /// @inheritdoc IOracleSidechain
   Oracle.Observation[65535] public override observations;
 
   /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
@@ -50,14 +47,10 @@ contract OracleSidechain is IOracleSidechain {
     override
     returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s)
   {
-    return observations.observe(_blockTimestamp(), secondsAgos, slot0.tick, slot0.observationIndex, liquidity, slot0.observationCardinality);
+    return observations.observe(_blockTimestamp(), secondsAgos, slot0.tick, slot0.observationIndex, 0, slot0.observationCardinality);
   }
 
-  function write(
-    uint32 blockTimestamp,
-    int24 tick,
-    uint128 _liquidity
-  ) external returns (bool written) {
+  function write(uint32 blockTimestamp, int24 tick) external returns (bool written) {
     Slot0 memory _slot0 = slot0;
     Oracle.Observation memory lastObservation = observations[_slot0.observationIndex];
     if (lastObservation.blockTimestamp != blockTimestamp) {
@@ -65,14 +58,13 @@ contract OracleSidechain is IOracleSidechain {
         _slot0.observationIndex,
         blockTimestamp,
         tick,
-        _liquidity,
+        0,
         _slot0.observationCardinality,
         _slot0.observationCardinalityNext
       );
       (slot0.tick, slot0.observationIndex, slot0.observationCardinality) = (tick, indexUpdated, cardinalityUpdated);
-      liquidity = _liquidity;
       written = true;
-      emit ObservationWritten(msg.sender, blockTimestamp, tick, _liquidity);
+      emit ObservationWritten(msg.sender, blockTimestamp, tick);
     }
   }
 

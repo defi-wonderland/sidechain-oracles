@@ -13,7 +13,7 @@ interface IManualDataFeed {
 
   // EVENTS
 
-  event ObservationAdded(address user, uint32 blockTimestamp, int24 tick, uint128 _liquidity);
+  event ObservationAdded(address user, uint32 blockTimestamp, int24 tick);
 
   // CUSTOM ERRORS
 
@@ -21,9 +21,5 @@ interface IManualDataFeed {
 
   // FUNCTIONS
 
-  function addObservation(
-    uint32 _blockTimestamp,
-    int24 _tick,
-    uint128 _liquidity
-  ) external;
+  function addObservation(uint32 _blockTimestamp, int24 _tick) external;
 }

@@ -1,14 +1,11 @@
-import { ethers, network } from 'hardhat';
-import { BigNumber } from 'ethers';
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory } from '@eth-sdk-types';
 import { evm } from '@utils';
-import { toBN } from '@utils/bn';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import chai, { expect } from 'chai';
 
 describe('@skip-on-coverage OracleSidechain.sol', () => {
   const MIN_SQRT_RATIO: number = 4295128739;

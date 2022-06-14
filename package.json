@@ -77,7 +77,9 @@
     "eth-gas-reporter/colors": "1.4.0"
   },
   "dependencies": {
+    "@connext/nxtp-contracts": "0.2.0-beta.10",
     "@openzeppelin/contracts": "4.6.0",
+    "@openzeppelin/contracts-upgradeable": "4.5.2",
     "@uniswap/v3-core": "1.0.2-solc-0.8-simulate",
     "@uniswap/v3-periphery": "1.4.1"
   },

@@ -26,6 +26,14 @@ const networks: NetworksUserConfig =
           url: env.getNodeUrl('kovan'),
           accounts: env.getAccounts('kovan'),
         },
+        rinkeby: {
+          url: env.getNodeUrl('rinkeby'),
+          accounts: env.getAccounts('rinkeby'),
+        },
+        goerli: {
+          url: env.getNodeUrl('goerli'),
+          accounts: env.getAccounts('goerli'),
+        },
         ethereum: {
           url: env.getNodeUrl('ethereum'),
           accounts: env.getAccounts('ethereum'),
@@ -54,6 +62,15 @@ const config: HardhatUserConfig = {
           },
         },
       },
+      {
+        version: '0.8.11',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
     ],
   },
   gasReporter: {
@@ -67,7 +84,7 @@ const config: HardhatUserConfig = {
     eachLine: removeConsoleLog((hre) => hre.network.name !== 'hardhat'),
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'kovan', 'rinkeby', 'goerli']),
   },
   typechain: {
     outDir: 'typechained',

@@ -1,0 +1,89 @@
+{
+  "address": "0x4fFE3B1cAdb4eBd9Ca11812EA2a54a5D56F707A6",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "_originDomainId",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "_destinationDomainId",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "_blockTimestamp",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "int24",
+          "name": "_tick",
+          "type": "int24"
+        }
+      ],
+      "name": "DataSent",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint32",
+          "name": "_originDomainId",
+          "type": "uint32"
+        },
+        {
+          "internalType": "uint32",
+          "name": "_destinationDomainId",
+          "type": "uint32"
+        },
+        {
+          "internalType": "uint32",
+          "name": "_blockTimestamp",
+          "type": "uint32"
+        },
+        {
+          "internalType": "int24",
+          "name": "_tick",
+          "type": "int24"
+        }
+      ],
+      "name": "bridgeManualObservation",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "connext",
+      "outputs": [
+        {
+          "internalType": "contract IConnextHandler",
+          "name": "_connext",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "numDeployments": 2
+}

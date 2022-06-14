@@ -1,26 +1,27 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { ManualDataFeed, ManualDataFeed__factory, IOracleSidechain } from '@typechained';
+import { DataReceiver, DataReceiver__factory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
-import { evm, bn } from '@utils';
+import { evm } from '@utils';
+import { toBN } from '@utils/bn';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
-describe('ManualDataFeed.sol - unit testing', () => {
+describe('DataReceiver.sol', () => {
   let deployer: SignerWithAddress;
   let randomUser: SignerWithAddress;
-  let manualDataFeed: MockContract<ManualDataFeed>;
-  let manualDataFeedFactory: MockContractFactory<ManualDataFeed__factory>;
+  let dataReceiver: MockContract<DataReceiver>;
+  let dataReceiverFactory: MockContractFactory<DataReceiver__factory>;
   let oracleSidechain: FakeContract<IOracleSidechain>;
   let snapshotId: string;
 
   before(async () => {
     [, deployer, randomUser] = await ethers.getSigners();
     oracleSidechain = await smock.fake('IOracleSidechain');
-    manualDataFeedFactory = await smock.mock('ManualDataFeed');
-    manualDataFeed = await manualDataFeedFactory.connect(deployer).deploy(oracleSidechain.address);
+    dataReceiverFactory = await smock.mock('DataReceiver');
+    dataReceiver = await dataReceiverFactory.connect(deployer).deploy(oracleSidechain.address);
     snapshotId = await evm.snapshot.take();
   });
 
@@ -30,28 +31,28 @@ describe('ManualDataFeed.sol - unit testing', () => {
 
   describe('constructor(...)', () => {
     it('should initialize the oracleSidechain interface', async () => {
-      let oracleSidechainInterface = await manualDataFeed.oracleSidechain();
+      let oracleSidechainInterface = await dataReceiver.oracleSidechain();
       expect(oracleSidechainInterface).to.eq(oracleSidechain.address);
     });
   });
 
   describe('addObservation(...)', () => {
     let writeTimestamp: number;
-    let tick = bn.toBN(100);
+    let tick = 100;
 
     beforeEach(async () => {
-      writeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
+      writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
       oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(true);
     });
 
     it('should revert if the observation is not writable', async () => {
       oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(false);
-      await expect(manualDataFeed.addObservation(writeTimestamp, tick)).to.be.revertedWith(`ObservationNotWritable(${writeTimestamp})`);
+      await expect(dataReceiver.addObservation(writeTimestamp, tick)).to.be.revertedWith(`ObservationNotWritable(${writeTimestamp})`);
     });
 
     it('should emit ObservationAdded', async () => {
-      await expect(manualDataFeed.connect(randomUser).addObservation(writeTimestamp, tick))
-        .to.emit(manualDataFeed, 'ObservationAdded')
+      await expect(dataReceiver.connect(randomUser).addObservation(writeTimestamp, tick))
+        .to.emit(dataReceiver, 'ObservationAdded')
         .withArgs(randomUser.address, writeTimestamp, tick);
     });
   });

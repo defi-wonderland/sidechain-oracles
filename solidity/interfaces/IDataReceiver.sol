@@ -3,10 +3,10 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 
-/// @title The ManualDataFeed interface
+/// @title The DataReceiver interface
 /// @author 0xJabberwock (from DeFi Wonderland)
-/// @notice Contains state variables, events, custom errors and functions used in ManualDataFeed
-interface IManualDataFeed {
+/// @notice Contains state variables, events, custom errors and functions used in DataReceiver
+interface IDataReceiver {
   // STATE VARIABLES
 
   function oracleSidechain() external view returns (IOracleSidechain _oracleSidechain);

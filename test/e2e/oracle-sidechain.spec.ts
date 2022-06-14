@@ -1,16 +1,18 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory } from '@eth-sdk-types';
-import { evm, bn } from '@utils';
+import { evm } from '@utils';
+import { toBN } from '@utils/bn';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import chai, { expect } from 'chai';
 
-describe('OracleSidechain.sol - e2e testing', () => {
-  const MIN_SQRT_RATIO: BigNumber = bn.toBN(4295128739);
+describe('@skip-on-coverage OracleSidechain.sol', () => {
+  const MIN_SQRT_RATIO: number = 4295128739;
+  const MIN_TICK: number = -887272;
   let stranger: SignerWithAddress;
   let deployer: SignerWithAddress;
   let oracleSidechain: OracleSidechain;

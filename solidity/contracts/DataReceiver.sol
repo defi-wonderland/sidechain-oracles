@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import '../interfaces/IManualDataFeed.sol';
+import {IDataReceiver, IOracleSidechain} from '../interfaces/IDataReceiver.sol';
 
-contract ManualDataFeed is IManualDataFeed {
+contract DataReceiver is IDataReceiver {
   IOracleSidechain public immutable oracleSidechain;
 
   constructor(IOracleSidechain _oracleSidechain) {

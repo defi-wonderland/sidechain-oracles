@@ -13,8 +13,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  await hre.deployments.execute('OracleSidechain', txSettings, 'initialize', MIN_SQRT_RATIO);
-  await hre.deployments.execute('OracleSidechain', txSettings, 'increaseObservationCardinalityNext', 5);
+  let poolState = await hre.deployments.read('OracleSidechain', 'slot0');
+
+  if (poolState.observationCardinality == 0) {
+    await hre.deployments.execute('OracleSidechain', txSettings, 'initialize', MIN_SQRT_RATIO);
+    await hre.deployments.execute('OracleSidechain', txSettings, 'increaseObservationCardinalityNext', 5);
+  }
 };
 
 deployFunction.tags = ['deploy-oracle-sidechain', 'oracle-sidechain'];

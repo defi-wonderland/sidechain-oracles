@@ -1,5 +1,4 @@
 import { ethers, network } from 'hardhat';
-import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';

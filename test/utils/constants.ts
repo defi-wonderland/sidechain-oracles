@@ -1,1 +1,3 @@
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+export const MIN_SQRT_RATIO: number = 4295128739;
+export const MIN_TICK: number = -887272;

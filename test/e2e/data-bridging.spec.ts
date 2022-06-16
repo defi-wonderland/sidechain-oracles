@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   DataReceiver,
@@ -15,13 +14,13 @@ import {
 } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory } from '@eth-sdk-types';
-import { evm, bn } from '@utils';
+import { evm } from '@utils';
+import { toBN } from '@utils/bn';
+import { MIN_SQRT_RATIO } from '@utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { toBN } from '@utils/bn';
 import { expect } from 'chai';
 
-const MIN_SQRT_RATIO: BigNumber = bn.toBN(4295128739);
 const tick = toBN(100);
 const randomDestinationDomain = 1111;
 const mainnetOriginDomain = 1;

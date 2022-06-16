@@ -5,13 +5,12 @@ import { OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { smock, MockContract, MockContractFactory } from '@defi-wonderland/smock';
 import { evm } from '@utils';
 import { toBN } from '@utils/bn';
+import { MIN_SQRT_RATIO, MIN_TICK } from '@utils/constants';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
 describe('OracleSidechain.sol', () => {
-  const MIN_SQRT_RATIO: number = 4295128739;
-  const MIN_TICK: number = -887272;
   let deployer: SignerWithAddress;
   let randomUser: SignerWithAddress;
   let oracleSidechain: MockContract<OracleSidechain>;
@@ -133,14 +132,14 @@ describe('OracleSidechain.sol', () => {
     });
 
     context('when the oracle is initialized', () => {
-      let writeTimestamp: number;
-
       beforeEach(async () => {
         await oracleSidechain.initialize(MIN_SQRT_RATIO);
         await evm.advanceTimeAndBlock(delta - 1);
       });
 
       context('when the observation is writable', () => {
+        let writeTimestamp: number;
+
         beforeEach(async () => {
           writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
         });
@@ -181,13 +180,19 @@ describe('OracleSidechain.sol', () => {
       });
 
       context('when the observation is not writable', () => {
+        let writeTimestampAt: number;
+        let writeTimestampBefore: number;
+
         beforeEach(async () => {
-          writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber() - delta;
+          writeTimestampAt = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber() - delta;
+          writeTimestampBefore = writeTimestampAt - 1;
         });
 
         it('should return false', async () => {
-          let written = await oracleSidechain.callStatic.write(writeTimestamp, tick);
-          expect(written).to.eq(false);
+          let writtenAt = await oracleSidechain.callStatic.write(writeTimestampAt, tick);
+          let writtenBefore = await oracleSidechain.callStatic.write(writeTimestampBefore, tick);
+          expect(writtenAt).to.eq(false);
+          expect(writtenBefore).to.eq(false);
         });
       });
     });

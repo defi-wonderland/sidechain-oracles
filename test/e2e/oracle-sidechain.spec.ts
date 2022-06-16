@@ -4,12 +4,11 @@ import { OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory } from '@eth-sdk-types';
 import { evm } from '@utils';
+import { MIN_SQRT_RATIO, MIN_TICK } from '@utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 
 describe('@skip-on-coverage OracleSidechain.sol', () => {
-  const MIN_SQRT_RATIO: number = 4295128739;
-  const MIN_TICK: number = -887272;
   let stranger: SignerWithAddress;
   let deployer: SignerWithAddress;
   let oracleSidechain: OracleSidechain;

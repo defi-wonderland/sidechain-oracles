@@ -46,7 +46,7 @@ contract OracleSidechain is IOracleSidechain {
   function write(uint32 blockTimestamp, int24 tick) external returns (bool written) {
     Slot0 memory _slot0 = slot0;
     Oracle.Observation memory lastObservation = observations[_slot0.observationIndex];
-    if (lastObservation.blockTimestamp != blockTimestamp) {
+    if (lastObservation.blockTimestamp < blockTimestamp) {
       (uint16 indexUpdated, uint16 cardinalityUpdated) = observations.write(
         _slot0.observationIndex,
         blockTimestamp,

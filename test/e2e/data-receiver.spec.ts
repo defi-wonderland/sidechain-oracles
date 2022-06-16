@@ -1,11 +1,14 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory } from '@eth-sdk-types';
 import { evm } from '@utils';
+import { toBN } from '@utils/bn';
+import { MIN_SQRT_RATIO } from '@utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
+import { expect } from 'chai';
 
 describe('@skip-on-coverage DataReceiver.sol', () => {
   let stranger: SignerWithAddress;
@@ -36,6 +39,56 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   });
 
   describe('adding an observation', () => {
-    it('should add an observation', async () => {});
+    let tick = 100;
+    let delta = 2;
+
+    it.skip('should revert if the oracle is not initialized', async () => {
+      let writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
+      await expect(dataReceiver.addObservation(writeTimestamp, tick)).to.be.reverted;
+    });
+
+    context('when the oracle is initialized', () => {
+      beforeEach(async () => {
+        await oracleSidechain.initialize(MIN_SQRT_RATIO);
+        await evm.advanceTimeAndBlock(delta - 1);
+      });
+
+      context('when the observation is writable', () => {
+        let writeTimestamp: number;
+
+        beforeEach(async () => {
+          writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
+        });
+
+        it('should add an observation', async () => {
+          await expect(dataReceiver.addObservation(writeTimestamp, tick))
+            .to.emit(oracleSidechain, 'ObservationWritten')
+            .withArgs(dataReceiver.address, writeTimestamp, tick);
+        });
+
+        it('should emit ObservationAdded', async () => {
+          await expect(dataReceiver.connect(stranger).addObservation(writeTimestamp, tick))
+            .to.emit(dataReceiver, 'ObservationAdded')
+            .withArgs(stranger.address, writeTimestamp, tick);
+        });
+      });
+
+      context('when the observation is not writable', () => {
+        let writeTimestampAt: number;
+        let writeTimestampBefore: number;
+
+        beforeEach(async () => {
+          writeTimestampAt = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber() - delta;
+          writeTimestampBefore = writeTimestampAt - 1;
+        });
+
+        it('should revert the tx', async () => {
+          await expect(dataReceiver.addObservation(writeTimestampAt, tick)).to.be.revertedWith(`ObservationNotWritable(${writeTimestampAt})`);
+          await expect(dataReceiver.addObservation(writeTimestampBefore, tick)).to.be.revertedWith(
+            `ObservationNotWritable(${writeTimestampBefore})`
+          );
+        });
+      });
+    });
   });
 });

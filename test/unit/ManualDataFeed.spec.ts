@@ -1,10 +1,10 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { FakeContract, MockContract, MockContractFactory, smock } from '@defi-wonderland/smock';
-import { ManualDataFeed, ManualDataFeed__factory, IConnextSenderAdapter } from '@typechained';
-import { evm, wallet } from '@utils';
 import { ethers } from 'hardhat';
-import chai, { expect } from 'chai';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { ManualDataFeed, ManualDataFeed__factory, IConnextSenderAdapter } from '@typechained';
+import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
+import { evm, wallet } from '@utils';
 import { toBN } from '@utils/bn';
+import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 

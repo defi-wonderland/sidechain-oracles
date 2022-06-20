@@ -1,6 +1,6 @@
 {
   "extends": "solhint:recommended",
-  "plugins": ["prettier"],
+  "plugins": ["prettier", "wonderland"],
   "rules": {
     "prettier/prettier": "warn",
     "compiler-version": ["off"],

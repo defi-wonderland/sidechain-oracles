@@ -4,7 +4,6 @@ import { OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory } from '@eth-sdk-types';
 import { evm } from '@utils';
-import { MIN_SQRT_RATIO, MIN_TICK } from '@utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 

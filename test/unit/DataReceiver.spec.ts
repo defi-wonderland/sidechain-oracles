@@ -1,9 +1,8 @@
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm } from '@utils';
-import { toBN } from '@utils/bn';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -40,7 +39,7 @@ describe('DataReceiver.sol', () => {
     let tick = 100;
 
     beforeEach(async () => {
-      writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
+      writeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
       oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(true);
     });
 

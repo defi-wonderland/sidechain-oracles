@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IManualDataFeed} from '../IManualDataFeed.sol';
+import {IDataFeed} from '../IDataFeed.sol';
 import {IConnextHandler} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnextHandler.sol';
 
 interface IConnextSenderAdapter {
@@ -14,7 +14,7 @@ interface IConnextSenderAdapter {
 
   // FUNCTIONS
 
-  function bridgeManualObservation(
+  function bridgeObservation(
     address _to,
     uint32 _originDomainId,
     uint32 _destinationDomainId,

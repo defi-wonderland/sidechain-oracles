@@ -9,45 +9,45 @@ interface IOracleSidechain {
 
   /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
   /// when accessed externally.
-  /// @return observationIndex The index of the last oracle observation that was written,
-  /// @return observationCardinality The current maximum number of observations stored in the pool,
-  /// @return observationCardinalityNext The next maximum number of observations, to be updated when the observation.
+  /// @return _observationIndex The index of the last oracle observation that was written,
+  /// @return _observationCardinality The current maximum number of observations stored in the pool,
+  /// @return _observationCardinalityNext The next maximum number of observations, to be updated when the observation.
   function slot0()
     external
     view
     returns (
-      uint16 observationIndex,
-      uint16 observationCardinality,
-      uint16 observationCardinalityNext
+      uint16 _observationIndex,
+      uint16 _observationCardinality,
+      uint16 _observationCardinalityNext
     );
 
-  function lastTick() external view returns (int24 lastTick);
+  function lastTick() external view returns (int24 _lastTick);
 
   /// @notice Returns data about a specific observation index
-  /// @param index The element of the observations array to fetch
+  /// @param _index The element of the observations array to fetch
   /// @dev You most likely want to use #observe() instead of this method to get an observation as of some amount of time
   /// ago, rather than at a specific index in the array.
-  /// @return blockTimestamp The timestamp of the observation,
-  /// @return tickCumulative the tick multiplied by seconds elapsed for the life of the pool as of the observation timestamp,
-  /// @return secondsPerLiquidityCumulativeX128 the seconds per in range liquidity for the life of the pool as of the observation timestamp,
-  /// @return initialized whether the observation has been initialized and the values are safe to use
-  function observations(uint256 index)
+  /// @return _blockTimestamp The timestamp of the observation,
+  /// @return _tickCumulative the tick multiplied by seconds elapsed for the life of the pool as of the observation timestamp,
+  /// @return _secondsPerLiquidityCumulativeX128 the seconds per in range liquidity for the life of the pool as of the observation timestamp,
+  /// @return _initialized whether the observation has been initialized and the values are safe to use
+  function observations(uint256 _index)
     external
     view
     returns (
-      uint32 blockTimestamp,
-      int56 tickCumulative,
-      uint160 secondsPerLiquidityCumulativeX128,
-      bool initialized
+      uint32 _blockTimestamp,
+      int56 _tickCumulative,
+      uint160 _secondsPerLiquidityCumulativeX128,
+      bool _initialized
     );
 
   // EVENTS
 
   /// @notice Emitted exactly once by a pool when #initialize is first called on the pool
   /// @dev Mint/Burn/Swap cannot be emitted by the pool before Initialize
-  /// @param sqrtPriceX96 The initial sqrt price of the pool, as a Q64.96
+  /// @param blockTimestamp The timestamp of the observation
   /// @param tick The initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool
-  event Initialize(uint160 sqrtPriceX96, int24 tick);
+  event Initialize(uint32 blockTimestamp, int24 tick);
 
   /// @notice Emitted by the pool for increases to the number of observations that can be stored
   /// @dev observationCardinalityNext is not the observation cardinality until an observation is written at the index
@@ -70,25 +70,25 @@ interface IOracleSidechain {
   /// you must call it with secondsAgos = [3600, 0].
   /// @dev The time weighted average tick represents the geometric time weighted average price of the pool, in
   /// log base sqrt(1.0001) of token1 / token0. The TickMath library can be used to go from a tick value to a ratio.
-  /// @param secondsAgos From how long ago each cumulative tick and liquidity value should be returned
-  /// @return tickCumulatives Cumulative tick values as of each `secondsAgos` from the current block timestamp
-  /// @return secondsPerLiquidityCumulativeX128s Cumulative seconds per liquidity-in-range value as of each `secondsAgos` from the current block
+  /// @param _secondsAgos From how long ago each cumulative tick and liquidity value should be returned
+  /// @return _tickCumulatives Cumulative tick values as of each `secondsAgos` from the current block timestamp
+  /// @return _secondsPerLiquidityCumulativeX128s Cumulative seconds per liquidity-in-range value as of each `secondsAgos` from the current block
   /// timestamp
-  function observe(uint32[] calldata secondsAgos)
+  function observe(uint32[] calldata _secondsAgos)
     external
     view
-    returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s);
+    returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);
 
-  function write(uint32 blockTimestamp, int24 tick) external returns (bool written);
+  function write(uint32 _blockTimestamp, int24 _tick) external returns (bool _written);
 
   /// @notice Sets the initial price for the pool
-  /// @dev Price is represented as a sqrt(amountToken1/amountToken0) Q64.96 value
-  /// @param sqrtPriceX96 the initial sqrt price of the pool as a Q64.96
-  function initialize(uint160 sqrtPriceX96) external;
+  /// @param _blockTimestamp The timestamp of the observation
+  /// @param _tick The initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool
+  function initialize(uint32 _blockTimestamp, int24 _tick) external;
 
   /// @notice Increase the maximum number of price and liquidity observations that this pool will store
   /// @dev This method is no-op if the pool already has an observationCardinalityNext greater than or equal to
   /// the input observationCardinalityNext.
-  /// @param observationCardinalityNext The desired minimum number of observations for the pool to store
-  function increaseObservationCardinalityNext(uint16 observationCardinalityNext) external;
+  /// @param _observationCardinalityNext The desired minimum number of observations for the pool to store
+  function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external;
 }

@@ -1,11 +1,10 @@
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { OracleSidechain, OracleSidechain__factory } from '@typechained';
 import { smock, MockContract, MockContractFactory } from '@defi-wonderland/smock';
 import { evm } from '@utils';
 import { toBN } from '@utils/bn';
-import { MIN_SQRT_RATIO, MIN_TICK } from '@utils/constants';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -29,6 +28,8 @@ describe('OracleSidechain.sol', () => {
   });
 
   describe('observe(...)', () => {
+    let initializeTimestamp: number;
+    let initialTick = 50;
     let writeTimestamp1: number;
     let tick1 = 100;
     let liquidity1 = 1;
@@ -41,12 +42,13 @@ describe('OracleSidechain.sol', () => {
     let secondsPerLiquidityCumulativeX128s: BigNumber[];
 
     beforeEach(async () => {
-      await oracleSidechain.initialize(MIN_SQRT_RATIO);
+      initializeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
+      await oracleSidechain.initialize(initializeTimestamp, initialTick);
       await oracleSidechain.increaseObservationCardinalityNext(3);
-      writeTimestamp1 = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
+      writeTimestamp1 = (await ethers.provider.getBlock('latest')).timestamp + 1;
       await oracleSidechain.write(writeTimestamp1, tick1);
       await evm.advanceTimeAndBlock(delta2 - 1);
-      writeTimestamp2 = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
+      writeTimestamp2 = (await ethers.provider.getBlock('latest')).timestamp + 1;
       await oracleSidechain.write(writeTimestamp2, tick2);
     });
 
@@ -122,28 +124,24 @@ describe('OracleSidechain.sol', () => {
   });
 
   describe('write(...)', () => {
+    let writeTimestamp = 1000000;
     let tick = 100;
     let liquidity = 1;
     let delta = 2;
 
     it.skip('should revert if the oracle is not initialized', async () => {
-      let writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
-      await expect(oracleSidechain.write(writeTimestamp, tick)).to.be.reverted;
+      await expect(oracleSidechain.write(writeTimestamp, tick)).to.be.revertedWith('CustomError()');
     });
 
     context('when the oracle is initialized', () => {
+      let initializeTimestamp = writeTimestamp - delta;
+      let initialTick = 50;
+
       beforeEach(async () => {
-        await oracleSidechain.initialize(MIN_SQRT_RATIO);
-        await evm.advanceTimeAndBlock(delta - 1);
+        await oracleSidechain.initialize(initializeTimestamp, initialTick);
       });
 
       context('when the observation is writable', () => {
-        let writeTimestamp: number;
-
-        beforeEach(async () => {
-          writeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
-        });
-
         it('should write an observation', async () => {
           let tickCumulative = toBN(tick * delta);
           let secondsPerLiquidityCumulativeX128 = toBN(delta).shl(128).div(liquidity);
@@ -180,17 +178,15 @@ describe('OracleSidechain.sol', () => {
       });
 
       context('when the observation is not writable', () => {
-        let writeTimestampAt: number;
-        let writeTimestampBefore: number;
+        let initializeTimestampBefore: number;
 
         beforeEach(async () => {
-          writeTimestampAt = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber() - delta;
-          writeTimestampBefore = writeTimestampAt - 1;
+          initializeTimestampBefore = initializeTimestamp - 1;
         });
 
         it('should return false', async () => {
-          let writtenAt = await oracleSidechain.callStatic.write(writeTimestampAt, tick);
-          let writtenBefore = await oracleSidechain.callStatic.write(writeTimestampBefore, tick);
+          let writtenAt = await oracleSidechain.callStatic.write(initializeTimestamp, tick);
+          let writtenBefore = await oracleSidechain.callStatic.write(initializeTimestampBefore, tick);
           expect(writtenAt).to.eq(false);
           expect(writtenBefore).to.eq(false);
         });
@@ -199,34 +195,38 @@ describe('OracleSidechain.sol', () => {
   });
 
   describe('initialize(...)', () => {
+    let initializeTimestamp = 500000;
+    let initialTick = 50;
+
     it('should revert if the oracle is already initialized', async () => {
-      await oracleSidechain.initialize(MIN_SQRT_RATIO);
-      await expect(oracleSidechain.initialize(MIN_SQRT_RATIO)).to.be.revertedWith('AI()');
+      await oracleSidechain.initialize(initializeTimestamp, initialTick);
+      await expect(oracleSidechain.initialize(initializeTimestamp, initialTick)).to.be.revertedWith('AI()');
     });
 
     it('should update lastTick', async () => {
-      await oracleSidechain.initialize(MIN_SQRT_RATIO);
+      await oracleSidechain.initialize(initializeTimestamp, initialTick);
       let lastTick = await oracleSidechain.lastTick();
-      expect(lastTick).to.eq(MIN_TICK);
+      expect(lastTick).to.eq(initialTick);
     });
 
     it('should initialize observations', async () => {
-      let initializeTimestamp = toBN((await network.provider.send('eth_getBlockByNumber', ['pending', false])).timestamp).toNumber();
       let expectedInitialObservation = [initializeTimestamp, toBN(0), toBN(0), true];
-      await oracleSidechain.initialize(MIN_SQRT_RATIO);
+      await oracleSidechain.initialize(initializeTimestamp, initialTick);
       let initialObservation = await oracleSidechain.observations(0);
       expect(initialObservation).to.eql(expectedInitialObservation);
     });
 
     it('should update slot0', async () => {
       let expectedSlot0 = [0, 1, 1];
-      await oracleSidechain.initialize(MIN_SQRT_RATIO);
+      await oracleSidechain.initialize(initializeTimestamp, initialTick);
       let slot0 = await oracleSidechain.slot0();
       expect(slot0).to.eql(expectedSlot0);
     });
 
     it('should emit Initialize', async () => {
-      await expect(oracleSidechain.initialize(MIN_SQRT_RATIO)).to.emit(oracleSidechain, 'Initialize').withArgs(MIN_SQRT_RATIO, MIN_TICK);
+      await expect(oracleSidechain.initialize(initializeTimestamp, initialTick))
+        .to.emit(oracleSidechain, 'Initialize')
+        .withArgs(initializeTimestamp, initialTick);
     });
   });
 });

@@ -11,7 +11,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     connext = _connext;
   }
 
-  function bridgeManualObservation(
+  function bridgeObservation(
     address _to,
     uint32 _originDomainId,
     uint32 _destinationDomainId,

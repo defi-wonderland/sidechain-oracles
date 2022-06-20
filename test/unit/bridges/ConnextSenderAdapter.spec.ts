@@ -42,7 +42,7 @@ describe('ConnextSenderAdapter', () => {
     });
   });
 
-  describe('bridgeManualObservation', () => {
+  describe('bridgeObservation', () => {
     let blockTimestamp: number;
 
     before(async () => {
@@ -53,7 +53,7 @@ describe('ConnextSenderAdapter', () => {
       const xcallArgs = await prepareData(blockTimestamp);
       await connextSenderAdapter
         .connect(randomUser)
-        .bridgeManualObservation(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick);
+        .bridgeObservation(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick);
       expect(connextReceiver.xcall).to.have.been.calledOnceWith(xcallArgs);
     });
 
@@ -61,7 +61,7 @@ describe('ConnextSenderAdapter', () => {
       await expect(
         await connextSenderAdapter
           .connect(randomUser)
-          .bridgeManualObservation(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick)
+          .bridgeObservation(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick)
       )
         .to.emit(connextSenderAdapter, 'DataSent')
         .withArgs(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick);

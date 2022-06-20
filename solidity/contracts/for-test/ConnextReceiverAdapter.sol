@@ -3,7 +3,7 @@
 pragma solidity >=0.8.0;
 
 import '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import '../../interfaces/IManualDataFeed.sol';
+import '../../interfaces/IDataFeed.sol';
 import '../../interfaces/IDataReceiver.sol';
 
 contract ConnextHandlerForTest {

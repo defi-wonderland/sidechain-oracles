@@ -7,11 +7,13 @@ import chai, { expect } from 'chai';
 import { BigNumber } from 'ethers';
 import { ZERO_ADDRESS } from '@utils/constants';
 import { toBN } from '@utils/bn';
+import { onlyDataFeed } from '@utils/behaviours';
 
 chai.use(smock.matchers);
 
 describe('ConnextSenderAdapter', () => {
   let randomUser: SignerWithAddress;
+  let randomFeed: SignerWithAddress;
   let connextSenderAdapter: MockContract<ConnextSenderAdapter>;
   let connextSenderAdapterFactory: MockContractFactory<ConnextSenderAdapter__factory>;
   let connextReceiver: FakeContract<IConnextHandler>;
@@ -19,15 +21,15 @@ describe('ConnextSenderAdapter', () => {
 
   const randomDataReceiverAddress = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
-  const randomOriginDomainId = 1;
+  const rinkebyOriginId = 1111;
   const tick = toBN(100);
 
   before(async () => {
-    [, randomUser] = await ethers.getSigners();
+    [, randomUser, randomFeed] = await ethers.getSigners();
     connextReceiver = await smock.fake('IConnextHandler');
 
     connextSenderAdapterFactory = await smock.mock<ConnextSenderAdapter__factory>('ConnextSenderAdapter');
-    connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextReceiver.address);
+    connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextReceiver.address, randomFeed.address);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -39,6 +41,9 @@ describe('ConnextSenderAdapter', () => {
   describe('constructor', () => {
     it('should initialize connext receiver to the address passed to the constructor', async () => {
       expect(await connextSenderAdapter.connext()).to.eq(connextReceiver.address);
+    });
+    it('should initialize data feed to the address passed to the constructor', async () => {
+      expect(await connextSenderAdapter.dataFeed()).to.eq(randomFeed.address);
     });
   });
 
@@ -52,20 +57,27 @@ describe('ConnextSenderAdapter', () => {
     it('should call xCall with the correct arguments', async () => {
       const xcallArgs = await prepareData(blockTimestamp);
       await connextSenderAdapter
-        .connect(randomUser)
-        .bridgeObservation(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick);
+        .connect(randomFeed)
+        .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, blockTimestamp, tick);
       expect(connextReceiver.xcall).to.have.been.calledOnceWith(xcallArgs);
     });
 
     it('should emit an event', async () => {
       await expect(
         await connextSenderAdapter
-          .connect(randomUser)
-          .bridgeObservation(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick)
+          .connect(randomFeed)
+          .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, blockTimestamp, tick)
       )
         .to.emit(connextSenderAdapter, 'DataSent')
-        .withArgs(randomDataReceiverAddress, randomOriginDomainId, randomDestinationDomainId, blockTimestamp, tick);
+        .withArgs(randomDataReceiverAddress, rinkebyOriginId, randomDestinationDomainId, blockTimestamp, tick);
     });
+
+    onlyDataFeed(
+      () => connextSenderAdapter,
+      'bridgeObservation',
+      () => randomFeed,
+      () => [randomDataReceiverAddress, randomDestinationDomainId, blockTimestamp, tick]
+    );
   });
 
   const prepareData = async (blockTimestamp: number) => {
@@ -75,7 +87,7 @@ describe('ConnextSenderAdapter', () => {
     const callParams = {
       to: randomDataReceiverAddress,
       callData,
-      originDomain: randomOriginDomainId,
+      originDomain: rinkebyOriginId,
       destinationDomain: randomDestinationDomainId,
       recovery: randomDataReceiverAddress,
       callback: ZERO_ADDRESS,

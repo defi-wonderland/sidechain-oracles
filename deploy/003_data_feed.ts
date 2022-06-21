@@ -5,23 +5,21 @@ import { shouldVerifyContract } from '../utils/deploy';
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
-  const ORACLE_SIDECHAIN = (await hre.deployments.get('ConnextSenderAdapter')).address;
-
-  const deploy = await hre.deployments.deploy('ManualDataFeed', {
-    contract: 'solidity/contracts/ManualDataFeed.sol:ManualDataFeed',
+  const deploy = await hre.deployments.deploy('DataFeed', {
+    contract: 'solidity/contracts/DataFeed.sol:DataFeed',
     from: deployer,
     log: true,
-    args: [ORACLE_SIDECHAIN],
+    args: [deployer],
   });
 
   if (await shouldVerifyContract(deploy)) {
     await hre.run('verify:verify', {
       address: deploy.address,
-      constructorArguments: [ORACLE_SIDECHAIN],
+      constructorArguments: deploy.args,
     });
   }
 };
 
-deployFunction.tags = ['deploy-manual-data-feed', 'manual-data-feed'];
+deployFunction.tags = ['deploy-data-feed', 'data-feed'];
 
 export default deployFunction;

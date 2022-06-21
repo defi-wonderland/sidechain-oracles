@@ -23,11 +23,12 @@ import forkBlockNumber from './fork-block-numbers';
 import { expect } from 'chai';
 
 const randomDestinationDomain = 1111;
-const mainnetOriginDomain = 1;
+const randomChainId = 32;
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
   let stranger: SignerWithAddress;
   let deployer: SignerWithAddress;
+  let governance: SignerWithAddress;
   let dataReceiver: DataReceiver;
   let dataReceiverFactory: DataReceiver__factory;
   let oracleSidechain: OracleSidechain;
@@ -47,7 +48,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       jsonRpcUrl: getNodeUrl('ethereum'),
       blockNumber: forkBlockNumber.oracleSidechain,
     });
-    [, stranger, deployer] = await ethers.getSigners();
+    [, stranger, deployer, governance] = await ethers.getSigners();
     uniswapV3Factory = getMainnetSdk(stranger).uniswapV3Factory;
     uniswapV3K3PR = getMainnetSdk(stranger).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
     oracleSidechainFactory = await ethers.getContractFactory('OracleSidechain');
@@ -56,10 +57,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     dataReceiver = await dataReceiverFactory.connect(deployer).deploy(oracleSidechain.address);
     connextHandlerFactory = await ethers.getContractFactory('ConnextHandlerForTest');
     connextHandler = await connextHandlerFactory.connect(deployer).deploy(dataReceiver.address);
-    connextSenderAdapterFactory = await ethers.getContractFactory('ConnextSenderAdapter');
-    connextSenderAdapter = await connextSenderAdapterFactory.connect(deployer).deploy(connextHandler.address);
     dataFeedFactory = await ethers.getContractFactory('DataFeed');
-    dataFeed = await dataFeedFactory.connect(deployer).deploy(connextSenderAdapter.address);
+    dataFeed = await dataFeedFactory.connect(deployer).deploy(governance.address);
+    connextSenderAdapterFactory = await ethers.getContractFactory('ConnextSenderAdapter');
+    connextSenderAdapter = await connextSenderAdapterFactory.connect(deployer).deploy(connextHandler.address, dataFeed.address);
     snapshotId = await evm.snapshot.take();
   });
 
@@ -72,31 +73,61 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let tick: BigNumber;
     let oracleDelta = 2;
 
-    before(async () => {
-      let [, , observationIndex, observationCardinality, , ,] = await uniswapV3K3PR.slot0();
-      let tickCumulative;
-      [blockTimestamp, tickCumulative, ,] = await uniswapV3K3PR.observations(observationIndex);
-      let [blockTimestampBefore, tickCumulativeBefore, ,] = await uniswapV3K3PR.observations(
-        (observationIndex + observationCardinality - 1) % observationCardinality
-      );
-      let mainnetDelta = blockTimestamp - blockTimestampBefore;
-      tick = tickCumulative.sub(tickCumulativeBefore).div(mainnetDelta);
+    context('when the adapter is not set', () => {
+      it('should revert', async () => {
+        await expect(dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address)).to.be.revertedWith(
+          'UnallowedAdapter()'
+        );
+      });
+    });
+
+    context('when only the adapter is set', () => {
+      it('should revert', async () => {
+        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await expect(dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address)).to.be.revertedWith(
+          'DestinationDomainIdNotSet()'
+        );
+      });
+    });
+
+    context('when only the adapter and the destination domain are set', () => {
+      it('should revert', async () => {
+        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governance).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomain);
+        await expect(dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address)).to.be.revertedWith(
+          'ReceiverNotSet()'
+        );
+      });
     });
 
     it.skip('should revert if the oracle is not initialized', async () => {
-      await expect(
-        dataFeed.sendObservation(dataReceiver.address, mainnetOriginDomain, randomDestinationDomain, uniswapV3K3PR.address)
-      ).to.be.revertedWith('CustomError()');
+      await expect(dataFeed.sendObservation(dataReceiver.address, randomDestinationDomain, uniswapV3K3PR.address)).to.be.revertedWith(
+        'CustomError()'
+      );
     });
 
-    context('when the oracle is initialized', () => {
+    context('when oracle is initialized and the adapter, destination domain and receiver are set', () => {
       let initializeTimestamp: number;
       let initialTick = 50;
+
+      before(async () => {
+        let [, , observationIndex, observationCardinality, , ,] = await uniswapV3K3PR.slot0();
+        let tickCumulative;
+        [blockTimestamp, tickCumulative, ,] = await uniswapV3K3PR.observations(observationIndex);
+        let [blockTimestampBefore, tickCumulativeBefore, ,] = await uniswapV3K3PR.observations(
+          (observationIndex + observationCardinality - 1) % observationCardinality
+        );
+        let mainnetDelta = blockTimestamp - blockTimestampBefore;
+        tick = tickCumulative.sub(tickCumulativeBefore).div(mainnetDelta);
+      });
 
       beforeEach(async () => {
         initializeTimestamp = blockTimestamp - oracleDelta;
         await oracleSidechain.initialize(initializeTimestamp, initialTick);
         await oracleSidechain.increaseObservationCardinalityNext(2);
+        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governance).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomain);
+        await dataFeed.connect(governance).setReceiver(connextSenderAdapter.address, randomDestinationDomain, dataReceiver.address);
       });
 
       it('should bridge the data and add an observation correctly', async () => {
@@ -111,7 +142,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         const currentSecondsPerLiquidityCumulativeX128 = toBN(oracleDelta).shl(128);
 
         const expectedObservation = [blockTimestamp, currentTickCumulative, currentSecondsPerLiquidityCumulativeX128, true];
-        await dataFeed.sendObservation(dataReceiver.address, mainnetOriginDomain, randomDestinationDomain, uniswapV3K3PR.address);
+        await dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address);
         expect(await oracleSidechain.observations(1)).to.deep.eq(expectedObservation);
       });
     });

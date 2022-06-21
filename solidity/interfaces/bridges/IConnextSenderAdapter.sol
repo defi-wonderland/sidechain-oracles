@@ -2,23 +2,19 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IDataFeed} from '../IDataFeed.sol';
+import {IBridgeAdapter} from './IBridgeAdapter.sol';
 import {IConnextHandler} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnextHandler.sol';
 
-interface IConnextSenderAdapter {
+interface IConnextSenderAdapter is IBridgeAdapter {
   // EVENTS
-  event DataSent(address _to, uint32 _originDomainId, uint32 _destinationDomainId, uint32 _blockTimestamp, int24 _tick);
+  event DataSent(address to, uint32 originDomainId, uint32 destinationDomainId, uint32 blockTimestamp, int24 tick);
+
+  // ERRORS
+  error OnlyDataFeed();
 
   // STATE VARIABLES
 
   function connext() external view returns (IConnextHandler _connext);
 
-  // FUNCTIONS
-
-  function bridgeObservation(
-    address _to,
-    uint32 _originDomainId,
-    uint32 _destinationDomainId,
-    uint32 _blockTimestamp,
-    int24 _tick
-  ) external;
+  function dataFeed() external view returns (IDataFeed _dataFeed);
 }

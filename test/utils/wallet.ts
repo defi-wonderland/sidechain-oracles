@@ -14,14 +14,11 @@ export const impersonate = async (address: string): Promise<JsonRpcSigner> => {
 
 export const generateRandom = async () => {
   const wallet = (await Wallet.createRandom()).connect(ethers.provider);
-  await setBalance({
-    account: wallet.address,
-    balance: constants.MaxUint256,
-  });
+  await setBalance(wallet.address, constants.MaxUint256);
   return wallet;
 };
 
-export const setBalance = async ({ account, balance }: { account: string; balance: BigNumber }): Promise<void> => {
+export const setBalance = async (account: string, balance: BigNumber): Promise<void> => {
   await ethers.provider.send('hardhat_setBalance', [account, balance.toHexString().replace('0x0', '0x')]);
 };
 

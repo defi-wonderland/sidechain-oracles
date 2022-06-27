@@ -45,18 +45,18 @@ interface IOracleSidechain {
 
   /// @notice Emitted exactly once by a pool when #initialize is first called on the pool
   /// @dev Mint/Burn/Swap cannot be emitted by the pool before Initialize
-  /// @param blockTimestamp The timestamp of the observation
-  /// @param tick The initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool
-  event Initialize(uint32 blockTimestamp, int24 tick);
+  /// @param _blockTimestamp The timestamp of the observation
+  /// @param _tick The initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool
+  event Initialize(uint32 _blockTimestamp, int24 _tick);
 
   /// @notice Emitted by the pool for increases to the number of observations that can be stored
   /// @dev observationCardinalityNext is not the observation cardinality until an observation is written at the index
   /// just before a mint/swap/burn.
-  /// @param observationCardinalityNextOld The previous value of the next observation cardinality
-  /// @param observationCardinalityNextNew The updated value of the next observation cardinality
-  event IncreaseObservationCardinalityNext(uint16 observationCardinalityNextOld, uint16 observationCardinalityNextNew);
+  /// @param _observationCardinalityNextOld The previous value of the next observation cardinality
+  /// @param _observationCardinalityNextNew The updated value of the next observation cardinality
+  event IncreaseObservationCardinalityNext(uint16 _observationCardinalityNextOld, uint16 _observationCardinalityNextNew);
 
-  event ObservationWritten(address user, uint32 blockTimestamp, int24 tick);
+  event ObservationWritten(address _user, uint32 _blockTimestamp, int24 _tick);
 
   // CUSTOM ERRORS
 

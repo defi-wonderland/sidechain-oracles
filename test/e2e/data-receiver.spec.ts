@@ -39,7 +39,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   describe('adding an observation', () => {
     let writeTimestamp = 1000000;
     let tick = 100;
-    let delta = 2;
+    let delta = 20;
 
     it.skip('should revert if the oracle is not initialized', async () => {
       await expect(dataReceiver.addObservation(writeTimestamp, tick)).to.be.revertedWith('CustomError()');

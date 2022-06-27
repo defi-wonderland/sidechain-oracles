@@ -1,13 +1,19 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IDataFeed} from '../IDataFeed.sol';
-import {IBridgeAdapter} from './IBridgeAdapter.sol';
 import {IConnextHandler} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnextHandler.sol';
+import {IBridgeSenderAdapter} from './IBridgeSenderAdapter.sol';
+import {IDataFeed} from '../IDataFeed.sol';
 
-interface IConnextSenderAdapter is IBridgeAdapter {
+interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // EVENTS
-  event DataSent(address to, uint32 originDomainId, uint32 destinationDomainId, uint32 blockTimestamp, int24 tick);
+  event DataSent(
+    address _to,
+    uint32 _originDomainId,
+    uint32 _destinationDomainId,
+    uint32 _arithmeticMeanBlockTimestamp,
+    int24 _arithmeticMeanTick
+  );
 
   // ERRORS
   error OnlyDataFeed();

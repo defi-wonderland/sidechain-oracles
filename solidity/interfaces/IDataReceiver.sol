@@ -13,11 +13,11 @@ interface IDataReceiver {
 
   // EVENTS
 
-  event ObservationAdded(address user, uint32 blockTimestamp, int24 tick);
+  event ObservationAdded(address _user, uint32 _blockTimestamp, int24 _tick);
 
   // CUSTOM ERRORS
 
-  error ObservationNotWritable(uint32 blockTimestamp);
+  error ObservationNotWritable(uint32 _blockTimestamp);
 
   // FUNCTIONS
 

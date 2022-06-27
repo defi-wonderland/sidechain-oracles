@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
+pragma solidity >=0.8.8 <0.9.0;
 
-pragma solidity >=0.8.0;
-
-import '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import '../../interfaces/IDataFeed.sol';
-import '../../interfaces/IDataReceiver.sol';
+import {XCallArgs} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
+import {IDataFeed} from '../../interfaces/IDataFeed.sol';
+import {IDataReceiver} from '../../interfaces/IDataReceiver.sol';
 
 contract ConnextHandlerForTest {
   IDataReceiver public immutable receiver;

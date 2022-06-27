@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
+pragma solidity >=0.8.8 <0.9.0;
 
 /// @title Governable contract
 /// @notice Manages the governance role
@@ -7,12 +7,12 @@ interface IGovernable {
   // Events
 
   /// @notice Emitted when pendingGovernance accepts to be governance
-  /// @param governance Address of the new governance
-  event GovernanceSet(address governance);
+  /// @param _governance Address of the new governance
+  event GovernanceSet(address _governance);
 
   /// @notice Emitted when a new governance is proposed
-  /// @param pendingGovernance Address that is proposed to be the new governance
-  event GovernanceProposal(address pendingGovernance);
+  /// @param _pendingGovernance Address that is proposed to be the new governance
+  event GovernanceProposal(address _pendingGovernance);
 
   // Errors
 

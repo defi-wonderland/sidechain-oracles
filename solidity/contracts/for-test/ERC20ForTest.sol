@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
+pragma solidity >=0.8.8 <0.9.0;
 
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
+import {ERC20} from '@openzeppelin/contracts/token/ERC20/ERC20.sol';
 
 contract ERC20ForTest is ERC20 {
   constructor(
@@ -37,6 +37,7 @@ contract ERC20ForTest is ERC20 {
     _approve(_owner, _spender, _value);
   }
 
+  // solhint-disable-next-line no-empty-blocks
   function deposit(uint256 _amount) external payable {
     // Function added for compatibility with WETH
   }

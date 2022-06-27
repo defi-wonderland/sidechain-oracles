@@ -1,17 +1,17 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { FakeContract, MockContract, MockContractFactory, smock } from '@defi-wonderland/smock';
-import { ConnextSenderAdapter, ConnextSenderAdapter__factory, IConnextHandler } from '@typechained';
-import { evm, wallet } from '@utils';
 import { ethers } from 'hardhat';
-import chai, { expect } from 'chai';
 import { BigNumber } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { ConnextSenderAdapter, ConnextSenderAdapter__factory, IConnextHandler } from '@typechained';
+import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
+import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { onlyDataFeed } from '@utils/behaviours';
+import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
-describe('ConnextSenderAdapter', () => {
+describe('ConnextSenderAdapter.sol', () => {
   let randomUser: SignerWithAddress;
   let randomFeed: SignerWithAddress;
   let connextSenderAdapter: MockContract<ConnextSenderAdapter>;
@@ -22,13 +22,13 @@ describe('ConnextSenderAdapter', () => {
   const randomDataReceiverAddress = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
   const rinkebyOriginId = 1111;
-  const tick = toBN(100);
+  const arithmeticMeanTick = toBN(100);
 
   before(async () => {
     [, randomUser, randomFeed] = await ethers.getSigners();
     connextReceiver = await smock.fake('IConnextHandler');
 
-    connextSenderAdapterFactory = await smock.mock<ConnextSenderAdapter__factory>('ConnextSenderAdapter');
+    connextSenderAdapterFactory = await smock.mock('ConnextSenderAdapter');
     connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextReceiver.address, randomFeed.address);
 
     snapshotId = await evm.snapshot.take();
@@ -48,17 +48,17 @@ describe('ConnextSenderAdapter', () => {
   });
 
   describe('bridgeObservation', () => {
-    let blockTimestamp: number;
+    let arithmeticMeanBlockTimestamp: number;
 
     before(async () => {
-      blockTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
+      arithmeticMeanBlockTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
     });
 
     it('should call xCall with the correct arguments', async () => {
-      const xcallArgs = await prepareData(blockTimestamp);
+      const xcallArgs = await prepareData(arithmeticMeanBlockTimestamp);
       await connextSenderAdapter
         .connect(randomFeed)
-        .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, blockTimestamp, tick);
+        .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick);
       expect(connextReceiver.xcall).to.have.been.calledOnceWith(xcallArgs);
     });
 
@@ -66,24 +66,24 @@ describe('ConnextSenderAdapter', () => {
       await expect(
         await connextSenderAdapter
           .connect(randomFeed)
-          .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, blockTimestamp, tick)
+          .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick)
       )
         .to.emit(connextSenderAdapter, 'DataSent')
-        .withArgs(randomDataReceiverAddress, rinkebyOriginId, randomDestinationDomainId, blockTimestamp, tick);
+        .withArgs(randomDataReceiverAddress, rinkebyOriginId, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick);
     });
 
     onlyDataFeed(
       () => connextSenderAdapter,
       'bridgeObservation',
       () => randomFeed,
-      () => [randomDataReceiverAddress, randomDestinationDomainId, blockTimestamp, tick]
+      () => [randomDataReceiverAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick]
     );
   });
 
-  const prepareData = async (blockTimestamp: number) => {
+  const prepareData = async (arithmeticMeanBlockTimestamp: number) => {
     const ABI = ['function addObservation(uint32,int24)'];
     const helperInterface = new ethers.utils.Interface(ABI);
-    const callData = helperInterface.encodeFunctionData('addObservation', [blockTimestamp, tick]);
+    const callData = helperInterface.encodeFunctionData('addObservation', [arithmeticMeanBlockTimestamp, arithmeticMeanTick]);
     const callParams = {
       to: randomDataReceiverAddress,
       callData,

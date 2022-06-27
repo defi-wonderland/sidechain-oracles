@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
+pragma solidity >=0.8.8 <0.9.0;
 
-import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
-import '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
+import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
+import {ISwapRouter} from '@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol';
 
-// import '@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
+// import {INonfungiblePositionManager} from '@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol';
 
 interface INFTPositionManager {
   struct MintParams {
@@ -21,15 +21,18 @@ interface INFTPositionManager {
     uint256 deadline;
   }
 
-  function mint(MintParams calldata params)
+  function mint(MintParams calldata _params)
     external
     payable
     returns (
-      uint256 tokenId,
-      uint128 liquidity,
-      uint256 amount0,
-      uint256 amount1
+      uint256 _tokenId,
+      uint128 _liquidity,
+      uint256 _amount0,
+      uint256 _amount1
     );
 }
 
-contract UniswapV3Importer {}
+// solhint-disable-next-line no-empty-blocks
+contract UniswapV3Importer {
+
+}

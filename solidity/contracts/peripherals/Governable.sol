@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.8.4 <0.9.0;
+pragma solidity >=0.8.8 <0.9.0;
 
 import {IGovernable} from '../../interfaces/peripherals/IGovernable.sol';
 
 abstract contract Governable is IGovernable {
   /// @inheritdoc IGovernable
-  address public override governance;
+  address public governance;
 
   /// @inheritdoc IGovernable
-  address public override pendingGovernance;
+  address public pendingGovernance;
 
   constructor(address _governance) {
     if (_governance == address(0)) revert NoGovernanceZeroAddress();
@@ -16,13 +16,13 @@ abstract contract Governable is IGovernable {
   }
 
   /// @inheritdoc IGovernable
-  function setGovernance(address _governance) external override onlyGovernance {
+  function setGovernance(address _governance) external onlyGovernance {
     pendingGovernance = _governance;
     emit GovernanceProposal(_governance);
   }
 
   /// @inheritdoc IGovernable
-  function acceptGovernance() external override onlyPendingGovernance {
+  function acceptGovernance() external onlyPendingGovernance {
     governance = pendingGovernance;
     delete pendingGovernance;
     emit GovernanceSet(governance);

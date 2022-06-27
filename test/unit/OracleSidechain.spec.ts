@@ -33,11 +33,11 @@ describe('OracleSidechain.sol', () => {
     let writeTimestamp1: number;
     let tick1 = 100;
     let liquidity1 = 1;
-    let delta1 = 2;
+    let delta1 = 20;
     let writeTimestamp2: number;
     let tick2 = 300;
     let liquidity2 = 1;
-    let delta2 = 20;
+    let delta2 = 60;
     let tickCumulatives: BigNumber[];
     let secondsPerLiquidityCumulativeX128s: BigNumber[];
 
@@ -45,6 +45,7 @@ describe('OracleSidechain.sol', () => {
       initializeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
       await oracleSidechain.initialize(initializeTimestamp, initialTick);
       await oracleSidechain.increaseObservationCardinalityNext(3);
+      await evm.advanceTimeAndBlock(delta1 - 2);
       writeTimestamp1 = (await ethers.provider.getBlock('latest')).timestamp + 1;
       await oracleSidechain.write(writeTimestamp1, tick1);
       await evm.advanceTimeAndBlock(delta2 - 1);
@@ -127,7 +128,7 @@ describe('OracleSidechain.sol', () => {
     let writeTimestamp = 1000000;
     let tick = 100;
     let liquidity = 1;
-    let delta = 2;
+    let delta = 20;
 
     it.skip('should revert if the oracle is not initialized', async () => {
       await expect(oracleSidechain.write(writeTimestamp, tick)).to.be.revertedWith('CustomError()');

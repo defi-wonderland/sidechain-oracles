@@ -16,20 +16,20 @@ describe('ConnextSenderAdapter.sol', () => {
   let randomFeed: SignerWithAddress;
   let connextSenderAdapter: MockContract<ConnextSenderAdapter>;
   let connextSenderAdapterFactory: MockContractFactory<ConnextSenderAdapter__factory>;
-  let connextReceiver: FakeContract<IConnextHandler>;
+  let connextHandler: FakeContract<IConnextHandler>;
   let snapshotId: string;
 
-  const randomDataReceiverAddress = wallet.generateRandomAddress();
+  const randomReceiverAdapterAddress = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
   const rinkebyOriginId = 1111;
   const arithmeticMeanTick = toBN(100);
 
   before(async () => {
     [, randomUser, randomFeed] = await ethers.getSigners();
-    connextReceiver = await smock.fake('IConnextHandler');
+    connextHandler = await smock.fake('IConnextHandler');
 
     connextSenderAdapterFactory = await smock.mock('ConnextSenderAdapter');
-    connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextReceiver.address, randomFeed.address);
+    connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextHandler.address, randomFeed.address);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -40,7 +40,7 @@ describe('ConnextSenderAdapter.sol', () => {
 
   describe('constructor', () => {
     it('should initialize connext receiver to the address passed to the constructor', async () => {
-      expect(await connextSenderAdapter.connext()).to.eq(connextReceiver.address);
+      expect(await connextSenderAdapter.connext()).to.eq(connextHandler.address);
     });
     it('should initialize data feed to the address passed to the constructor', async () => {
       expect(await connextSenderAdapter.dataFeed()).to.eq(randomFeed.address);
@@ -58,25 +58,25 @@ describe('ConnextSenderAdapter.sol', () => {
       const xcallArgs = await prepareData(arithmeticMeanBlockTimestamp);
       await connextSenderAdapter
         .connect(randomFeed)
-        .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick);
-      expect(connextReceiver.xcall).to.have.been.calledOnceWith(xcallArgs);
+        .bridgeObservation(randomReceiverAdapterAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick);
+      expect(connextHandler.xcall).to.have.been.calledOnceWith(xcallArgs);
     });
 
     it('should emit an event', async () => {
       await expect(
         await connextSenderAdapter
           .connect(randomFeed)
-          .bridgeObservation(randomDataReceiverAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick)
+          .bridgeObservation(randomReceiverAdapterAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick)
       )
         .to.emit(connextSenderAdapter, 'DataSent')
-        .withArgs(randomDataReceiverAddress, rinkebyOriginId, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick);
+        .withArgs(randomReceiverAdapterAddress, rinkebyOriginId, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick);
     });
 
     onlyDataFeed(
       () => connextSenderAdapter,
       'bridgeObservation',
       () => randomFeed,
-      () => [randomDataReceiverAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick]
+      () => [randomReceiverAdapterAddress, randomDestinationDomainId, arithmeticMeanBlockTimestamp, arithmeticMeanTick]
     );
   });
 
@@ -85,14 +85,14 @@ describe('ConnextSenderAdapter.sol', () => {
     const helperInterface = new ethers.utils.Interface(ABI);
     const callData = helperInterface.encodeFunctionData('addObservation', [arithmeticMeanBlockTimestamp, arithmeticMeanTick]);
     const callParams = {
-      to: randomDataReceiverAddress,
+      to: randomReceiverAdapterAddress,
       callData,
       originDomain: rinkebyOriginId,
       destinationDomain: randomDestinationDomainId,
-      recovery: randomDataReceiverAddress,
+      recovery: randomReceiverAdapterAddress,
       callback: ZERO_ADDRESS,
       callbackFee: BigNumber.from(0),
-      forceSlow: false,
+      forceSlow: true,
       receiveLocal: false,
     };
     const xcallArgs = {

@@ -1,8 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IConnextSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
+import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import {IConnextSenderAdapter, IBridgeSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
 import {IGovernable} from './peripherals/IGovernable.sol';
 
 interface IDataFeed is IGovernable {

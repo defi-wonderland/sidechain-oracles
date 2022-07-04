@@ -13,7 +13,7 @@ import * as env from './utils/env';
 import 'tsconfig-paths/register';
 
 const networks: NetworksUserConfig =
-  env.isHardhatCompile() || env.isHardhatClean() || env.isTesting()
+  env.isHardhatCompile() || env.isHardhatClean() || env.isTestingLocal()
     ? {}
     : {
         hardhat: {
@@ -26,11 +26,11 @@ const networks: NetworksUserConfig =
           url: env.getNodeUrl('kovan'),
           accounts: env.getAccounts('kovan'),
         },
-        rinkeby: {
+        sender: {
           url: env.getNodeUrl('rinkeby'),
           accounts: env.getAccounts('rinkeby'),
         },
-        goerli: {
+        receiver: {
           url: env.getNodeUrl('goerli'),
           accounts: env.getAccounts('goerli'),
         },
@@ -95,7 +95,7 @@ const config: HardhatUserConfig = {
   },
 };
 
-if (process.env.TEST) {
+if (process.env.LOCAL_TEST) {
   (config.solidity as MultiSolcUserConfig).compilers = (config.solidity as MultiSolcUserConfig).compilers.map((compiler) => {
     return {
       ...compiler,

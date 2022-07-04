@@ -1,25 +1,14 @@
 import { DeployFunction } from 'hardhat-deploy/types';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { getChainId, shouldVerifyContract } from '../utils/deploy';
+import { getChainId, getDataFromChainId, verifyContractIfNeeded } from '../utils/deploy';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
   const DATA_FEED = (await hre.deployments.get('DataFeed')).address;
   const CHAIN_ID = await getChainId(hre);
-  const RINKEBY_CHAIN_ID = 4;
-  const GOERLI_CHAIN_ID = 5;
-  const CONNEXT_RINKEBY_ADDRESS = '0x2307Ed9f152FA9b3DcDfe2385d279D8C2A9DF2b0';
-  const CONNEXT_GOERLI_ADDRESS = '0xEC3A723DE47a644b901DC269829bf8718F175EBF';
-  const CONSTRUCTOR_RINKEBY_ARGS = [CONNEXT_RINKEBY_ADDRESS, DATA_FEED];
-  const CONSTRUCTOR_GOERLI_ARGS = [CONNEXT_GOERLI_ADDRESS, DATA_FEED];
-
-  if (CHAIN_ID !== RINKEBY_CHAIN_ID && CHAIN_ID !== GOERLI_CHAIN_ID) {
-    console.log('🛑Wrong Network. Skipping ConnextSenderAdapter deployment');
-    return;
-  }
-
-  const CONSTRUCTOR_ARGS = CHAIN_ID === RINKEBY_CHAIN_ID ? CONSTRUCTOR_RINKEBY_ARGS : CONSTRUCTOR_GOERLI_ARGS;
+  const { connextHandler } = await getDataFromChainId(CHAIN_ID);
+  const CONSTRUCTOR_ARGS = [connextHandler, DATA_FEED];
 
   const deploy = await hre.deployments.deploy('ConnextSenderAdapter', {
     contract: 'solidity/contracts/bridges/ConnextSenderAdapter.sol:ConnextSenderAdapter',
@@ -28,14 +17,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     args: CONSTRUCTOR_ARGS,
   });
 
-  if (await shouldVerifyContract(deploy)) {
-    await hre.run('verify:verify', {
-      address: deploy.address,
-      constructorArguments: CONSTRUCTOR_ARGS,
-    });
-  }
+  await verifyContractIfNeeded(hre, deploy);
 };
 
-deployFunction.tags = ['deploy-connext-sender-adapter', 'connext-sender-adapter'];
+deployFunction.tags = ['deploy-connext-sender-adapter', 'connext-sender-adapter', 'mainnet', 'sender'];
 
 export default deployFunction;

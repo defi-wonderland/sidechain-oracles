@@ -5,7 +5,7 @@ import {Governable} from './peripherals/Governable.sol';
 import {IDataFeed, IConnextSenderAdapter, IBridgeSenderAdapter, IUniswapV3Pool} from '../interfaces/IDataFeed.sol';
 
 contract DataFeed is IDataFeed, Governable {
-  // TODO: natspec when logic is approved
+  // TODO: write full natspec when logic is approved
   /// @inheritdoc IDataFeed
   mapping(IBridgeSenderAdapter => bool) public whitelistedAdapters;
 

@@ -240,13 +240,13 @@ describe('DataFeed.sol', () => {
       expect(await dataFeed.whitelistedAdapters(connextSenderAdapter.address)).to.eq(false);
     });
 
-    it('should emit an even when adapter is whitelisted', async () => {
+    it('should emit an event when adapter is whitelisted', async () => {
       await expect(await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true))
         .to.emit(dataFeed, 'AdapterWhitelisted')
         .withArgs(connextSenderAdapter.address, true);
     });
 
-    it('should emit an even when adapter whitelist is revoked', async () => {
+    it('should emit an event when adapter whitelist is revoked', async () => {
       await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
       await expect(await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, false))
         .to.emit(dataFeed, 'AdapterWhitelisted')
@@ -306,8 +306,6 @@ describe('DataFeed.sol', () => {
   });
 
   describe('setReceiver', () => {
-    let bridgeDestinationId: string;
-
     onlyGovernance(
       () => dataFeed,
       'setReceiver',
@@ -320,7 +318,7 @@ describe('DataFeed.sol', () => {
       expect(await dataFeed.receivers(connextSenderAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress);
     });
 
-    it('should emit an even when a receiver is set', async () => {
+    it('should emit an event when a receiver is set', async () => {
       await expect(
         await dataFeed.connect(governance).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress)
       )
@@ -406,7 +404,7 @@ describe('DataFeed.sol', () => {
       expect(await dataFeed.destinationDomainIds(connextSenderAdapter.address, randomChainId)).to.eq(randomDestinationDomainId);
     });
 
-    it('should emit an even when a destination domain id is set', async () => {
+    it('should emit an event when a destination domain id is set', async () => {
       await expect(
         await dataFeed.connect(governance).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId)
       )

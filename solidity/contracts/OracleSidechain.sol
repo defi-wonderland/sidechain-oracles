@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';
-import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
+import {IOracleSidechain, IDataReceiver} from '../interfaces/IOracleSidechain.sol';
 
 /// @title A sidechain oracle contract
 /// @author 0xJabberwock (from DeFi Wonderland)
@@ -26,7 +26,14 @@ contract OracleSidechain is IOracleSidechain {
   int24 public lastTick;
 
   /// @inheritdoc IOracleSidechain
+  IDataReceiver public dataReceiver;
+
+  /// @inheritdoc IOracleSidechain
   Oracle.Observation[65535] public observations;
+
+  constructor(IDataReceiver _dataReceiver) {
+    dataReceiver = _dataReceiver;
+  }
 
   /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
   function _getBlockTimestamp() internal view virtual returns (uint32) {
@@ -42,8 +49,10 @@ contract OracleSidechain is IOracleSidechain {
     return observations.observe(_getBlockTimestamp(), _secondsAgos, lastTick, slot0.observationIndex, 0, slot0.observationCardinality);
   }
 
+  // TODO: if not initialized, initialize it --> internalize _initialize
   /// @inheritdoc IOracleSidechain
   function write(uint32 _blockTimestamp, int24 _tick) external returns (bool _written) {
+    if (IDataReceiver(msg.sender) != dataReceiver) revert OnlyDataReceiver();
     Slot0 memory _slot0 = slot0;
     Oracle.Observation memory _lastObservation = observations[_slot0.observationIndex];
     if (_lastObservation.blockTimestamp < _blockTimestamp) {

@@ -1,45 +1,24 @@
-import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import {
-  DataReceiver,
-  DataReceiver__factory,
-  OracleSidechain,
-  OracleSidechain__factory,
-  ConnextHandlerForTest,
-  ConnextHandlerForTest__factory,
-  DataFeed,
-  DataFeed__factory,
-  ConnextSenderAdapter,
-  ConnextSenderAdapter__factory,
-} from '@typechained';
-import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
-import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
+import { DataReceiver, OracleSidechain, DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter } from '@typechained';
+import { UniswapV3Pool } from '@eth-sdk-types';
 import { evm } from '@utils';
 import { toBN } from '@utils/bn';
-import { UNISWAP_V3_K3PR_ADDRESS } from '@utils/constants';
+import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { expect } from 'chai';
-
-const randomDestinationDomain = 1111;
-const randomChainId = 32;
+import { setupContracts } from './common';
+import { RANDOM_CHAIN_ID } from '@utils/constants';
+import { ethers } from 'hardhat';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
-  let stranger: SignerWithAddress;
-  let deployer: SignerWithAddress;
   let governance: SignerWithAddress;
   let dataReceiver: DataReceiver;
-  let dataReceiverFactory: DataReceiver__factory;
   let oracleSidechain: OracleSidechain;
-  let oracleSidechainFactory: OracleSidechain__factory;
   let connextSenderAdapter: ConnextSenderAdapter;
-  let connextSenderAdapterFactory: ConnextSenderAdapter__factory;
-  let connextHandler: ConnextHandlerForTest;
-  let connextHandlerFactory: ConnextHandlerForTest__factory;
+  let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataFeed: DataFeed;
-  let dataFeedFactory: DataFeed__factory;
-  let uniswapV3Factory: UniswapV3Factory;
   let uniswapV3K3PR: UniswapV3Pool;
   let snapshotId: string;
 
@@ -48,19 +27,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       jsonRpcUrl: getNodeUrl('ethereum'),
       blockNumber: forkBlockNumber.oracleSidechain,
     });
-    [, stranger, deployer, governance] = await ethers.getSigners();
-    uniswapV3Factory = getMainnetSdk(stranger).uniswapV3Factory;
-    uniswapV3K3PR = getMainnetSdk(stranger).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
-    oracleSidechainFactory = await ethers.getContractFactory('OracleSidechain');
-    oracleSidechain = await oracleSidechainFactory.connect(deployer).deploy();
-    dataReceiverFactory = await ethers.getContractFactory('DataReceiver');
-    dataReceiver = await dataReceiverFactory.connect(deployer).deploy(oracleSidechain.address);
-    connextHandlerFactory = await ethers.getContractFactory('ConnextHandlerForTest');
-    connextHandler = await connextHandlerFactory.connect(deployer).deploy(dataReceiver.address);
-    dataFeedFactory = await ethers.getContractFactory('DataFeed');
-    dataFeed = await dataFeedFactory.connect(deployer).deploy(governance.address);
-    connextSenderAdapterFactory = await ethers.getContractFactory('ConnextSenderAdapter');
-    connextSenderAdapter = await connextSenderAdapterFactory.connect(deployer).deploy(connextHandler.address, dataFeed.address);
+
+    ({ governance, uniswapV3K3PR, oracleSidechain, dataReceiver, dataFeed, connextSenderAdapter, connextReceiverAdapter } =
+      await setupContracts());
+
     snapshotId = await evm.snapshot.take();
   });
 
@@ -75,7 +45,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let arithmeticMeanTick: BigNumber;
 
     before(async () => {
-      let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 6;
+      let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 7;
       let secondsAgo = 30;
       delta = 20;
       secondsAgos = [secondsAgo, secondsAgo - delta];
@@ -88,7 +58,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     context('when the adapter is not set', () => {
       it('should revert', async () => {
         await expect(
-          dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos)
+          dataFeed.sendObservation(connextSenderAdapter.address, RANDOM_CHAIN_ID, uniswapV3K3PR.address, secondsAgos)
         ).to.be.revertedWith('UnallowedAdapter()');
       });
     });
@@ -97,7 +67,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       it('should revert', async () => {
         await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
         await expect(
-          dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos)
+          dataFeed.sendObservation(connextSenderAdapter.address, RANDOM_CHAIN_ID, uniswapV3K3PR.address, secondsAgos)
         ).to.be.revertedWith('DestinationDomainIdNotSet()');
       });
     });
@@ -105,17 +75,34 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     context('when only the adapter and the destination domain are set', () => {
       it('should revert', async () => {
         await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed.connect(governance).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomain);
+        await dataFeed
+          .connect(governance)
+          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
         await expect(
-          dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos)
+          dataFeed.sendObservation(connextSenderAdapter.address, RANDOM_CHAIN_ID, uniswapV3K3PR.address, secondsAgos)
         ).to.be.revertedWith('ReceiverNotSet()');
+      });
+    });
+
+    context('when the adapter is not whitelisted in the data receiver', () => {
+      it('should revert', async () => {
+        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed
+          .connect(governance)
+          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
+        await dataFeed
+          .connect(governance)
+          .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
+        await expect(
+          dataFeed.sendObservation(connextSenderAdapter.address, RANDOM_CHAIN_ID, uniswapV3K3PR.address, secondsAgos)
+        ).to.be.revertedWith('UnallowedAdapter()');
       });
     });
 
     context('when the adapter, destination domain and receiver are set, but the oracle is uninitialized', () => {
       it.skip('should revert if the oracle is not initialized', async () => {
         await expect(
-          dataFeed.sendObservation(dataReceiver.address, randomDestinationDomain, uniswapV3K3PR.address, secondsAgos)
+          dataFeed.sendObservation(dataReceiver.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, uniswapV3K3PR.address, secondsAgos)
         ).to.be.revertedWith('CustomError()');
       });
     });
@@ -129,8 +116,13 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await oracleSidechain.initialize(initializeTimestamp, initialTick);
         await oracleSidechain.increaseObservationCardinalityNext(2);
         await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed.connect(governance).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomain);
-        await dataFeed.connect(governance).setReceiver(connextSenderAdapter.address, randomDestinationDomain, dataReceiver.address);
+        await dataFeed
+          .connect(governance)
+          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
+        await dataFeed
+          .connect(governance)
+          .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
+        await dataReceiver.connect(governance).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 
       it('should bridge the data and add an observation correctly', async () => {
@@ -145,7 +137,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         const currentSecondsPerLiquidityCumulativeX128 = toBN(delta).shl(128);
 
         const expectedObservation = [arithmeticMeanBlockTimestamp, currentTickCumulative, currentSecondsPerLiquidityCumulativeX128, true];
-        await dataFeed.sendObservation(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+        await dataFeed.sendObservation(connextSenderAdapter.address, RANDOM_CHAIN_ID, uniswapV3K3PR.address, secondsAgos);
         expect(await oracleSidechain.observations(1)).to.deep.eq(expectedObservation);
       });
     });

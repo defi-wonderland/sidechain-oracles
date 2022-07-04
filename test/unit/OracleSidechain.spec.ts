@@ -6,25 +6,27 @@ import { smock, MockContract, MockContractFactory } from '@defi-wonderland/smock
 import { evm } from '@utils';
 import { toBN } from '@utils/bn';
 import chai, { expect } from 'chai';
+import { onlyDataReceiver } from '@utils/behaviours';
 
 chai.use(smock.matchers);
 
 describe('OracleSidechain.sol', () => {
   let deployer: SignerWithAddress;
   let randomUser: SignerWithAddress;
+  let fakeDataReceiver: SignerWithAddress;
   let oracleSidechain: MockContract<OracleSidechain>;
   let oracleSidechainFactory: MockContractFactory<OracleSidechain__factory>;
   let snapshotId: string;
 
   before(async () => {
-    [, deployer, randomUser] = await ethers.getSigners();
+    [, deployer, randomUser, fakeDataReceiver] = await ethers.getSigners();
     oracleSidechainFactory = await smock.mock('OracleSidechain');
     snapshotId = await evm.snapshot.take();
   });
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    oracleSidechain = await oracleSidechainFactory.connect(deployer).deploy();
+    oracleSidechain = await oracleSidechainFactory.connect(deployer).deploy(fakeDataReceiver.address);
   });
 
   describe('observe(...)', () => {
@@ -47,10 +49,10 @@ describe('OracleSidechain.sol', () => {
       await oracleSidechain.increaseObservationCardinalityNext(3);
       await evm.advanceTimeAndBlock(delta1 - 2);
       writeTimestamp1 = (await ethers.provider.getBlock('latest')).timestamp + 1;
-      await oracleSidechain.write(writeTimestamp1, tick1);
+      await oracleSidechain.connect(fakeDataReceiver).write(writeTimestamp1, tick1);
       await evm.advanceTimeAndBlock(delta2 - 1);
       writeTimestamp2 = (await ethers.provider.getBlock('latest')).timestamp + 1;
-      await oracleSidechain.write(writeTimestamp2, tick2);
+      await oracleSidechain.connect(fakeDataReceiver).write(writeTimestamp2, tick2);
     });
 
     context('when queried data is factual', () => {
@@ -134,7 +136,14 @@ describe('OracleSidechain.sol', () => {
       await expect(oracleSidechain.write(writeTimestamp, tick)).to.be.revertedWith('CustomError()');
     });
 
-    context('when the oracle is initialized', () => {
+    onlyDataReceiver(
+      () => oracleSidechain,
+      'write',
+      () => fakeDataReceiver,
+      () => [writeTimestamp, tick]
+    );
+
+    context('when the oracle is initialized and the caller is the data receiver', () => {
       let initializeTimestamp = writeTimestamp - delta;
       let initialTick = 50;
 
@@ -147,7 +156,7 @@ describe('OracleSidechain.sol', () => {
           let tickCumulative = toBN(tick * delta);
           let secondsPerLiquidityCumulativeX128 = toBN(delta).shl(128).div(liquidity);
           let expectedWrittenObservation = [writeTimestamp, tickCumulative, secondsPerLiquidityCumulativeX128, true];
-          await oracleSidechain.write(writeTimestamp, tick);
+          await oracleSidechain.connect(fakeDataReceiver).write(writeTimestamp, tick);
           let writtenObservation = await oracleSidechain.observations(0);
           expect(writtenObservation).to.eql(expectedWrittenObservation);
         });
@@ -155,26 +164,26 @@ describe('OracleSidechain.sol', () => {
         it('should update slot0', async () => {
           let expectedSlot0 = [1, 3, 3];
           await oracleSidechain.increaseObservationCardinalityNext(3);
-          await oracleSidechain.write(writeTimestamp, tick);
+          await oracleSidechain.connect(fakeDataReceiver).write(writeTimestamp, tick);
           let slot0 = await oracleSidechain.slot0();
           expect(slot0).to.eql(expectedSlot0);
         });
 
         it('should update lastTick', async () => {
-          await oracleSidechain.write(writeTimestamp, tick);
+          await oracleSidechain.connect(fakeDataReceiver).write(writeTimestamp, tick);
           let lastTick = await oracleSidechain.lastTick();
           expect(lastTick).to.eq(tick);
         });
 
         it('should return true', async () => {
-          let written = await oracleSidechain.callStatic.write(writeTimestamp, tick);
+          let written = await oracleSidechain.connect(fakeDataReceiver).callStatic.write(writeTimestamp, tick);
           expect(written).to.eq(true);
         });
 
         it('should emit ObservationWritten', async () => {
-          await expect(oracleSidechain.connect(randomUser).write(writeTimestamp, tick))
+          await expect(oracleSidechain.connect(fakeDataReceiver).write(writeTimestamp, tick))
             .to.emit(oracleSidechain, 'ObservationWritten')
-            .withArgs(randomUser.address, writeTimestamp, tick);
+            .withArgs(fakeDataReceiver.address, writeTimestamp, tick);
         });
       });
 
@@ -186,8 +195,8 @@ describe('OracleSidechain.sol', () => {
         });
 
         it('should return false', async () => {
-          let writtenAt = await oracleSidechain.callStatic.write(initializeTimestamp, tick);
-          let writtenBefore = await oracleSidechain.callStatic.write(initializeTimestampBefore, tick);
+          let writtenAt = await oracleSidechain.connect(fakeDataReceiver).callStatic.write(initializeTimestamp, tick);
+          let writtenBefore = await oracleSidechain.connect(fakeDataReceiver).callStatic.write(initializeTimestampBefore, tick);
           expect(writtenAt).to.eq(false);
           expect(writtenBefore).to.eq(false);
         });

@@ -14,6 +14,8 @@ export const onlyPendingGovernance = createOnlyCallableCheck(['pending governanc
 export const onlyJobOwner = createOnlyCallableCheck(['job owner'], 'OnlyJobOwner()');
 export const onlyJob = createOnlyCallableCheck(['job'], 'OnlyJob()');
 export const onlyDataFeed = createOnlyCallableCheck(['data feed'], 'OnlyDataFeed()');
+export const onlyWhitelistedAdapter = createOnlyCallableCheck(['whitelisted adapter'], 'UnallowedAdapter()');
+export const onlyDataReceiver = createOnlyCallableCheck(['data receiver'], 'OnlyDataReceiver()');
 
 export function createOnlyCallableCheck(allowedLabels: string[], error: string) {
   return (

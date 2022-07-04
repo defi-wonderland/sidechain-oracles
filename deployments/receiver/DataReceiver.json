@@ -1,0 +1,390 @@
+{
+  "address": "0x24A7A84614688F344D9afb031b8a4845297D02d9",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IOracleSidechain",
+          "name": "_oracleSidechain",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_governance",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "LengthMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NoGovernanceZeroAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint32",
+          "name": "_blockTimestamp",
+          "type": "uint32"
+        }
+      ],
+      "name": "ObservationNotWritable",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyGovernance",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyPendingGovernance",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UnallowedAdapter",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "contract IBridgeReceiverAdapter",
+          "name": "_adapter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "_isAllowed",
+          "type": "bool"
+        }
+      ],
+      "name": "AdapterWhitelisted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_pendingGovernance",
+          "type": "address"
+        }
+      ],
+      "name": "GovernanceProposal",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_governance",
+          "type": "address"
+        }
+      ],
+      "name": "GovernanceSet",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "_blockTimestamp",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "int24",
+          "name": "_tick",
+          "type": "int24"
+        }
+      ],
+      "name": "ObservationAdded",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "acceptGovernance",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint32",
+          "name": "_blockTimestamp",
+          "type": "uint32"
+        },
+        {
+          "internalType": "int24",
+          "name": "_tick",
+          "type": "int24"
+        }
+      ],
+      "name": "addObservation",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "governance",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "oracleSidechain",
+      "outputs": [
+        {
+          "internalType": "contract IOracleSidechain",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingGovernance",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_governance",
+          "type": "address"
+        }
+      ],
+      "name": "setGovernance",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBridgeReceiverAdapter",
+          "name": "_receiverAdapter",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_isWhitelisted",
+          "type": "bool"
+        }
+      ],
+      "name": "whitelistAdapter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBridgeReceiverAdapter[]",
+          "name": "_receiverAdapters",
+          "type": "address[]"
+        },
+        {
+          "internalType": "bool[]",
+          "name": "_isWhitelisted",
+          "type": "bool[]"
+        }
+      ],
+      "name": "whitelistAdapters",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBridgeReceiverAdapter",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "whitelistedAdapters",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x2543f5e191070d399b2dbe8ae905043ac765129879411edf0a108de59ce118c7",
+  "receipt": {
+    "to": null,
+    "from": "0x57B067e4E27558FE2c60fCE86941011cB5F5A4FD",
+    "contractAddress": "0x24A7A84614688F344D9afb031b8a4845297D02d9",
+    "transactionIndex": 13,
+    "gasUsed": "475365",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x185e722a9906c1caf66805d364a21785ce9446460bcfc250e8da132b893c950a",
+    "transactionHash": "0x2543f5e191070d399b2dbe8ae905043ac765129879411edf0a108de59ce118c7",
+    "logs": [],
+    "blockNumber": 7168781,
+    "cumulativeGasUsed": "8381672",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xb1c1990030Fb0Da421EfD0e74Bb557E169656eB2",
+    "0x57B067e4E27558FE2c60fCE86941011cB5F5A4FD"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "02ff4d71be9a1dba86653850ac5c9d18",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.12+commit.f00d7308\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"contract IOracleSidechain\",\"name\":\"_oracleSidechain\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_governance\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"LengthMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NoGovernanceZeroAddress\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"_blockTimestamp\",\"type\":\"uint32\"}],\"name\":\"ObservationNotWritable\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyGovernance\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyPendingGovernance\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"UnallowedAdapter\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"contract IBridgeReceiverAdapter\",\"name\":\"_adapter\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"_isAllowed\",\"type\":\"bool\"}],\"name\":\"AdapterWhitelisted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_pendingGovernance\",\"type\":\"address\"}],\"name\":\"GovernanceProposal\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_governance\",\"type\":\"address\"}],\"name\":\"GovernanceSet\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"_blockTimestamp\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"int24\",\"name\":\"_tick\",\"type\":\"int24\"}],\"name\":\"ObservationAdded\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"acceptGovernance\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"_blockTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"int24\",\"name\":\"_tick\",\"type\":\"int24\"}],\"name\":\"addObservation\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"governance\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"oracleSidechain\",\"outputs\":[{\"internalType\":\"contract IOracleSidechain\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pendingGovernance\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_governance\",\"type\":\"address\"}],\"name\":\"setGovernance\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IBridgeReceiverAdapter\",\"name\":\"_receiverAdapter\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"_isWhitelisted\",\"type\":\"bool\"}],\"name\":\"whitelistAdapter\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IBridgeReceiverAdapter[]\",\"name\":\"_receiverAdapters\",\"type\":\"address[]\"},{\"internalType\":\"bool[]\",\"name\":\"_isWhitelisted\",\"type\":\"bool[]\"}],\"name\":\"whitelistAdapters\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IBridgeReceiverAdapter\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"whitelistedAdapters\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"setGovernance(address)\":{\"params\":{\"_governance\":\"The address being proposed as the new governance\"}}},\"version\":1},\"userdoc\":{\"errors\":{\"NoGovernanceZeroAddress()\":[{\"notice\":\"Throws if trying to set governance to zero address\"}],\"OnlyGovernance()\":[{\"notice\":\"Throws if the caller of the function is not governance\"}],\"OnlyPendingGovernance()\":[{\"notice\":\"Throws if the caller of the function is not pendingGovernance\"}]},\"events\":{\"GovernanceProposal(address)\":{\"notice\":\"Emitted when a new governance is proposed\"},\"GovernanceSet(address)\":{\"notice\":\"Emitted when pendingGovernance accepts to be governance\"}},\"kind\":\"user\",\"methods\":{\"acceptGovernance()\":{\"notice\":\"Changes the governance from the current governance to the previously proposed address\"},\"governance()\":{\"notice\":\"Stores the governance address\"},\"pendingGovernance()\":{\"notice\":\"Stores the pendingGovernance address\"},\"setGovernance(address)\":{\"notice\":\"Proposes a new address to be governance\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"solidity/contracts/DataReceiver.sol\":\"DataReceiver\"},\"evmVersion\":\"london\",\"libraries\":{\":__CACHE_BREAKER__\":\"0x00000000d41867734bbee4c6863d9255b2b06ac1\"},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"solidity/contracts/DataReceiver.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';\\nimport {Governable} from './peripherals/Governable.sol';\\n\\ncontract DataReceiver is Governable, IDataReceiver {\\n  IOracleSidechain public immutable oracleSidechain;\\n  mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;\\n\\n  constructor(IOracleSidechain _oracleSidechain, address _governance) Governable(_governance) {\\n    oracleSidechain = _oracleSidechain;\\n    governance = _governance;\\n  }\\n\\n  /// @inheritdoc IDataReceiver\\n  function addObservation(uint32 _blockTimestamp, int24 _tick) external onlyWhitelistedAdapters {\\n    if (oracleSidechain.write(_blockTimestamp, _tick)) {\\n      emit ObservationAdded(msg.sender, _blockTimestamp, _tick);\\n    } else {\\n      revert ObservationNotWritable(_blockTimestamp);\\n    }\\n  }\\n\\n  function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernance {\\n    _whitelistAdapter(_receiverAdapter, _isWhitelisted);\\n  }\\n\\n  function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external onlyGovernance {\\n    uint256 _receiverAdapterLength = _receiverAdapters.length;\\n    if (_receiverAdapterLength != _isWhitelisted.length) revert LengthMismatch();\\n    uint256 _i;\\n    unchecked {\\n      for (_i; _i < _receiverAdapterLength; ++_i) {\\n        _whitelistAdapter(_receiverAdapters[_i], _isWhitelisted[_i]);\\n      }\\n    }\\n  }\\n\\n  function _whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) internal {\\n    whitelistedAdapters[_receiverAdapter] = _isWhitelisted;\\n    emit AdapterWhitelisted(_receiverAdapter, _isWhitelisted);\\n  }\\n\\n  modifier onlyWhitelistedAdapters() {\\n    if (!whitelistedAdapters[IBridgeReceiverAdapter(msg.sender)]) revert UnallowedAdapter();\\n    _;\\n  }\\n}\\n\",\"keccak256\":\"0x90ef0a67a5e3783dcfaa05c1323209eed9232d866ef91d04b175127a43cc2481\",\"license\":\"Unlicense\"},\"solidity/contracts/peripherals/Governable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IGovernable} from '../../interfaces/peripherals/IGovernable.sol';\\n\\nabstract contract Governable is IGovernable {\\n  /// @inheritdoc IGovernable\\n  address public governance;\\n\\n  /// @inheritdoc IGovernable\\n  address public pendingGovernance;\\n\\n  constructor(address _governance) {\\n    if (_governance == address(0)) revert NoGovernanceZeroAddress();\\n    governance = _governance;\\n  }\\n\\n  /// @inheritdoc IGovernable\\n  function setGovernance(address _governance) external onlyGovernance {\\n    pendingGovernance = _governance;\\n    emit GovernanceProposal(_governance);\\n  }\\n\\n  /// @inheritdoc IGovernable\\n  function acceptGovernance() external onlyPendingGovernance {\\n    governance = pendingGovernance;\\n    delete pendingGovernance;\\n    emit GovernanceSet(governance);\\n  }\\n\\n  /// @notice Functions with this modifier can only be called by governance\\n  modifier onlyGovernance() {\\n    if (msg.sender != governance) revert OnlyGovernance();\\n    _;\\n  }\\n\\n  /// @notice Functions with this modifier can only be called by pendingGovernance\\n  modifier onlyPendingGovernance() {\\n    if (msg.sender != pendingGovernance) revert OnlyPendingGovernance();\\n    _;\\n  }\\n}\\n\",\"keccak256\":\"0x396fadbc0c0ce9100bb74db15d421d43883c06753a0a8ca78c2f1ee685c3fb6c\",\"license\":\"MIT\"},\"solidity/interfaces/IDataReceiver.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';\\nimport {IBridgeReceiverAdapter} from '../interfaces/bridges/IBridgeReceiverAdapter.sol';\\nimport {IGovernable} from './peripherals/IGovernable.sol';\\n\\n/// @title The DataReceiver interface\\n/// @author 0xJabberwock (from DeFi Wonderland)\\n/// @notice Contains state variables, events, custom errors and functions used in DataReceiver\\ninterface IDataReceiver is IGovernable {\\n  // STATE VARIABLES\\n\\n  function oracleSidechain() external view returns (IOracleSidechain _oracleSidechain);\\n\\n  function whitelistedAdapters(IBridgeReceiverAdapter _adapter) external view returns (bool _isAllowed);\\n\\n  // EVENTS\\n\\n  event ObservationAdded(address _user, uint32 _blockTimestamp, int24 _tick);\\n  event AdapterWhitelisted(IBridgeReceiverAdapter _adapter, bool _isAllowed);\\n\\n  // CUSTOM ERRORS\\n\\n  error ObservationNotWritable(uint32 _blockTimestamp);\\n  error UnallowedAdapter();\\n  error LengthMismatch();\\n\\n  // FUNCTIONS\\n\\n  function addObservation(uint32 _blockTimestamp, int24 _tick) external;\\n\\n  function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external;\\n\\n  function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external;\\n}\\n\",\"keccak256\":\"0x593a9ee2578feb12707a5170c691b1936c5fce34b8e85fbae97b11946b0edc28\",\"license\":\"Unlicense\"},\"solidity/interfaces/IOracleSidechain.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IDataReceiver} from './IDataReceiver.sol';\\n\\n/// @title The OracleSidechain interface\\n/// @author 0xJabberwock (from DeFi Wonderland)\\n/// @notice Contains state variables, events, custom errors and functions used in OracleSidechain\\ninterface IOracleSidechain {\\n  // STATE VARIABLES\\n\\n  /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas\\n  /// when accessed externally.\\n  /// @return _observationIndex The index of the last oracle observation that was written,\\n  /// @return _observationCardinality The current maximum number of observations stored in the pool,\\n  /// @return _observationCardinalityNext The next maximum number of observations, to be updated when the observation.\\n  function slot0()\\n    external\\n    view\\n    returns (\\n      uint16 _observationIndex,\\n      uint16 _observationCardinality,\\n      uint16 _observationCardinalityNext\\n    );\\n\\n  function lastTick() external view returns (int24 _lastTick);\\n\\n  //TODO: complete natspec and change for factory when factory is deployed\\n  function dataReceiver() external view returns (IDataReceiver _dataReceiver);\\n\\n  /// @notice Returns data about a specific observation index\\n  /// @param _index The element of the observations array to fetch\\n  /// @dev You most likely want to use #observe() instead of this method to get an observation as of some amount of time\\n  /// ago, rather than at a specific index in the array.\\n  /// @return _blockTimestamp The timestamp of the observation,\\n  /// @return _tickCumulative the tick multiplied by seconds elapsed for the life of the pool as of the observation timestamp,\\n  /// @return _secondsPerLiquidityCumulativeX128 the seconds per in range liquidity for the life of the pool as of the observation timestamp,\\n  /// @return _initialized whether the observation has been initialized and the values are safe to use\\n  function observations(uint256 _index)\\n    external\\n    view\\n    returns (\\n      uint32 _blockTimestamp,\\n      int56 _tickCumulative,\\n      uint160 _secondsPerLiquidityCumulativeX128,\\n      bool _initialized\\n    );\\n\\n  // EVENTS\\n\\n  /// @notice Emitted exactly once by a pool when #initialize is first called on the pool\\n  /// @dev Mint/Burn/Swap cannot be emitted by the pool before Initialize\\n  /// @param _blockTimestamp The timestamp of the observation\\n  /// @param _tick The initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool\\n  event Initialize(uint32 _blockTimestamp, int24 _tick);\\n\\n  /// @notice Emitted by the pool for increases to the number of observations that can be stored\\n  /// @dev observationCardinalityNext is not the observation cardinality until an observation is written at the index\\n  /// just before a mint/swap/burn.\\n  /// @param _observationCardinalityNextOld The previous value of the next observation cardinality\\n  /// @param _observationCardinalityNextNew The updated value of the next observation cardinality\\n  event IncreaseObservationCardinalityNext(uint16 _observationCardinalityNextOld, uint16 _observationCardinalityNextNew);\\n\\n  event ObservationWritten(address _user, uint32 _blockTimestamp, int24 _tick);\\n\\n  // CUSTOM ERRORS\\n\\n  error AI();\\n  error OnlyDataReceiver();\\n\\n  // FUNCTIONS\\n\\n  /// @notice Returns the cumulative tick and liquidity as of each timestamp `secondsAgo` from the current block timestamp\\n  /// @dev To get a time weighted average tick or liquidity-in-range, you must call this with two values, one representing\\n  /// the beginning of the period and another for the end of the period. E.g., to get the last hour time-weighted average tick,\\n  /// you must call it with secondsAgos = [3600, 0].\\n  /// @dev The time weighted average tick represents the geometric time weighted average price of the pool, in\\n  /// log base sqrt(1.0001) of token1 / token0. The TickMath library can be used to go from a tick value to a ratio.\\n  /// @param _secondsAgos From how long ago each cumulative tick and liquidity value should be returned\\n  /// @return _tickCumulatives Cumulative tick values as of each `secondsAgos` from the current block timestamp\\n  /// @return _secondsPerLiquidityCumulativeX128s Cumulative seconds per liquidity-in-range value as of each `secondsAgos` from the current block\\n  /// timestamp\\n  function observe(uint32[] calldata _secondsAgos)\\n    external\\n    view\\n    returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);\\n\\n  function write(uint32 _blockTimestamp, int24 _tick) external returns (bool _written);\\n\\n  /// @notice Sets the initial price for the pool\\n  /// @param _blockTimestamp The timestamp of the observation\\n  /// @param _tick The initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool\\n  function initialize(uint32 _blockTimestamp, int24 _tick) external;\\n\\n  /// @notice Increase the maximum number of price and liquidity observations that this pool will store\\n  /// @dev This method is no-op if the pool already has an observationCardinalityNext greater than or equal to\\n  /// the input observationCardinalityNext.\\n  /// @param _observationCardinalityNext The desired minimum number of observations for the pool to store\\n  function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external;\\n}\\n\",\"keccak256\":\"0x188e6e309bd6c2f674b158473116cef90f6242f21e8265adce3eaf01db3811f5\",\"license\":\"Unlicense\"},\"solidity/interfaces/bridges/IBridgeReceiverAdapter.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\ninterface IBridgeReceiverAdapter {\\n  // FUNCTIONS\\n\\n  function addObservation(uint32 _blockTimestamp, int24 _tick) external;\\n}\\n\",\"keccak256\":\"0xa5e5c7a34b3f32b2a73f458dca27d72caaf81a416bc7ae457eaf35052f8233aa\",\"license\":\"Unlicense\"},\"solidity/interfaces/peripherals/IGovernable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity >=0.8.8 <0.9.0;\\n\\n/// @title Governable contract\\n/// @notice Manages the governance role\\ninterface IGovernable {\\n  // Events\\n\\n  /// @notice Emitted when pendingGovernance accepts to be governance\\n  /// @param _governance Address of the new governance\\n  event GovernanceSet(address _governance);\\n\\n  /// @notice Emitted when a new governance is proposed\\n  /// @param _pendingGovernance Address that is proposed to be the new governance\\n  event GovernanceProposal(address _pendingGovernance);\\n\\n  // Errors\\n\\n  /// @notice Throws if the caller of the function is not governance\\n  error OnlyGovernance();\\n\\n  /// @notice Throws if the caller of the function is not pendingGovernance\\n  error OnlyPendingGovernance();\\n\\n  /// @notice Throws if trying to set governance to zero address\\n  error NoGovernanceZeroAddress();\\n\\n  // Variables\\n\\n  /// @notice Stores the governance address\\n  /// @return _governance The governance addresss\\n  function governance() external view returns (address _governance);\\n\\n  /// @notice Stores the pendingGovernance address\\n  /// @return _pendingGovernance The pendingGovernance addresss\\n  function pendingGovernance() external view returns (address _pendingGovernance);\\n\\n  // Methods\\n\\n  /// @notice Proposes a new address to be governance\\n  /// @param _governance The address being proposed as the new governance\\n  function setGovernance(address _governance) external;\\n\\n  /// @notice Changes the governance from the current governance to the previously proposed address\\n  function acceptGovernance() external;\\n}\\n\",\"keccak256\":\"0xf7e6dc04662fb90751f546440cfe3bcf0cd5e854daba774790b872c0566a2930\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60a060405234801561001057600080fd5b5060405161081e38038061081e83398101604081905261002f91610097565b806001600160a01b0381166100565760405162b293ed60e81b815260040160405180910390fd5b50600080546001600160a01b039384166080526001600160a01b031916919092161790556100d1565b6001600160a01b038116811461009457600080fd5b50565b600080604083850312156100aa57600080fd5b82516100b58161007f565b60208401519092506100c68161007f565b809150509250929050565b60805161072c6100f26000396000818160fd01526103e1015261072c6000f3fe608060405234801561001057600080fd5b50600436106100935760003560e01c80639dad3145116100665780639dad3145146100f8578063ab033ea91461011f578063b171455814610132578063b893cce214610145578063f39c38a01461017857600080fd5b80630ddb5dd214610098578063238efcbc146100ad5780635aa6e675146100b5578063954e863e146100e5575b600080fd5b6100ab6100a6366004610579565b61018b565b005b6100ab61024b565b6000546100c8906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6100ab6100f336600461060b565b6102d4565b6100c87f000000000000000000000000000000000000000000000000000000000000000081565b6100ab61012d366004610644565b61030d565b6100ab610140366004610668565b61038c565b610168610153366004610644565b60026020526000908152604090205460ff1681565b60405190151581526020016100dc565b6001546100c8906001600160a01b031681565b6000546001600160a01b031633146101b6576040516354348f0360e01b815260040160405180910390fd5b828181146101da576040516001621398b960e31b0319815260040160405180910390fd5b60005b818110156102435761023b8686838181106101fa576101fa6106a6565b905060200201602081019061020f9190610644565b858584818110610221576102216106a6565b905060200201602081019061023691906106bc565b6104d1565b6001016101dd565b505050505050565b6001546001600160a01b0316331461027657604051637ef5703160e11b815260040160405180910390fd5b60018054600080546001600160a01b0383166001600160a01b031991821681179092559091169091556040519081527fc73be659241aade67e9a059bcf21494955018b213dbd1179054ccf928b13f3b69060200160405180910390a1565b6000546001600160a01b031633146102ff576040516354348f0360e01b815260040160405180910390fd5b61030982826104d1565b5050565b6000546001600160a01b03163314610338576040516354348f0360e01b815260040160405180910390fd5b600180546001600160a01b0319166001600160a01b0383169081179091556040519081527fe987aaedf9d279143bdf1eee16cf1d0feb47742867d81083df8d6cd0a5ac857f9060200160405180910390a150565b3360009081526002602052604090205460ff166103bc576040516360ece74160e01b815260040160405180910390fd5b604051631147360360e31b815263ffffffff83166004820152600282900b60248201527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690638a39b018906044016020604051808303816000875af1158015610432573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061045691906106d9565b156104ac576040805133815263ffffffff84166020820152600283900b918101919091527f5a5848a7b07f71483ca0d7217689f80dc2d3bc6c2f64dd295c8227ecde7fbd7a906060015b60405180910390a15050565b60405163732fe5ed60e11b815263ffffffff8316600482015260240160405180910390fd5b6001600160a01b038216600081815260026020908152604091829020805460ff19168515159081179091558251938452908301527f3cece36ac6216147f57b10bb30975f82b18b8b290a7925c322277e684afcce4a91016104a0565b60008083601f84011261053f57600080fd5b50813567ffffffffffffffff81111561055757600080fd5b6020830191508360208260051b850101111561057257600080fd5b9250929050565b6000806000806040858703121561058f57600080fd5b843567ffffffffffffffff808211156105a757600080fd5b6105b38883890161052d565b909650945060208701359150808211156105cc57600080fd5b506105d98782880161052d565b95989497509550505050565b6001600160a01b03811681146105fa57600080fd5b50565b80151581146105fa57600080fd5b6000806040838503121561061e57600080fd5b8235610629816105e5565b91506020830135610639816105fd565b809150509250929050565b60006020828403121561065657600080fd5b8135610661816105e5565b9392505050565b6000806040838503121561067b57600080fd5b823563ffffffff8116811461068f57600080fd5b91506020830135600281900b811461063957600080fd5b634e487b7160e01b600052603260045260246000fd5b6000602082840312156106ce57600080fd5b8135610661816105fd565b6000602082840312156106eb57600080fd5b8151610661816105fd56fea2646970667358221220a213b2b89dfdcd1ce316d62089f3a2c0de8be839b05eaabf7a00d13ab0cbc40c64736f6c634300080c0033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100935760003560e01c80639dad3145116100665780639dad3145146100f8578063ab033ea91461011f578063b171455814610132578063b893cce214610145578063f39c38a01461017857600080fd5b80630ddb5dd214610098578063238efcbc146100ad5780635aa6e675146100b5578063954e863e146100e5575b600080fd5b6100ab6100a6366004610579565b61018b565b005b6100ab61024b565b6000546100c8906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6100ab6100f336600461060b565b6102d4565b6100c87f000000000000000000000000000000000000000000000000000000000000000081565b6100ab61012d366004610644565b61030d565b6100ab610140366004610668565b61038c565b610168610153366004610644565b60026020526000908152604090205460ff1681565b60405190151581526020016100dc565b6001546100c8906001600160a01b031681565b6000546001600160a01b031633146101b6576040516354348f0360e01b815260040160405180910390fd5b828181146101da576040516001621398b960e31b0319815260040160405180910390fd5b60005b818110156102435761023b8686838181106101fa576101fa6106a6565b905060200201602081019061020f9190610644565b858584818110610221576102216106a6565b905060200201602081019061023691906106bc565b6104d1565b6001016101dd565b505050505050565b6001546001600160a01b0316331461027657604051637ef5703160e11b815260040160405180910390fd5b60018054600080546001600160a01b0383166001600160a01b031991821681179092559091169091556040519081527fc73be659241aade67e9a059bcf21494955018b213dbd1179054ccf928b13f3b69060200160405180910390a1565b6000546001600160a01b031633146102ff576040516354348f0360e01b815260040160405180910390fd5b61030982826104d1565b5050565b6000546001600160a01b03163314610338576040516354348f0360e01b815260040160405180910390fd5b600180546001600160a01b0319166001600160a01b0383169081179091556040519081527fe987aaedf9d279143bdf1eee16cf1d0feb47742867d81083df8d6cd0a5ac857f9060200160405180910390a150565b3360009081526002602052604090205460ff166103bc576040516360ece74160e01b815260040160405180910390fd5b604051631147360360e31b815263ffffffff83166004820152600282900b60248201527f00000000000000000000000000000000000000000000000000000000000000006001600160a01b031690638a39b018906044016020604051808303816000875af1158015610432573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061045691906106d9565b156104ac576040805133815263ffffffff84166020820152600283900b918101919091527f5a5848a7b07f71483ca0d7217689f80dc2d3bc6c2f64dd295c8227ecde7fbd7a906060015b60405180910390a15050565b60405163732fe5ed60e11b815263ffffffff8316600482015260240160405180910390fd5b6001600160a01b038216600081815260026020908152604091829020805460ff19168515159081179091558251938452908301527f3cece36ac6216147f57b10bb30975f82b18b8b290a7925c322277e684afcce4a91016104a0565b60008083601f84011261053f57600080fd5b50813567ffffffffffffffff81111561055757600080fd5b6020830191508360208260051b850101111561057257600080fd5b9250929050565b6000806000806040858703121561058f57600080fd5b843567ffffffffffffffff808211156105a757600080fd5b6105b38883890161052d565b909650945060208701359150808211156105cc57600080fd5b506105d98782880161052d565b95989497509550505050565b6001600160a01b03811681146105fa57600080fd5b50565b80151581146105fa57600080fd5b6000806040838503121561061e57600080fd5b8235610629816105e5565b91506020830135610639816105fd565b809150509250929050565b60006020828403121561065657600080fd5b8135610661816105e5565b9392505050565b6000806040838503121561067b57600080fd5b823563ffffffff8116811461068f57600080fd5b91506020830135600281900b811461063957600080fd5b634e487b7160e01b600052603260045260246000fd5b6000602082840312156106ce57600080fd5b8135610661816105fd565b6000602082840312156106eb57600080fd5b8151610661816105fd56fea2646970667358221220a213b2b89dfdcd1ce316d62089f3a2c0de8be839b05eaabf7a00d13ab0cbc40c64736f6c634300080c0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "setGovernance(address)": {
+        "params": {
+          "_governance": "The address being proposed as the new governance"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "errors": {
+      "NoGovernanceZeroAddress()": [
+        {
+          "notice": "Throws if trying to set governance to zero address"
+        }
+      ],
+      "OnlyGovernance()": [
+        {
+          "notice": "Throws if the caller of the function is not governance"
+        }
+      ],
+      "OnlyPendingGovernance()": [
+        {
+          "notice": "Throws if the caller of the function is not pendingGovernance"
+        }
+      ]
+    },
+    "events": {
+      "GovernanceProposal(address)": {
+        "notice": "Emitted when a new governance is proposed"
+      },
+      "GovernanceSet(address)": {
+        "notice": "Emitted when pendingGovernance accepts to be governance"
+      }
+    },
+    "kind": "user",
+    "methods": {
+      "acceptGovernance()": {
+        "notice": "Changes the governance from the current governance to the previously proposed address"
+      },
+      "governance()": {
+        "notice": "Stores the governance address"
+      },
+      "pendingGovernance()": {
+        "notice": "Stores the pendingGovernance address"
+      },
+      "setGovernance(address)": {
+        "notice": "Proposes a new address to be governance"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 10024,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "governance",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 10027,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "pendingGovernance",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_address"
+      },
+      {
+        "astId": 9371,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "whitelistedAdapters",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_contract(IBridgeReceiverAdapter)10296,t_bool)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_contract(IBridgeReceiverAdapter)10296": {
+        "encoding": "inplace",
+        "label": "contract IBridgeReceiverAdapter",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_contract(IBridgeReceiverAdapter)10296,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_contract(IBridgeReceiverAdapter)10296",
+        "label": "mapping(contract IBridgeReceiverAdapter => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      }
+    }
+  }
+}

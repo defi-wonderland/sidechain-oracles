@@ -39,7 +39,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
       recovery: _to,
       callback: address(0),
       callbackFee: 0,
-      forceSlow: false, // TODO: change to true when switch to permissioned
+      forceSlow: true,
       receiveLocal: false
     });
 

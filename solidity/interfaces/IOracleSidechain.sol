@@ -1,6 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IDataReceiver} from './IDataReceiver.sol';
+
 /// @title The OracleSidechain interface
 /// @author 0xJabberwock (from DeFi Wonderland)
 /// @notice Contains state variables, events, custom errors and functions used in OracleSidechain
@@ -22,6 +24,9 @@ interface IOracleSidechain {
     );
 
   function lastTick() external view returns (int24 _lastTick);
+
+  //TODO: complete natspec and change for factory when factory is deployed
+  function dataReceiver() external view returns (IDataReceiver _dataReceiver);
 
   /// @notice Returns data about a specific observation index
   /// @param _index The element of the observations array to fetch
@@ -61,6 +66,7 @@ interface IOracleSidechain {
   // CUSTOM ERRORS
 
   error AI();
+  error OnlyDataReceiver();
 
   // FUNCTIONS
 

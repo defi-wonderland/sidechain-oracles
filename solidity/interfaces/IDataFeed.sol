@@ -1,10 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IConnextSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
-import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import {IGovernable} from './peripherals/IGovernable.sol';
+import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/bridges/IConnextSenderAdapter.sol';
+import {IGovernable} from '../interfaces/peripherals/IGovernable.sol';
 
 interface IDataFeed is IGovernable {
   // STATE VARIABLES
@@ -21,8 +20,7 @@ interface IDataFeed is IGovernable {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     address _dataReceiver,
     uint32 _destinationDomainId,
-    uint32 _arithmeticMeanBlockTimestamp,
-    int24 _arithmeticMeanTick
+    IOracleSidechain.ObservationData[] _observationsData
   );
 
   event AdapterWhitelisted(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted);
@@ -34,23 +32,24 @@ interface IDataFeed is IGovernable {
   // ERRORS
 
   error UnallowedAdapter();
-  error LengthMismatch();
-  error ReceiverNotSet();
   error DestinationDomainIdNotSet();
+  error ReceiverNotSet();
+  error InvalidSecondsAgos();
+  error LengthMismatch();
 
   // FUNCTIONS
 
-  function sendObservation(
+  function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     IUniswapV3Pool _pool,
     uint32[] calldata _secondsAgos
   ) external;
 
-  function fetchObservation(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
+  function fetchObservations(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     external
     view
-    returns (uint32 _arithmeticMeanBlockTimestamp, int24 _arithmeticMeanTick);
+    returns (IOracleSidechain.ObservationData[] memory _observationsData);
 
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
 

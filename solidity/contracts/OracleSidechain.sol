@@ -51,23 +51,15 @@ contract OracleSidechain is IOracleSidechain {
 
   // TODO: if not initialized, initialize it --> internalize _initialize
   /// @inheritdoc IOracleSidechain
-  function write(uint32 _blockTimestamp, int24 _tick) external returns (bool _written) {
+  function write(ObservationData[] calldata _observationsData) external returns (bool _written) {
     if (IDataReceiver(msg.sender) != dataReceiver) revert OnlyDataReceiver();
-    Slot0 memory _slot0 = slot0;
-    Oracle.Observation memory _lastObservation = observations[_slot0.observationIndex];
-    if (_lastObservation.blockTimestamp < _blockTimestamp) {
-      (uint16 _indexUpdated, uint16 _cardinalityUpdated) = observations.write(
-        _slot0.observationIndex,
-        _blockTimestamp,
-        _tick,
-        0,
-        _slot0.observationCardinality,
-        _slot0.observationCardinalityNext
-      );
-      (slot0.observationIndex, slot0.observationCardinality) = (_indexUpdated, _cardinalityUpdated);
-      lastTick = _tick;
-      _written = true;
-      emit ObservationWritten(msg.sender, _blockTimestamp, _tick);
+    Oracle.Observation memory _lastObservation = observations[slot0.observationIndex];
+    uint256 _observationsDataLength = _observationsData.length;
+    for (uint256 _i; _i < _observationsDataLength; ++_i) {
+      if (_lastObservation.blockTimestamp < _observationsData[_i].blockTimestamp) {
+        _write(_observationsData[_i]);
+        _written = true;
+      }
     }
   }
 
@@ -81,15 +73,29 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   /// @inheritdoc IOracleSidechain
-  function initialize(uint32 _blockTimestamp, int24 _tick) external {
+  function initialize(ObservationData calldata _observationData) external {
     if (slot0.observationCardinality != 0) revert AI();
 
-    lastTick = _tick;
+    lastTick = _observationData.tick;
 
-    (uint16 _cardinality, uint16 _cardinalityNext) = observations.initialize(_blockTimestamp);
+    (uint16 _cardinality, uint16 _cardinalityNext) = observations.initialize(_observationData.blockTimestamp);
 
     slot0 = Slot0({observationIndex: 0, observationCardinality: _cardinality, observationCardinalityNext: _cardinalityNext});
 
-    emit Initialize(_blockTimestamp, _tick);
+    emit Initialize(_observationData);
+  }
+
+  function _write(ObservationData calldata _observationData) private {
+    (uint16 _indexUpdated, uint16 _cardinalityUpdated) = observations.write(
+      slot0.observationIndex,
+      _observationData.blockTimestamp,
+      _observationData.tick,
+      0,
+      slot0.observationCardinality,
+      slot0.observationCardinalityNext
+    );
+    (slot0.observationIndex, slot0.observationCardinality) = (_indexUpdated, _cardinalityUpdated);
+    lastTick = _observationData.tick;
+    emit ObservationWritten(msg.sender, _observationData);
   }
 }

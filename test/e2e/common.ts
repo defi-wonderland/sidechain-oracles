@@ -1,18 +1,18 @@
-import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
-  ConnextReceiverAdapter,
-  ConnextSenderAdapter,
-  DataFeed,
-  DataReceiver,
-  ExecutorForTest,
   OracleSidechain,
+  DataReceiver,
+  DataFeed,
   ConnextHandlerForTest,
+  ExecutorForTest,
+  ConnextSenderAdapter,
+  ConnextReceiverAdapter,
 } from '@typechained';
+import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
+import { UniswapV3Pool } from '@eth-sdk-types';
 import { UNISWAP_V3_K3PR_ADDRESS } from '@utils/constants';
 import { RINKEBY_ORIGIN_DOMAIN_CONNEXT } from 'utils/constants';
-import { ethers } from 'hardhat';
-import { UniswapV3Pool } from '@eth-sdk-types';
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;

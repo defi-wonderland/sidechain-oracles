@@ -8,6 +8,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const MIN_SQRT_RATIO = toBN(4295128739);
   const TEMP_TICK = 10000;
   const TEMP_TIMESTAMP = 1600000000;
+  const TEMP_OBSERVATION_DATA = [TEMP_TIMESTAMP, TEMP_TICK];
 
   const txSettings = {
     from: deployer,
@@ -19,7 +20,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   //TODO: erase when initialize is handled inside OracleLibrary
   if (poolState.observationCardinality == 0) {
-    await hre.deployments.execute('OracleSidechain', txSettings, 'initialize', TEMP_TIMESTAMP, TEMP_TICK);
+    await hre.deployments.execute('OracleSidechain', txSettings, 'initialize', TEMP_OBSERVATION_DATA);
     await hre.deployments.execute('OracleSidechain', txSettings, 'increaseObservationCardinalityNext', 5);
   }
 };

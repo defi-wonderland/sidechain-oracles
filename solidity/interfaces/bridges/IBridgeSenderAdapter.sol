@@ -1,13 +1,14 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
+
 interface IBridgeSenderAdapter {
   // FUNCTIONS
 
-  function bridgeObservation(
+  function bridgeObservations(
     address _to,
     uint32 _destinationDomainId,
-    uint32 _arithmeticMeanBlockTimestamp,
-    int24 _arithmeticMeanTick
+    IOracleSidechain.ObservationData[] calldata _observationsData
   ) external payable;
 }

@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
+pragma solidity >=0.8.8 <0.9.0;
+
 import {LibConnextStorage, XCallArgs} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
+import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
 
 interface IExecutorLike {
   function execute(
     address _originalSender,
     address _receiverAdapter,
     uint32 _originDomain,
-    uint32 _blockTimestamp,
-    int24 _tick
+    IOracleSidechain.ObservationData[] calldata _observationsData
   ) external;
 }
-
-pragma solidity >=0.8.0;
 
 contract ConnextHandlerForTest {
   IExecutorLike public immutable executor;
@@ -21,8 +21,8 @@ contract ConnextHandlerForTest {
   }
 
   function xcall(XCallArgs calldata _args) external payable returns (bytes32) {
-    (uint32 _blockTimestamp, int24 _tick) = abi.decode(_args.params.callData[4:], (uint32, int24));
-    executor.execute(msg.sender, _args.params.to, _args.params.originDomain, _blockTimestamp, _tick);
+    IOracleSidechain.ObservationData[] memory _observationsData = abi.decode(_args.params.callData[4:], (IOracleSidechain.ObservationData[]));
+    executor.execute(msg.sender, _args.params.to, _args.params.originDomain, _observationsData);
     return bytes32(abi.encode('random'));
   }
 }

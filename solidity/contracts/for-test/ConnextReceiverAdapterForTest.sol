@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {ConnextReceiverAdapter, IDataReceiver, IConnextHandler} from '../bridges/ConnextReceiverAdapter.sol';
+import {ConnextReceiverAdapter, IConnextHandler, IDataReceiver, IOracleSidechain} from '../../contracts/bridges/ConnextReceiverAdapter.sol';
 
 contract ConnextReceiverAdapterForTest is ConnextReceiverAdapter {
   constructor(
@@ -11,8 +11,8 @@ contract ConnextReceiverAdapterForTest is ConnextReceiverAdapter {
     IConnextHandler _connext
   ) ConnextReceiverAdapter(_dataReceiver, _originContract, _originDomain, _connext) {}
 
-  function addPermissionlessObservation(uint32 _blockTimestamp, int24 _tick) external {
-    dataReceiver.addObservation(_blockTimestamp, _tick);
-    emit ObservationSent(_blockTimestamp, _tick);
+  function addPermissionlessObservations(IOracleSidechain.ObservationData[] calldata _observationsData) external {
+    dataReceiver.addObservations(_observationsData);
+    emit ObservationsSent(_observationsData);
   }
 }

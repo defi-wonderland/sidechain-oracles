@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
-
-pragma solidity >=0.8.0;
+pragma solidity >=0.8.8 <0.9.0;
 
 import {IBridgeReceiverAdapter} from '../../interfaces/bridges/IBridgeReceiverAdapter.sol';
+import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
 
 contract ExecutorForTest {
   error OnlyConnext();
@@ -19,12 +19,11 @@ contract ExecutorForTest {
     address _originalContract,
     address _receiverAdapter,
     uint32 _origin,
-    uint32 _blockTimestamp,
-    int24 _tick
+    IOracleSidechain.ObservationData[] calldata _observationsData
   ) external onlyConnext {
     originSender = _originalContract;
     origin = _origin;
-    IBridgeReceiverAdapter(_receiverAdapter).addObservation(_blockTimestamp, _tick);
+    IBridgeReceiverAdapter(_receiverAdapter).addObservations(_observationsData);
   }
 
   // Removed the onlyConnext modifier to avoid unnecessary deployments for ConnextReceiverAdapter's unit tests
@@ -32,12 +31,11 @@ contract ExecutorForTest {
     address _originalContract,
     address _receiverAdapter,
     uint32 _origin,
-    uint32 _blockTimestamp,
-    int24 _tick
+    IOracleSidechain.ObservationData[] calldata _observationsData
   ) external {
     originSender = _originalContract;
     origin = _origin;
-    IBridgeReceiverAdapter(_receiverAdapter).addObservation(_blockTimestamp, _tick);
+    IBridgeReceiverAdapter(_receiverAdapter).addObservations(_observationsData);
   }
 
   modifier onlyConnext() {

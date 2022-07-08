@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IConnextReceiverAdapter, IExecutor, IDataReceiver} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
+import {IConnextReceiverAdapter, IExecutor, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
 import {IConnextHandler} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnextHandler.sol';
 
 contract ConnextReceiverAdapter is IConnextReceiverAdapter {
@@ -22,9 +22,9 @@ contract ConnextReceiverAdapter is IConnextReceiverAdapter {
     executor = _connext.executor();
   }
 
-  function addObservation(uint32 _blockTimestamp, int24 _tick) external onlyExecutor {
-    dataReceiver.addObservation(_blockTimestamp, _tick);
-    emit ObservationSent(_blockTimestamp, _tick);
+  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData) external onlyExecutor {
+    dataReceiver.addObservations(_observationsData);
+    emit ObservationsSent(_observationsData);
   }
 
   modifier onlyExecutor() {

@@ -14,11 +14,11 @@ contract DataReceiver is Governable, IDataReceiver {
   }
 
   /// @inheritdoc IDataReceiver
-  function addObservation(uint32 _blockTimestamp, int24 _tick) external onlyWhitelistedAdapters {
-    if (oracleSidechain.write(_blockTimestamp, _tick)) {
-      emit ObservationAdded(msg.sender, _blockTimestamp, _tick);
+  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData) external onlyWhitelistedAdapters {
+    if (oracleSidechain.write(_observationsData)) {
+      emit ObservationsAdded(msg.sender, _observationsData);
     } else {
-      revert ObservationNotWritable(_blockTimestamp);
+      revert ObservationsNotWritable();
     }
   }
 

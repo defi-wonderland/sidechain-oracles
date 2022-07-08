@@ -17,18 +17,18 @@ interface IDataReceiver is IGovernable {
 
   // EVENTS
 
-  event ObservationAdded(address _user, uint32 _blockTimestamp, int24 _tick);
+  event ObservationsAdded(address _user, IOracleSidechain.ObservationData[] _observationsData);
   event AdapterWhitelisted(IBridgeReceiverAdapter _adapter, bool _isAllowed);
 
   // CUSTOM ERRORS
 
-  error ObservationNotWritable(uint32 _blockTimestamp);
+  error ObservationsNotWritable();
   error UnallowedAdapter();
   error LengthMismatch();
 
   // FUNCTIONS
 
-  function addObservation(uint32 _blockTimestamp, int24 _tick) external;
+  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData) external;
 
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external;
 

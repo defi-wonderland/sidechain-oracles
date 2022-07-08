@@ -1,5 +1,5 @@
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { FakeContract, MockContract, MockContractFactory, smock } from '@defi-wonderland/smock';
 import {
   ConnextReceiverAdapterForTest,
   ConnextReceiverAdapterForTest__factory,
@@ -8,12 +8,11 @@ import {
   IConnextHandler,
   IConnextSenderAdapter,
   IDataReceiver,
-  IExecutor,
 } from '@typechained';
+import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { ethers } from 'hardhat';
+import { readArgFromEvent } from '@utils/event-utils';
 import chai, { expect } from 'chai';
-import { toBN } from '@utils/bn';
 
 chai.use(smock.matchers);
 
@@ -23,29 +22,27 @@ describe('ConnextReceiverAdapter.sol', () => {
   let connextReceiverAdapterFactory: MockContractFactory<ConnextReceiverAdapterForTest__factory>;
   let executor: MockContract<ExecutorForTest>;
   let executorFactory: MockContractFactory<ExecutorForTest__factory>;
-  let dataReceiver: FakeContract<IDataReceiver>;
   let connextHandler: FakeContract<IConnextHandler>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
+  let dataReceiver: FakeContract<IDataReceiver>;
   let snapshotId: string;
 
-  const rinkebyOriginId = 1111;
-  const randomTick = toBN(100);
-  const randomTimestamp = 160000000;
   const randomOriginSender = wallet.generateRandomAddress();
   const randomOriginId = 3;
+  const rinkebyOriginId = 1111;
 
   before(async () => {
     [, randomUser] = await ethers.getSigners();
-    dataReceiver = await smock.fake('IDataReceiver');
     connextHandler = await smock.fake('IConnextHandler');
     connextSenderAdapter = await smock.fake('IConnextHandler');
+    dataReceiver = await smock.fake('IDataReceiver');
 
-    executorFactory = await smock.mock<ExecutorForTest__factory>('ExecutorForTest');
+    executorFactory = await smock.mock('ExecutorForTest');
     executor = await executorFactory.deploy(connextHandler.address);
 
     connextHandler.executor.returns(executor.address);
 
-    connextReceiverAdapterFactory = await smock.mock<ConnextReceiverAdapterForTest__factory>('ConnextReceiverAdapterForTest');
+    connextReceiverAdapterFactory = await smock.mock('ConnextReceiverAdapterForTest');
     connextReceiverAdapter = await connextReceiverAdapterFactory.deploy(
       dataReceiver.address,
       connextSenderAdapter.address,
@@ -60,7 +57,7 @@ describe('ConnextReceiverAdapter.sol', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('constructor', () => {
+  describe('constructor(...)', () => {
     it('should initialize data receiver to the address passed to the constructor', async () => {
       expect(await connextReceiverAdapter.dataReceiver()).to.eq(dataReceiver.address);
     });
@@ -75,11 +72,19 @@ describe('ConnextReceiverAdapter.sol', () => {
     });
   });
 
-  describe('addObservation', async () => {
+  describe('addObservations(...)', async () => {
+    let writeTimestamp1 = 1000000;
+    let tick1 = 100;
+    let observationData1 = [writeTimestamp1, tick1];
+    let writeTimestamp2 = 3000000;
+    let tick2 = 300;
+    let observationData2 = [writeTimestamp2, tick2];
+    let observationsData = [observationData1, observationData2];
+
     context('when the origin sender is not allowed', async () => {
       it('should revert', async () => {
         await expect(
-          executor.permissionlessExecute(randomOriginSender, connextReceiverAdapter.address, rinkebyOriginId, randomTimestamp, randomTick)
+          executor.permissionlessExecute(randomOriginSender, connextReceiverAdapter.address, rinkebyOriginId, observationsData)
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
@@ -87,50 +92,34 @@ describe('ConnextReceiverAdapter.sol', () => {
     context('when the origin contract is not allowed', async () => {
       it('should revert', async () => {
         await expect(
-          executor.permissionlessExecute(
-            connextSenderAdapter.address,
-            connextReceiverAdapter.address,
-            randomOriginId,
-            randomTimestamp,
-            randomTick
-          )
+          executor.permissionlessExecute(connextSenderAdapter.address, connextReceiverAdapter.address, randomOriginId, observationsData)
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the caller is not the executor contract', async () => {
       it('should revert', async () => {
-        await expect(connextReceiverAdapter.connect(randomUser).addObservation(randomTimestamp, randomTick)).to.be.revertedWith(
-          'UnauthorizedCaller()'
-        );
+        await expect(connextReceiverAdapter.connect(randomUser).addObservations(observationsData)).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the executor is the caller and origin sender and domain are correct', async () => {
       it('should complete the call successfully', async () => {
         await expect(
-          executor.permissionlessExecute(
-            connextSenderAdapter.address,
-            connextReceiverAdapter.address,
-            rinkebyOriginId,
-            randomTimestamp,
-            randomTick
-          )
+          executor.permissionlessExecute(connextSenderAdapter.address, connextReceiverAdapter.address, rinkebyOriginId, observationsData)
         ).not.to.be.reverted;
       });
 
       it('should call data receiver with the correct arguments', async () => {
-        connextReceiverAdapter.addObservation.reset();
-        dataReceiver.addObservation.reset();
-
-        await connextReceiverAdapter.addPermissionlessObservation(randomTimestamp, randomTick);
-        expect(dataReceiver.addObservation).to.have.been.calledOnceWith(randomTimestamp, randomTick);
+        dataReceiver.addObservations.reset();
+        await connextReceiverAdapter.addPermissionlessObservations(observationsData);
+        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData);
       });
 
       it('should emit an event', async () => {
-        await expect(await connextReceiverAdapter.addPermissionlessObservation(randomTimestamp, randomTick))
-          .to.emit(connextReceiverAdapter, 'ObservationSent')
-          .withArgs(randomTimestamp, randomTick);
+        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData);
+        let eventObservationsData = await readArgFromEvent(tx, 'ObservationsSent', '_observationsData');
+        expect(eventObservationsData).to.eql(observationsData);
       });
     });
   });

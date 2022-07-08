@@ -30,7 +30,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 
   // TODO: do we want some specific value?
-  const RANDOM_SECONDS_AGO = [300, 0];
+  const RANDOM_SECONDS_AGO = [300, 100, 0];
 
   const txSettings = {
     from: deployer,
@@ -53,7 +53,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const IS_DESTINATION_DOMAIN_ID_SET = SET_DESTINATION_DOMAIN_ID === domainIdDestination;
 
   if (IS_CONNEXT_SENDER_WHITELISTED && IS_RECEIVER_SET && IS_DESTINATION_DOMAIN_ID_SET) {
-    await hre.deployments.execute('DataFeed', txSettings, 'sendObservation', ...SEND_OBSERVATION_ARGS);
+    await hre.deployments.execute('DataFeed', txSettings, 'sendObservations', ...SEND_OBSERVATION_ARGS);
   } else {
     throw new Error('🚧 Setters not properly set. Skipping sending the observation');
   }

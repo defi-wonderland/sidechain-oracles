@@ -1,30 +1,30 @@
 import { ethers } from 'hardhat';
+import { ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm } from '@utils';
-import chai, { expect } from 'chai';
+import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernance, onlyWhitelistedAdapter } from '@utils/behaviours';
-import { Transaction } from 'ethers';
+import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
 describe('DataReceiver.sol', () => {
-  let deployer: SignerWithAddress;
   let governance: SignerWithAddress;
   let fakeAdapter: SignerWithAddress;
   let randomAdapter: SignerWithAddress;
   let dataReceiver: MockContract<DataReceiver>;
   let dataReceiverFactory: MockContractFactory<DataReceiver__factory>;
   let oracleSidechain: FakeContract<IOracleSidechain>;
+  let tx: ContractTransaction;
   let snapshotId: string;
-  let tx: Transaction;
 
   before(async () => {
-    [, deployer, governance, fakeAdapter, randomAdapter] = await ethers.getSigners();
+    [, governance, fakeAdapter, randomAdapter] = await ethers.getSigners();
     oracleSidechain = await smock.fake('IOracleSidechain');
     dataReceiverFactory = await smock.mock('DataReceiver');
-    dataReceiver = await dataReceiverFactory.connect(deployer).deploy(oracleSidechain.address, governance.address);
+    dataReceiver = await dataReceiverFactory.deploy(oracleSidechain.address, governance.address);
     snapshotId = await evm.snapshot.take();
   });
 
@@ -42,34 +42,38 @@ describe('DataReceiver.sol', () => {
     });
   });
 
-  describe('addObservation(...)', () => {
-    let writeTimestamp: number;
-    let tick = 100;
+  describe('addObservations(...)', () => {
+    let writeTimestamp1 = 1000000;
+    let tick1 = 100;
+    let observationData1 = [writeTimestamp1, tick1];
+    let writeTimestamp2 = 3000000;
+    let tick2 = 300;
+    let observationData2 = [writeTimestamp2, tick2];
+    let observationsData = [observationData1, observationData2];
 
     beforeEach(async () => {
-      writeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
-      oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(true);
-      dataReceiver.connect(governance).whitelistAdapter(fakeAdapter.address, true);
+      await dataReceiver.connect(governance).whitelistAdapter(fakeAdapter.address, true);
+      oracleSidechain.write.whenCalledWith(observationsData).returns(true);
     });
 
     onlyWhitelistedAdapter(
       () => dataReceiver,
-      'addObservation',
+      'addObservations',
       () => fakeAdapter,
-      () => [writeTimestamp, tick]
+      () => [observationsData]
     );
 
-    it('should revert if the observation is not writable', async () => {
-      oracleSidechain.write.whenCalledWith(writeTimestamp, tick).returns(false);
-      await expect(dataReceiver.connect(fakeAdapter).addObservation(writeTimestamp, tick)).to.be.revertedWith(
-        `ObservationNotWritable(${writeTimestamp})`
-      );
+    it('should revert if the observations are not writable', async () => {
+      oracleSidechain.write.whenCalledWith(observationsData).returns(false);
+      await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData)).to.be.revertedWith('ObservationsNotWritable()');
     });
 
-    it('should emit ObservationAdded', async () => {
-      await expect(dataReceiver.connect(fakeAdapter).addObservation(writeTimestamp, tick))
-        .to.emit(dataReceiver, 'ObservationAdded')
-        .withArgs(fakeAdapter.address, writeTimestamp, tick);
+    it('should emit ObservationsAdded', async () => {
+      let tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData);
+      let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
+      let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+      expect(eventUser).to.eq(fakeAdapter.address);
+      expect(eventObservationsData).to.eql(observationsData);
     });
   });
 

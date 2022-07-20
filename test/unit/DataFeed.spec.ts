@@ -1,9 +1,10 @@
 import { ethers } from 'hardhat';
-import { ContractTransaction } from 'ethers';
+import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, DataFeed__factory, IUniswapV3Pool, IConnextSenderAdapter } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
+import { toBN } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernance } from '@utils/behaviours';
 import chai, { expect } from 'chai';
@@ -52,19 +53,19 @@ describe('DataFeed.sol', () => {
   });
 
   describe('sendObservations(...)', () => {
-    let secondsAgos: number[];
-    let secondsAgo: number;
-    let delta1: number;
-    let delta2: number;
+    let secondsNow: number;
+    let secondsAgo = 30;
+    let delta1 = 20;
+    let delta2 = 10;
+    let secondsAgos = [secondsAgo, secondsAgo - delta1, secondsAgo - (delta1 + delta2)];
+    let tickCumulative = 3000;
+    let tickCumulativesDelta1: number;
+    let tickCumulativesDelta2: number;
+    let tickCumulatives: number[];
+    let blockTimestamp1: number;
+    let blockTimestamp2: number;
     let arithmeticMeanTick1: number;
     let arithmeticMeanTick2: number;
-
-    before(async () => {
-      secondsAgo = 30;
-      delta1 = 20;
-      delta2 = 10;
-      secondsAgos = [secondsAgo, secondsAgo - delta1, secondsAgo - (delta1 + delta2)];
-    });
 
     context('when the adapter is not whitelisted', () => {
       it('should revert', async () => {
@@ -101,202 +102,451 @@ describe('DataFeed.sol', () => {
         connextSenderAdapter.bridgeObservations.reset();
       });
 
-      it('should revert if _secondsAgos is invalid', async () => {
-        let secondsAgos = [secondsAgo];
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos)
-        ).to.be.revertedWith('InvalidSecondsAgos()');
-      });
-
-      it('should revert if _secondsAgos is unsorted', async () => {
+      it('should revert if secondsAgos is unsorted', async () => {
         let secondsAgos = [secondsAgo - (delta1 + delta2), secondsAgo - delta1, secondsAgo];
         let tickCumulatives = [0, 0, 0];
         uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
         await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos)).to.be.reverted;
       });
 
-      // arithmeticMeanTick = tickCumulativesDelta / delta
-      context('when arithmeticMeanTick is truncated', () => {
-        before(async () => {
-          let tickCumulative = 3000;
-          let tickCumulativesDelta1 = 2000;
-          let tickCumulativesDelta2 = 1000;
-          let tickCumulatives = [
-            tickCumulative,
-            tickCumulative + tickCumulativesDelta1,
-            tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
-          ];
-          arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
-          arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
-          uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+      context('when the data is continuous with that of the oracle', () => {
+        beforeEach(async () => {
+          secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
+          blockTimestamp1 = secondsNow - secondsAgos[1];
+          blockTimestamp2 = secondsNow - secondsAgos[2];
         });
 
-        it('should call bridgeObservations with the correct arguments', async () => {
-          let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
-          let arithmeticMeanBlockTimestamp1 = (secondsNow - secondsAgos[0] + (secondsNow - secondsAgos[1])) / 2;
-          let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-          let arithmeticMeanBlockTimestamp2 = (secondsNow - secondsAgos[1] + (secondsNow - secondsAgos[2])) / 2;
-          let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
-          let observationsData = [observationData1, observationData2];
-          await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
-          expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
-            randomDataReceiverAddress,
-            randomDestinationDomainId,
-            observationsData
-          );
+        it('should revert if secondsAgos provides insufficient datapoints', async () => {
+          let secondsAgos = [secondsAgo];
+          await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos)).to.be
+            .reverted;
         });
 
-        it('should emit an event', async () => {
-          let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
-          let arithmeticMeanBlockTimestamp1 = (secondsNow - secondsAgos[0] + (secondsNow - secondsAgos[1])) / 2;
-          let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-          let arithmeticMeanBlockTimestamp2 = (secondsNow - secondsAgos[1] + (secondsNow - secondsAgos[2])) / 2;
-          let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
-          let observationsData = [observationData1, observationData2];
-          let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
-          let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
-          let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
-          let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
-          let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-          expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
-          expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
-          expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
-          expect(eventObservationsData).to.eql(observationsData);
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean tick is truncated', () => {
+          before(async () => {
+            tickCumulativesDelta1 = 2000;
+            tickCumulativesDelta2 = 1000;
+            tickCumulatives = [
+              tickCumulative,
+              tickCumulative + tickCumulativesDelta1,
+              tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+            ];
+            arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
+            arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+            uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          });
+
+          it('should update lastPoolStateBridged', async () => {
+            let lastBlockTimestampBridged = secondsNow - secondsAgos[2];
+            let expectedLastPoolStateBridged = [lastBlockTimestampBridged, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let lastPoolStateBridged = await dataFeed.lastPoolStateBridged();
+            expect(lastPoolStateBridged).to.eql(expectedLastPoolStateBridged);
+          });
+
+          it('should call bridgeObservations with the correct arguments', async () => {
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData1, observationData2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
+              randomDataReceiverAddress,
+              randomDestinationDomainId,
+              observationsData
+            );
+          });
+
+          it('should emit DataSent', async () => {
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData1, observationData2];
+            let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
+            let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
+            let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
+            let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
+            expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
+            expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
+            expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
+            expect(eventObservationsData).to.eql(observationsData);
+          });
+        });
+
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean tick is rounded to negative infinity', () => {
+          before(async () => {
+            tickCumulativesDelta1 = -2001;
+            tickCumulativesDelta2 = -1002;
+            tickCumulatives = [
+              tickCumulative,
+              tickCumulative + tickCumulativesDelta1,
+              tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+            ];
+            arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+            arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
+            uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          });
+
+          it('should update lastPoolStateBridged', async () => {
+            let lastBlockTimestampBridged = secondsNow - secondsAgos[2];
+            let expectedLastPoolStateBridged = [lastBlockTimestampBridged, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let lastPoolStateBridged = await dataFeed.lastPoolStateBridged();
+            expect(lastPoolStateBridged).to.eql(expectedLastPoolStateBridged);
+          });
+
+          it('should call bridgeObservations with the correct arguments', async () => {
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData1, observationData2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
+              randomDataReceiverAddress,
+              randomDestinationDomainId,
+              observationsData
+            );
+          });
+
+          it('should emit DataSent', async () => {
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData1, observationData2];
+            let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
+            let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
+            let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
+            let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
+            expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
+            expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
+            expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
+            expect(eventObservationsData).to.eql(observationsData);
+          });
         });
       });
 
-      // arithmeticMeanTick = tickCumulativesDelta / delta
-      context('when arithmeticMeanTick is rounded to negative infinity', () => {
-        before(async () => {
-          let tickCumulative = 3000;
-          let tickCumulativesDelta1 = -2001;
-          let tickCumulativesDelta2 = -1002;
-          let tickCumulatives = [
-            tickCumulative,
-            tickCumulative + tickCumulativesDelta1,
-            tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
-          ];
-          arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
-          arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
-          uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+      context('when the data is discontinuous with that of the oracle', () => {
+        let delta0 = 40;
+        let tickCumulativesDelta0: number;
+        let lastBlockTimestampBridged: number;
+        let lastTickCumulativeBridged: number;
+        let lastArithmeticMeanTickBridged = 200;
+        let blockTimestamp0: number;
+        let arithmeticMeanTick0: number;
+
+        beforeEach(async () => {
+          secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
+          lastBlockTimestampBridged = secondsNow - secondsAgo - delta0;
+          lastTickCumulativeBridged = tickCumulative - tickCumulativesDelta0;
+          blockTimestamp0 = secondsNow - secondsAgos[0];
+          blockTimestamp1 = secondsNow - secondsAgos[1];
+          blockTimestamp2 = secondsNow - secondsAgos[2];
+          await dataFeed.setVariable('lastPoolStateBridged', {
+            blockTimestamp: lastBlockTimestampBridged,
+            tickCumulative: lastTickCumulativeBridged,
+            //arithmeticMeanTick: lastArithmeticMeanTickBridged,
+          });
         });
 
-        it('should call bridgeObservations with the correct arguments', async () => {
-          let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
-          let arithmeticMeanBlockTimestamp1 = (secondsNow - secondsAgos[0] + (secondsNow - secondsAgos[1])) / 2;
-          let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-          let arithmeticMeanBlockTimestamp2 = (secondsNow - secondsAgos[1] + (secondsNow - secondsAgos[2])) / 2;
-          let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
-          let observationsData = [observationData1, observationData2];
-          await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
-          expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
-            randomDataReceiverAddress,
-            randomDestinationDomainId,
-            observationsData
-          );
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean tick is truncated', () => {
+          before(async () => {
+            tickCumulativesDelta0 = 4000;
+            tickCumulativesDelta1 = 2000;
+            tickCumulativesDelta2 = 1000;
+            tickCumulatives = [
+              tickCumulative,
+              tickCumulative + tickCumulativesDelta1,
+              tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+            ];
+            arithmeticMeanTick0 = Math.trunc(tickCumulativesDelta0 / delta0);
+            arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
+            arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+            uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          });
+
+          it('should update lastPoolStateBridged', async () => {
+            let lastBlockTimestampBridged = secondsNow - secondsAgos[2];
+            let expectedLastPoolStateBridged = [lastBlockTimestampBridged, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let lastPoolStateBridged = await dataFeed.lastPoolStateBridged();
+            expect(lastPoolStateBridged).to.eql(expectedLastPoolStateBridged);
+          });
+
+          it('should call bridgeObservations with the correct arguments', async () => {
+            let observationData0 = [blockTimestamp0, arithmeticMeanTick0];
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData0, observationData1, observationData2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
+              randomDataReceiverAddress,
+              randomDestinationDomainId,
+              observationsData
+            );
+          });
+
+          it('should emit DataSent', async () => {
+            let observationData0 = [blockTimestamp0, arithmeticMeanTick0];
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData0, observationData1, observationData2];
+            let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
+            let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
+            let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
+            let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
+            expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
+            expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
+            expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
+            expect(eventObservationsData).to.eql(observationsData);
+          });
         });
 
-        it('should emit an event', async () => {
-          let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
-          let arithmeticMeanBlockTimestamp1 = (secondsNow - secondsAgos[0] + (secondsNow - secondsAgos[1])) / 2;
-          let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-          let arithmeticMeanBlockTimestamp2 = (secondsNow - secondsAgos[1] + (secondsNow - secondsAgos[2])) / 2;
-          let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
-          let observationsData = [observationData1, observationData2];
-          let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
-          let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
-          let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
-          let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
-          let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-          expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
-          expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
-          expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
-          expect(eventObservationsData).to.eql(observationsData);
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean tick is rounded to negative infinity', () => {
+          before(async () => {
+            tickCumulativesDelta0 = -4001;
+            tickCumulativesDelta1 = -2001;
+            tickCumulativesDelta2 = -1002;
+            tickCumulatives = [
+              tickCumulative,
+              tickCumulative + tickCumulativesDelta1,
+              tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+            ];
+            arithmeticMeanTick0 = Math.floor(tickCumulativesDelta0 / delta0);
+            arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+            arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
+            uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          });
+
+          it('should update lastPoolStateBridged', async () => {
+            let lastBlockTimestampBridged = secondsNow - secondsAgos[2];
+            let expectedLastPoolStateBridged = [lastBlockTimestampBridged, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let lastPoolStateBridged = await dataFeed.lastPoolStateBridged();
+            expect(lastPoolStateBridged).to.eql(expectedLastPoolStateBridged);
+          });
+
+          it('should call bridgeObservations with the correct arguments', async () => {
+            let observationData0 = [blockTimestamp0, arithmeticMeanTick0];
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData0, observationData1, observationData2];
+            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
+              randomDataReceiverAddress,
+              randomDestinationDomainId,
+              observationsData
+            );
+          });
+
+          it('should emit DataSent', async () => {
+            let observationData0 = [blockTimestamp0, arithmeticMeanTick0];
+            let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            let observationsData = [observationData0, observationData1, observationData2];
+            let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, uniswapV3K3PR.address, secondsAgos);
+            let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
+            let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
+            let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
+            let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
+            expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
+            expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
+            expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
+            expect(eventObservationsData).to.eql(observationsData);
+          });
         });
       });
     });
   });
 
   describe('fetchObservations(...)', () => {
-    let secondsAgos: number[];
-    let secondsAgo: number;
-    let delta1: number;
-    let delta2: number;
+    let secondsNow: number;
+    let secondsAgo = 30;
+    let delta1 = 20;
+    let delta2 = 10;
+    let secondsAgos = [secondsAgo, secondsAgo - delta1, secondsAgo - (delta1 + delta2)];
+    let tickCumulative = 3000;
+    let tickCumulativesDelta1: number;
+    let tickCumulativesDelta2: number;
+    let tickCumulatives: number[];
+    let blockTimestamp1: number;
+    let blockTimestamp2: number;
     let arithmeticMeanTick1: number;
     let arithmeticMeanTick2: number;
 
-    before(async () => {
-      secondsAgo = 30;
-      delta1 = 20;
-      delta2 = 10;
-      secondsAgos = [secondsAgo, secondsAgo - delta1, secondsAgo - (delta1 + delta2)];
-    });
-
-    it('should revert if _secondsAgos is invalid', async () => {
-      let secondsAgos = [secondsAgo];
-      await expect(dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos)).to.be.revertedWith('InvalidSecondsAgos()');
-    });
-
-    it('should revert if _secondsAgos is unsorted', async () => {
+    it('should revert if secondsAgos is unsorted', async () => {
       let secondsAgos = [secondsAgo - (delta1 + delta2), secondsAgo - delta1, secondsAgo];
       let tickCumulatives = [0, 0, 0];
       uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
       await expect(dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos)).to.be.reverted;
     });
 
-    // arithmeticMeanTick = tickCumulativesDelta / delta
-    context('when arithmeticMeanTick is truncated', () => {
-      before(async () => {
-        let tickCumulative = 3000;
-        let tickCumulativesDelta1 = 2000;
-        let tickCumulativesDelta2 = 1000;
-        let tickCumulatives = [
-          tickCumulative,
-          tickCumulative + tickCumulativesDelta1,
-          tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
-        ];
-        arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
-        arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
-        uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+    context('when the data is continuous with that of the oracle', () => {
+      beforeEach(async () => {
+        secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
+        blockTimestamp1 = secondsNow - secondsAgos[1];
+        blockTimestamp2 = secondsNow - secondsAgos[2];
       });
 
-      it('should return the requested observations', async () => {
-        let secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
-        let arithmeticMeanBlockTimestamp1 = (secondsNow - secondsAgos[0] + (secondsNow - secondsAgos[1])) / 2;
-        let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-        let arithmeticMeanBlockTimestamp2 = (secondsNow - secondsAgos[1] + (secondsNow - secondsAgos[2])) / 2;
-        let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
-        let expectedObservationsData = [observationData1, observationData2];
-        let observationsData = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
-        expect(observationsData).to.eql(expectedObservationsData);
+      it('should revert if secondsAgos provides insufficient datapoints', async () => {
+        let secondsAgos = [secondsAgo];
+        await expect(dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos)).to.be.reverted;
+      });
+
+      // arithmeticMeanTick = tickCumulativesDelta / delta
+      context('when the arithmetic mean tick is truncated', () => {
+        before(async () => {
+          tickCumulativesDelta1 = 2000;
+          tickCumulativesDelta2 = 1000;
+          tickCumulatives = [
+            tickCumulative,
+            tickCumulative + tickCumulativesDelta1,
+            tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+          ];
+          arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
+          arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+          uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+        });
+
+        it('should return the observations data', async () => {
+          let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+          let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+          let expectedObservationsData = [observationData1, observationData2];
+          let [observationsData] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(observationsData).to.eql(expectedObservationsData);
+        });
+
+        it('should return the last pool state', async () => {
+          let lastBlockTimestamp = secondsNow - secondsAgos[2];
+          let expectedLastPoolState = [lastBlockTimestamp, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+          let [, lastPoolState] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(lastPoolState).to.eql(expectedLastPoolState);
+        });
+      });
+
+      // arithmeticMeanTick = tickCumulativesDelta / delta
+      context('when the arithmetic mean tick is rounded to negative infinity', () => {
+        before(async () => {
+          tickCumulativesDelta1 = -2001;
+          tickCumulativesDelta2 = -1002;
+          tickCumulatives = [
+            tickCumulative,
+            tickCumulative + tickCumulativesDelta1,
+            tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+          ];
+          arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+          arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
+          uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+        });
+
+        it('should return the observations data', async () => {
+          let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+          let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+          let expectedObservationsData = [observationData1, observationData2];
+          let [observationsData] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(observationsData).to.eql(expectedObservationsData);
+        });
+
+        it('should return the last pool state', async () => {
+          let lastBlockTimestamp = secondsNow - secondsAgos[2];
+          let expectedLastPoolState = [lastBlockTimestamp, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+          let [, lastPoolState] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(lastPoolState).to.eql(expectedLastPoolState);
+        });
       });
     });
 
-    // arithmeticMeanTick = tickCumulativesDelta / delta
-    context('when arithmeticMeanTick is rounded to negative infinity', () => {
-      before(async () => {
-        let tickCumulative = 3000;
-        let tickCumulativesDelta1 = -2001;
-        let tickCumulativesDelta2 = -1002;
-        let tickCumulatives = [
-          tickCumulative,
-          tickCumulative + tickCumulativesDelta1,
-          tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
-        ];
-        arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
-        arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
-        uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+    context('when the data is discontinuous with that of the oracle', () => {
+      let delta0 = 40;
+      let tickCumulativesDelta0: number;
+      let lastBlockTimestampBridged: number;
+      let lastTickCumulativeBridged: number;
+      let lastArithmeticMeanTickBridged = 200;
+      let blockTimestamp0: number;
+      let arithmeticMeanTick0: number;
+
+      beforeEach(async () => {
+        secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
+        lastBlockTimestampBridged = secondsNow - secondsAgo - delta0;
+        lastTickCumulativeBridged = tickCumulative - tickCumulativesDelta0;
+        blockTimestamp0 = secondsNow - secondsAgos[0];
+        blockTimestamp1 = secondsNow - secondsAgos[1];
+        blockTimestamp2 = secondsNow - secondsAgos[2];
+        await dataFeed.setVariable('lastPoolStateBridged', {
+          blockTimestamp: lastBlockTimestampBridged,
+          tickCumulative: lastTickCumulativeBridged,
+          //arithmeticMeanTick: lastArithmeticMeanTickBridged,
+        });
       });
 
-      it('should return the requested observations', async () => {
-        let secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
-        let arithmeticMeanBlockTimestamp1 = (secondsNow - secondsAgos[0] + (secondsNow - secondsAgos[1])) / 2;
-        let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-        let arithmeticMeanBlockTimestamp2 = (secondsNow - secondsAgos[1] + (secondsNow - secondsAgos[2])) / 2;
-        let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
-        let expectedObservationsData = [observationData1, observationData2];
-        let observationsData = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
-        expect(observationsData).to.eql(expectedObservationsData);
+      // arithmeticMeanTick = tickCumulativesDelta / delta
+      context('when the arithmetic mean tick is truncated', () => {
+        before(async () => {
+          tickCumulativesDelta0 = 4000;
+          tickCumulativesDelta1 = 2000;
+          tickCumulativesDelta2 = 1000;
+          tickCumulatives = [
+            tickCumulative,
+            tickCumulative + tickCumulativesDelta1,
+            tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+          ];
+          arithmeticMeanTick0 = Math.trunc(tickCumulativesDelta0 / delta0);
+          arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
+          arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+          uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+        });
+
+        it('should return the observations data', async () => {
+          let observationData0 = [blockTimestamp0, arithmeticMeanTick0];
+          let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+          let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+          let expectedObservationsData = [observationData0, observationData1, observationData2];
+          let [observationsData] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(observationsData).to.eql(expectedObservationsData);
+        });
+
+        it('should return the last pool state', async () => {
+          let lastBlockTimestamp = secondsNow - secondsAgos[2];
+          let expectedLastPoolState = [lastBlockTimestamp, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+          let [, lastPoolState] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(lastPoolState).to.eql(expectedLastPoolState);
+        });
+      });
+
+      // arithmeticMeanTick = tickCumulativesDelta / delta
+      context('when the arithmetic mean tick is rounded to negative infinity', () => {
+        before(async () => {
+          tickCumulativesDelta0 = -4001;
+          tickCumulativesDelta1 = -2001;
+          tickCumulativesDelta2 = -1002;
+          tickCumulatives = [
+            tickCumulative,
+            tickCumulative + tickCumulativesDelta1,
+            tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+          ];
+          arithmeticMeanTick0 = Math.floor(tickCumulativesDelta0 / delta0);
+          arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+          arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
+          uniswapV3K3PR.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+        });
+
+        it('should return the observations data', async () => {
+          let observationData0 = [blockTimestamp0, arithmeticMeanTick0];
+          let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+          let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+          let expectedObservationsData = [observationData0, observationData1, observationData2];
+          let [observationsData] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(observationsData).to.eql(expectedObservationsData);
+        });
+
+        it('should return the last pool state', async () => {
+          let lastBlockTimestamp = secondsNow - secondsAgos[2];
+          let expectedLastPoolState = [lastBlockTimestamp, toBN(tickCumulatives[2]), arithmeticMeanTick2];
+          let [, lastPoolState] = await dataFeed.fetchObservations(uniswapV3K3PR.address, secondsAgos);
+          expect(lastPoolState).to.eql(expectedLastPoolState);
+        });
       });
     });
   });

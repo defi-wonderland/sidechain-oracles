@@ -28,15 +28,15 @@ describe('OracleSidechain.sol', () => {
   });
 
   describe('observe(...)', () => {
-    let initializeTimestamp: number;
+    let initialBlockTimestamp: number;
     let initialTick = 50;
     let initialObservationData: number[];
     let delta1 = 20;
-    let writeTimestamp1: number;
+    let blockTimestamp1: number;
     let tick1 = 100;
     let observationData1: number[];
     let delta2 = 60;
-    let writeTimestamp2: number;
+    let blockTimestamp2: number;
     let tick2 = 300;
     let observationData2: number[];
     let observationsData: number[][];
@@ -44,15 +44,15 @@ describe('OracleSidechain.sol', () => {
     let secondsPerLiquidityCumulativeX128s: BigNumber[];
 
     beforeEach(async () => {
-      initializeTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
-      initialObservationData = [initializeTimestamp, initialTick];
+      initialBlockTimestamp = (await ethers.provider.getBlock('latest')).timestamp + 1;
+      initialObservationData = [initialBlockTimestamp, initialTick];
       await oracleSidechain.initialize(initialObservationData);
       await oracleSidechain.increaseObservationCardinalityNext(3);
       await evm.advanceTimeAndBlock(delta1 + delta2 - 2);
-      writeTimestamp1 = initializeTimestamp + delta1;
-      observationData1 = [writeTimestamp1, tick1];
-      writeTimestamp2 = writeTimestamp1 + delta2;
-      observationData2 = [writeTimestamp2, tick2];
+      blockTimestamp1 = initialBlockTimestamp + delta1;
+      observationData1 = [blockTimestamp1, tick1];
+      blockTimestamp2 = blockTimestamp1 + delta2;
+      observationData2 = [blockTimestamp2, tick2];
       observationsData = [observationData1, observationData2];
       await oracleSidechain.connect(fakeDataReceiver).write(observationsData);
     });
@@ -129,12 +129,12 @@ describe('OracleSidechain.sol', () => {
   });
 
   describe('write(...)', () => {
-    let writeTimestamp1 = 1000000;
+    let blockTimestamp1 = 1000000;
     let tick1 = 100;
-    let observationData1 = [writeTimestamp1, tick1] as IOracleSidechain.ObservationDataStructOutput;
-    let writeTimestamp2 = 3000000;
+    let observationData1 = [blockTimestamp1, tick1] as IOracleSidechain.ObservationDataStructOutput;
+    let blockTimestamp2 = 3000000;
     let tick2 = 300;
-    let observationData2 = [writeTimestamp2, tick2] as IOracleSidechain.ObservationDataStructOutput;
+    let observationData2 = [blockTimestamp2, tick2] as IOracleSidechain.ObservationDataStructOutput;
     let observationsData = [observationData1, observationData2];
 
     it.skip('should revert if the oracle is not initialized', async () => {
@@ -149,9 +149,9 @@ describe('OracleSidechain.sol', () => {
     );
 
     context('when the oracle is initialized and the caller is the data receiver', () => {
-      let initializeTimestamp = 500000;
+      let initialBlockTimestamp = 500000;
       let initialTick = 50;
-      let initialObservationData = [initializeTimestamp, initialTick] as IOracleSidechain.ObservationDataStructOutput;
+      let initialObservationData = [initialBlockTimestamp, initialTick] as IOracleSidechain.ObservationDataStructOutput;
 
       beforeEach(async () => {
         await oracleSidechain.initialize(initialObservationData);
@@ -160,14 +160,14 @@ describe('OracleSidechain.sol', () => {
 
       context('when the observations are writable', () => {
         it('should write the observations', async () => {
-          let delta1 = writeTimestamp1 - initializeTimestamp;
+          let delta1 = blockTimestamp1 - initialBlockTimestamp;
           let tickCumulative1 = toBN(tick1 * delta1);
           let secondsPerLiquidityCumulativeX128_1 = toBN(delta1).shl(128);
-          let expectedObservation1 = [writeTimestamp1, tickCumulative1, secondsPerLiquidityCumulativeX128_1, true];
-          let delta2 = writeTimestamp2 - writeTimestamp1;
+          let expectedObservation1 = [blockTimestamp1, tickCumulative1, secondsPerLiquidityCumulativeX128_1, true];
+          let delta2 = blockTimestamp2 - blockTimestamp1;
           let tickCumulative2 = tickCumulative1.add(tick2 * delta2);
           let secondsPerLiquidityCumulativeX128_2 = secondsPerLiquidityCumulativeX128_1.add(toBN(delta2).shl(128));
-          let expectedObservation2 = [writeTimestamp2, tickCumulative2, secondsPerLiquidityCumulativeX128_2, true];
+          let expectedObservation2 = [blockTimestamp2, tickCumulative2, secondsPerLiquidityCumulativeX128_2, true];
           await oracleSidechain.connect(fakeDataReceiver).write(observationsData);
           let observation1 = await oracleSidechain.observations(1);
           let observation2 = await oracleSidechain.observations(0);
@@ -201,8 +201,8 @@ describe('OracleSidechain.sol', () => {
       });
 
       context('when the observations are not writable', () => {
-        let initializeTimestampBefore = initializeTimestamp - 1;
-        let initialObservationDataBefore = [initializeTimestampBefore, initialTick] as IOracleSidechain.ObservationDataStructOutput;
+        let initialBlockTimestampBefore = initialBlockTimestamp - 1;
+        let initialObservationDataBefore = [initialBlockTimestampBefore, initialTick] as IOracleSidechain.ObservationDataStructOutput;
         let initialObservationsData = [initialObservationDataBefore, initialObservationData];
 
         it('should return false', async () => {
@@ -214,9 +214,9 @@ describe('OracleSidechain.sol', () => {
   });
 
   describe('initialize(...)', () => {
-    let initializeTimestamp = 500000;
+    let initialBlockTimestamp = 500000;
     let initialTick = 50;
-    let initialObservationData = [initializeTimestamp, initialTick];
+    let initialObservationData = [initialBlockTimestamp, initialTick];
 
     it('should revert if the oracle is already initialized', async () => {
       await oracleSidechain.initialize(initialObservationData);
@@ -230,7 +230,7 @@ describe('OracleSidechain.sol', () => {
     });
 
     it('should initialize observations', async () => {
-      let expectedInitialObservation = [initializeTimestamp, toBN(0), toBN(0), true];
+      let expectedInitialObservation = [initialBlockTimestamp, toBN(0), toBN(0), true];
       await oracleSidechain.initialize(initialObservationData);
       let initialObservation = await oracleSidechain.observations(0);
       expect(initialObservation).to.eql(expectedInitialObservation);

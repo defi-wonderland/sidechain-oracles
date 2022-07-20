@@ -6,7 +6,24 @@ import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../
 import {IGovernable} from '../interfaces/peripherals/IGovernable.sol';
 
 interface IDataFeed is IGovernable {
+  // STRUCTS
+
+  struct PoolState {
+    uint32 blockTimestamp;
+    int56 tickCumulative;
+    int24 arithmeticMeanTick;
+  }
+
   // STATE VARIABLES
+
+  function lastPoolStateBridged()
+    external
+    view
+    returns (
+      uint32 _lastBlockTimestampBridged,
+      int56 _lastTickCumulativeBridged,
+      int24 _lastArithmeticMeanTickBridged
+    );
 
   function whitelistedAdapters(IBridgeSenderAdapter _bridgeSenderAdapter) external view returns (bool _isWhitelisted);
 
@@ -49,7 +66,7 @@ interface IDataFeed is IGovernable {
   function fetchObservations(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     external
     view
-    returns (IOracleSidechain.ObservationData[] memory _observationsData);
+    returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState);
 
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
 

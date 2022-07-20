@@ -5,6 +5,9 @@ import {Governable} from '../contracts/peripherals/Governable.sol';
 import {IDataFeed, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 
 contract DataFeed is IDataFeed, Governable {
+  /// @inheritdoc IDataFeed
+  PoolState public lastPoolStateBridged;
+
   // TODO: write full natspec when logic is approved
   /// @inheritdoc IDataFeed
   mapping(IBridgeSenderAdapter => bool) public whitelistedAdapters;
@@ -36,7 +39,8 @@ contract DataFeed is IDataFeed, Governable {
     address _dataReceiver = receivers[_bridgeSenderAdapter][_destinationDomainId];
     if (_dataReceiver == address(0)) revert ReceiverNotSet();
 
-    IOracleSidechain.ObservationData[] memory _observationsData = fetchObservations(_pool, _secondsAgos);
+    IOracleSidechain.ObservationData[] memory _observationsData;
+    (_observationsData, lastPoolStateBridged) = fetchObservations(_pool, _secondsAgos);
     _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData);
     emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData);
   }
@@ -45,23 +49,45 @@ contract DataFeed is IDataFeed, Governable {
   function fetchObservations(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     public
     view
-    returns (IOracleSidechain.ObservationData[] memory _observationsData)
+    returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState)
   {
-    uint256 _secondsAgosLength = _secondsAgos.length;
-    if (_secondsAgosLength < 2) revert InvalidSecondsAgos();
-
     (int56[] memory _tickCumulatives, ) = _pool.observe(_secondsAgos);
+    uint256 _secondsAgosLength = _secondsAgos.length;
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
-    _observationsData = new IOracleSidechain.ObservationData[](--_secondsAgosLength);
 
-    uint256 _j;
+    uint32 _blockTimestamp;
     int56 _tickCumulativesDelta;
     uint32 _delta;
     int24 _arithmeticMeanTick;
-    uint32 _arithmeticMeanBlockTimestamp;
+    uint256 _observationsDataIndex;
 
-    for (uint256 _i; _i < _secondsAgosLength; ++_i) {
-      _j = _i + 1;
+    _blockTimestamp = _secondsNow - _secondsAgos[0];
+    _lastPoolState = lastPoolStateBridged;
+
+    if (_lastPoolState.blockTimestamp < _blockTimestamp && _lastPoolState.blockTimestamp != 0) {
+      _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength--);
+
+      _tickCumulativesDelta = _tickCumulatives[0] - _lastPoolState.tickCumulative;
+      _delta = _blockTimestamp - _lastPoolState.blockTimestamp;
+
+      _arithmeticMeanTick = int24(_tickCumulativesDelta / int56(uint56(_delta)));
+      // Always round to negative infinity
+      if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int56(uint56(_delta)) != 0)) --_arithmeticMeanTick;
+
+      _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
+        blockTimestamp: _blockTimestamp,
+        tick: _arithmeticMeanTick
+      });
+    } else {
+      _observationsData = new IOracleSidechain.ObservationData[](--_secondsAgosLength);
+    }
+
+    uint256 _i;
+    uint256 _j;
+
+    for (++_j; _i < _secondsAgosLength; _i = _j++) {
+      _blockTimestamp = _secondsNow - _secondsAgos[_j];
+
       _tickCumulativesDelta = _tickCumulatives[_j] - _tickCumulatives[_i];
       _delta = _secondsAgos[_i] - _secondsAgos[_j];
 
@@ -69,11 +95,17 @@ contract DataFeed is IDataFeed, Governable {
       // Always round to negative infinity
       if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int56(uint56(_delta)) != 0)) --_arithmeticMeanTick;
 
-      _arithmeticMeanBlockTimestamp = ((_secondsNow - _secondsAgos[_i]) + (_secondsNow - _secondsAgos[_j])) / 2;
-
-      _observationsData[_i].blockTimestamp = _arithmeticMeanBlockTimestamp;
-      _observationsData[_i].tick = _arithmeticMeanTick;
+      _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
+        blockTimestamp: _blockTimestamp,
+        tick: _arithmeticMeanTick
+      });
     }
+
+    _lastPoolState = PoolState({
+      blockTimestamp: _blockTimestamp,
+      tickCumulative: _tickCumulatives[_secondsAgosLength],
+      arithmeticMeanTick: _arithmeticMeanTick
+    });
   }
 
   /// @inheritdoc IDataFeed

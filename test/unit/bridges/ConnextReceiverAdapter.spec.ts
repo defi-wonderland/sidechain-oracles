@@ -73,12 +73,12 @@ describe('ConnextReceiverAdapter.sol', () => {
   });
 
   describe('addObservations(...)', async () => {
-    let writeTimestamp1 = 1000000;
+    let blockTimestamp1 = 1000000;
     let tick1 = 100;
-    let observationData1 = [writeTimestamp1, tick1];
-    let writeTimestamp2 = 3000000;
+    let observationData1 = [blockTimestamp1, tick1];
+    let blockTimestamp2 = 3000000;
     let tick2 = 300;
-    let observationData2 = [writeTimestamp2, tick2];
+    let observationData2 = [blockTimestamp2, tick2];
     let observationsData = [observationData1, observationData2];
 
     context('when the origin sender is not allowed', async () => {

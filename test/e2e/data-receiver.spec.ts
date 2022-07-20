@@ -35,12 +35,12 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
   describe('adding observations', () => {
     let connextReceiverAdapterSigner: SignerWithAddress;
-    let writeTimestamp1 = 1000000;
+    let blockTimestamp1 = 1000000;
     let tick1 = 100;
-    let observationData1 = [writeTimestamp1, tick1] as IOracleSidechain.ObservationDataStructOutput;
-    let writeTimestamp2 = 3000000;
+    let observationData1 = [blockTimestamp1, tick1] as IOracleSidechain.ObservationDataStructOutput;
+    let blockTimestamp2 = 3000000;
     let tick2 = 300;
-    let observationData2 = [writeTimestamp2, tick2] as IOracleSidechain.ObservationDataStructOutput;
+    let observationData2 = [blockTimestamp2, tick2] as IOracleSidechain.ObservationDataStructOutput;
     let observationsData = [observationData1, observationData2];
 
     beforeEach(async () => {
@@ -61,9 +61,9 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
     });
 
     context('when the oracle is initialized', () => {
-      let initializeTimestamp = 500000;
+      let initialBlockTimestamp = 500000;
       let initialTick = 50;
-      let initialObservationData = [initializeTimestamp, initialTick] as IOracleSidechain.ObservationDataStructOutput;
+      let initialObservationData = [initialBlockTimestamp, initialTick] as IOracleSidechain.ObservationDataStructOutput;
 
       beforeEach(async () => {
         await oracleSidechain.initialize(initialObservationData);
@@ -86,8 +86,8 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       });
 
       context('when the observations are not writable', () => {
-        let initializeTimestampBefore = initializeTimestamp - 1;
-        let initialObservationDataBefore = [initializeTimestampBefore, initialTick] as IOracleSidechain.ObservationDataStructOutput;
+        let initialBlockTimestampBefore = initialBlockTimestamp - 1;
+        let initialObservationDataBefore = [initialBlockTimestampBefore, initialTick] as IOracleSidechain.ObservationDataStructOutput;
         let initialObservationsData = [initialObservationDataBefore, initialObservationData];
 
         it('should revert the tx', async () => {

@@ -46,12 +46,12 @@ describe('ConnextSenderAdapter.sol', () => {
   });
 
   describe('bridgeObservations(...)', () => {
-    let arithmeticMeanBlockTimestamp1 = 750000;
+    let blockTimestamp1 = 1000000;
     let arithmeticMeanTick1 = 75;
-    let observationData1 = [arithmeticMeanBlockTimestamp1, arithmeticMeanTick1];
-    let arithmeticMeanBlockTimestamp2 = 2000000;
+    let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+    let blockTimestamp2 = 3000000;
     let arithmeticMeanTick2 = 200;
-    let observationData2 = [arithmeticMeanBlockTimestamp2, arithmeticMeanTick2];
+    let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
     let observationsData = [observationData1, observationData2];
 
     it('should call xCall with the correct arguments', async () => {

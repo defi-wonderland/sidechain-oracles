@@ -6,6 +6,7 @@ import '@typechain/hardhat';
 import '@typechain/hardhat/dist/type-extensions';
 import { removeConsoleLog } from 'hardhat-preprocessor';
 import 'hardhat-gas-reporter';
+import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import 'solidity-coverage';
 import { HardhatUserConfig, MultiSolcUserConfig, NetworksUserConfig } from 'hardhat/types';
@@ -72,6 +73,14 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: false,
+    strict: true,
+    only: ['solidity/contracts/'],
+    except: ['solidity/contracts/for-test/'],
   },
   gasReporter: {
     currency: process.env.COINMARKETCAP_DEFAULT_CURRENCY || 'USD',

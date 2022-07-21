@@ -2,6 +2,7 @@ import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, IOracleSidechain } from '@typechained';
 import { evm, wallet } from '@utils';
+import { KP3R, WETH, FEE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { getNodeUrl } from 'utils/env';
@@ -53,31 +54,19 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
     });
 
     it('should revert if the caller is not a whitelisted adapter', async () => {
-      await expect(dataReceiver.connect(stranger).addObservations(observationsData)).to.be.revertedWith('UnallowedAdapter()');
+      await expect(dataReceiver.connect(stranger).addObservations(observationsData, KP3R, WETH, FEE)).to.be.revertedWith('UnallowedAdapter()');
     });
 
-    it.skip('should revert if the oracle is not initialized', async () => {
-      await expect(dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData)).to.be.revertedWith('CustomError()');
-    });
-
-    context('when the oracle is initialized', () => {
-      let initialBlockTimestamp = 500000;
-      let initialTick = 50;
-      let initialObservationData = [initialBlockTimestamp, initialTick] as IOracleSidechain.ObservationDataStructOutput;
-
-      beforeEach(async () => {
-        await oracleSidechain.initialize(initialObservationData);
-      });
-
+    context('when the caller is a whitelisted adapter', () => {
       context('when the observations are writable', () => {
         it('should add the observations', async () => {
-          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData);
+          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, KP3R, WETH, FEE);
           await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
           await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
         });
 
         it('should emit ObservationsAdded', async () => {
-          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData);
+          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, KP3R, WETH, FEE);
           let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
           let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
           expect(eventUser).to.eq(connextReceiverAdapter.address);
@@ -86,14 +75,18 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       });
 
       context('when the observations are not writable', () => {
-        let initialBlockTimestampBefore = initialBlockTimestamp - 1;
-        let initialObservationDataBefore = [initialBlockTimestampBefore, initialTick] as IOracleSidechain.ObservationDataStructOutput;
-        let initialObservationsData = [initialObservationDataBefore, initialObservationData];
+        let blockTimestamp2Before = blockTimestamp2 - 1;
+        let observationData2Before = [blockTimestamp2Before, tick2] as IOracleSidechain.ObservationDataStructOutput;
+        let oldObservationsData = [observationData2Before, observationData2];
+
+        beforeEach(async () => {
+          await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, KP3R, WETH, FEE);
+        });
 
         it('should revert the tx', async () => {
-          await expect(dataReceiver.connect(connextReceiverAdapterSigner).addObservations(initialObservationsData)).to.be.revertedWith(
-            'ObservationsNotWritable()'
-          );
+          await expect(
+            dataReceiver.connect(connextReceiverAdapterSigner).addObservations(oldObservationsData, KP3R, WETH, FEE)
+          ).to.be.revertedWith('ObservationsNotWritable()');
         });
       });
     });

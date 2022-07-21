@@ -31,6 +31,10 @@ describe('ConnextReceiverAdapter.sol', () => {
   const randomOriginId = 3;
   const rinkebyOriginId = 1111;
 
+  const randomToken0 = wallet.generateRandomAddress();
+  const randomToken1 = wallet.generateRandomAddress();
+  const randomFee = 3000;
+
   before(async () => {
     [, randomUser] = await ethers.getSigners();
     connextHandler = await smock.fake('IConnextHandler');
@@ -84,7 +88,15 @@ describe('ConnextReceiverAdapter.sol', () => {
     context('when the origin sender is not allowed', async () => {
       it('should revert', async () => {
         await expect(
-          executor.permissionlessExecute(randomOriginSender, connextReceiverAdapter.address, rinkebyOriginId, observationsData)
+          executor.permissionlessExecute(
+            randomOriginSender,
+            connextReceiverAdapter.address,
+            rinkebyOriginId,
+            observationsData,
+            randomToken0,
+            randomToken1,
+            randomFee
+          )
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
@@ -92,34 +104,58 @@ describe('ConnextReceiverAdapter.sol', () => {
     context('when the origin contract is not allowed', async () => {
       it('should revert', async () => {
         await expect(
-          executor.permissionlessExecute(connextSenderAdapter.address, connextReceiverAdapter.address, randomOriginId, observationsData)
+          executor.permissionlessExecute(
+            connextSenderAdapter.address,
+            connextReceiverAdapter.address,
+            randomOriginId,
+            observationsData,
+            randomToken0,
+            randomToken1,
+            randomFee
+          )
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the caller is not the executor contract', async () => {
       it('should revert', async () => {
-        await expect(connextReceiverAdapter.connect(randomUser).addObservations(observationsData)).to.be.revertedWith('UnauthorizedCaller()');
+        await expect(
+          connextReceiverAdapter.connect(randomUser).addObservations(observationsData, randomToken0, randomToken1, randomFee)
+        ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the executor is the caller and origin sender and domain are correct', async () => {
       it('should complete the call successfully', async () => {
         await expect(
-          executor.permissionlessExecute(connextSenderAdapter.address, connextReceiverAdapter.address, rinkebyOriginId, observationsData)
+          executor.permissionlessExecute(
+            connextSenderAdapter.address,
+            connextReceiverAdapter.address,
+            rinkebyOriginId,
+            observationsData,
+            randomToken0,
+            randomToken1,
+            randomFee
+          )
         ).not.to.be.reverted;
       });
 
       it('should call data receiver with the correct arguments', async () => {
         dataReceiver.addObservations.reset();
-        await connextReceiverAdapter.addPermissionlessObservations(observationsData);
-        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData);
+        await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomToken0, randomToken1, randomFee);
+        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomToken0, randomToken1, randomFee);
       });
 
       it('should emit an event', async () => {
-        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData);
-        let eventObservationsData = await readArgFromEvent(tx, 'ObservationsSent', '_observationsData');
+        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomToken0, randomToken1, randomFee);
+        let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
+        let eventToken0 = await readArgFromEvent(tx, 'DataSent', '_token0');
+        let eventToken1 = await readArgFromEvent(tx, 'DataSent', '_token1');
+        let eventFee = await readArgFromEvent(tx, 'DataSent', '_fee');
         expect(eventObservationsData).to.eql(observationsData);
+        expect(eventToken0).to.eql(randomToken0);
+        expect(eventToken1).to.eql(randomToken1);
+        expect(eventFee).to.eql(randomFee);
       });
     });
   });

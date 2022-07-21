@@ -2,9 +2,11 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from '../contracts/peripherals/Governable.sol';
-import {IDataFeed, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
+import {IDataFeed, IUniswapV3Factory, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 
 contract DataFeed is IDataFeed, Governable {
+  IUniswapV3Factory public constant UNISWAP_FACTORY = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+
   /// @inheritdoc IDataFeed
   PoolState public lastPoolStateBridged;
 
@@ -28,7 +30,9 @@ contract DataFeed is IDataFeed, Governable {
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
-    IUniswapV3Pool _pool,
+    address _token0,
+    address _token1,
+    uint24 _fee,
     uint32[] calldata _secondsAgos
   ) external {
     if (!whitelistedAdapters[_bridgeSenderAdapter]) revert UnallowedAdapter();
@@ -39,10 +43,13 @@ contract DataFeed is IDataFeed, Governable {
     address _dataReceiver = receivers[_bridgeSenderAdapter][_destinationDomainId];
     if (_dataReceiver == address(0)) revert ReceiverNotSet();
 
+    IUniswapV3Pool _pool = IUniswapV3Pool(UNISWAP_FACTORY.getPool(_token0, _token1, _fee));
+
     IOracleSidechain.ObservationData[] memory _observationsData;
     (_observationsData, lastPoolStateBridged) = fetchObservations(_pool, _secondsAgos);
-    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData);
-    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData);
+
+    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _token0, _token1, _fee);
+    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _token0, _token1, _fee);
   }
 
   /// @inheritdoc IDataFeed
@@ -70,9 +77,9 @@ contract DataFeed is IDataFeed, Governable {
       _tickCumulativesDelta = _tickCumulatives[0] - _lastPoolState.tickCumulative;
       _delta = _blockTimestamp - _lastPoolState.blockTimestamp;
 
-      _arithmeticMeanTick = int24(_tickCumulativesDelta / int56(uint56(_delta)));
+      _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
       // Always round to negative infinity
-      if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int56(uint56(_delta)) != 0)) --_arithmeticMeanTick;
+      if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
 
       _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
         blockTimestamp: _blockTimestamp,
@@ -86,14 +93,13 @@ contract DataFeed is IDataFeed, Governable {
     uint256 _j;
 
     for (++_j; _i < _secondsAgosLength; _i = _j++) {
-      _blockTimestamp = _secondsNow - _secondsAgos[_j];
-
-      _tickCumulativesDelta = _tickCumulatives[_j] - _tickCumulatives[_i];
       _delta = _secondsAgos[_i] - _secondsAgos[_j];
+      _tickCumulativesDelta = _tickCumulatives[_j] - _tickCumulatives[_i];
+      _blockTimestamp += _delta;
 
-      _arithmeticMeanTick = int24(_tickCumulativesDelta / int56(uint56(_delta)));
+      _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
       // Always round to negative infinity
-      if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int56(uint56(_delta)) != 0)) --_arithmeticMeanTick;
+      if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
 
       _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
         blockTimestamp: _blockTimestamp,

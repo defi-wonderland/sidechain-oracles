@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IDataReceiver} from './IDataReceiver.sol';
+import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 
 /// @title The OracleSidechain interface
 /// @author 0xJabberwock (from DeFi Wonderland)
@@ -15,6 +15,8 @@ interface IOracleSidechain {
   }
 
   // STATE VARIABLES
+
+  // TODO: complete natspec
 
   /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
   /// when accessed externally.
@@ -32,8 +34,11 @@ interface IOracleSidechain {
 
   function lastTick() external view returns (int24 _lastTick);
 
-  //TODO: complete natspec and change for factory when factory is deployed
-  function dataReceiver() external view returns (IDataReceiver _dataReceiver);
+  function factory() external view returns (IOracleFactory _oracleFactory);
+
+  function token0() external view returns (address _token0);
+
+  function token1() external view returns (address _token1);
 
   /// @notice Returns data about a specific observation index
   /// @param _index The element of the observations array to fetch
@@ -53,12 +58,7 @@ interface IOracleSidechain {
       bool _initialized
     );
 
-  // EVENTS
-
-  /// @notice Emitted exactly once by a pool when #initialize is first called on the pool
-  /// @dev Mint/Burn/Swap cannot be emitted by the pool before Initialize
-  /// @param _observationData The timestamp of the observation and the initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool
-  event Initialize(ObservationData _observationData);
+  // EVENTS;
 
   /// @notice Emitted by the pool for increases to the number of observations that can be stored
   /// @dev observationCardinalityNext is not the observation cardinality until an observation is written at the index
@@ -92,14 +92,4 @@ interface IOracleSidechain {
     returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);
 
   function write(ObservationData[] calldata _observationsData) external returns (bool _written);
-
-  /// @notice Sets the initial price for the pool
-  /// @param _observationData The timestamp of the observation and the initial tick of the pool, i.e. log base 1.0001 of the starting price of the pool
-  function initialize(ObservationData calldata _observationData) external;
-
-  /// @notice Increase the maximum number of price and liquidity observations that this pool will store
-  /// @dev This method is no-op if the pool already has an observationCardinalityNext greater than or equal to
-  /// the input observationCardinalityNext.
-  /// @param _observationCardinalityNext The desired minimum number of observations for the pool to store
-  function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external;
 }

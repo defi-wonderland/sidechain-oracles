@@ -22,6 +22,10 @@ describe('ConnextSenderAdapter.sol', () => {
   const randomDestinationDomainId = 3;
   const rinkebyOriginId = 1111;
 
+  const randomToken0 = wallet.generateRandomAddress();
+  const randomToken1 = wallet.generateRandomAddress();
+  const randomFee = 3000;
+
   before(async () => {
     [, randomFeed] = await ethers.getSigners();
     connextHandler = await smock.fake('IConnextHandler');
@@ -47,10 +51,10 @@ describe('ConnextSenderAdapter.sol', () => {
 
   describe('bridgeObservations(...)', () => {
     let blockTimestamp1 = 1000000;
-    let arithmeticMeanTick1 = 75;
+    let arithmeticMeanTick1 = 100;
     let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
     let blockTimestamp2 = 3000000;
-    let arithmeticMeanTick2 = 200;
+    let arithmeticMeanTick2 = 300;
     let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
     let observationsData = [observationData1, observationData2];
 
@@ -58,36 +62,42 @@ describe('ConnextSenderAdapter.sol', () => {
       const xcallArgs = await prepareData(observationsData);
       await connextSenderAdapter
         .connect(randomFeed)
-        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData);
+        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomToken0, randomToken1, randomFee);
       expect(connextHandler.xcall).to.have.been.calledOnceWith(xcallArgs);
     });
 
     it('should emit an event', async () => {
       let tx = await connextSenderAdapter
         .connect(randomFeed)
-        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData);
+        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomToken0, randomToken1, randomFee);
       let eventTo = await readArgFromEvent(tx, 'DataSent', '_to');
       let eventOriginDomainId = await readArgFromEvent(tx, 'DataSent', '_originDomainId');
       let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
       let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
+      let eventToken0 = await readArgFromEvent(tx, 'DataSent', '_token0');
+      let eventToken1 = await readArgFromEvent(tx, 'DataSent', '_token1');
+      let eventFee = await readArgFromEvent(tx, 'DataSent', '_fee');
       expect(eventTo).to.eq(randomReceiverAdapterAddress);
       expect(eventOriginDomainId).to.eq(rinkebyOriginId);
       expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
       expect(eventObservationsData).to.eql(observationsData);
+      expect(eventToken0).to.eql(randomToken0);
+      expect(eventToken1).to.eql(randomToken1);
+      expect(eventFee).to.eql(randomFee);
     });
 
     onlyDataFeed(
       () => connextSenderAdapter,
       'bridgeObservations',
       () => randomFeed,
-      () => [randomReceiverAdapterAddress, randomDestinationDomainId, observationsData]
+      () => [randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomToken0, randomToken1, randomFee]
     );
   });
 
   const prepareData = async (observationsData: number[][]) => {
-    const ABI = ['function addObservations((uint32,int24)[])'];
+    const ABI = ['function addObservations((uint32,int24)[], address, address, uint24)'];
     const helperInterface = new ethers.utils.Interface(ABI);
-    const callData = helperInterface.encodeFunctionData('addObservations', [observationsData]);
+    const callData = helperInterface.encodeFunctionData('addObservations', [observationsData, randomToken0, randomToken1, randomFee]);
     const callParams = {
       to: randomReceiverAdapterAddress,
       callData,

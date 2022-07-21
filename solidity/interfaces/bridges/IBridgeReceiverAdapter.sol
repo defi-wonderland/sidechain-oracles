@@ -6,5 +6,10 @@ import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
 interface IBridgeReceiverAdapter {
   // FUNCTIONS
 
-  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData) external;
+  function addObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    address _token0,
+    address _token1,
+    uint24 _fee
+  ) external;
 }

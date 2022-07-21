@@ -1,6 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/bridges/IConnextSenderAdapter.sol';
 import {IGovernable} from '../interfaces/peripherals/IGovernable.sol';
@@ -31,13 +32,19 @@ interface IDataFeed is IGovernable {
 
   function destinationDomainIds(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId) external view returns (uint32 _destinationDomainId);
 
+  //solhint-disable-next-line func-name-mixedcase
+  function UNISWAP_FACTORY() external view returns (IUniswapV3Factory _uniswapFactory);
+
   // EVENTS
 
   event DataSent(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     address _dataReceiver,
     uint32 _destinationDomainId,
-    IOracleSidechain.ObservationData[] _observationsData
+    IOracleSidechain.ObservationData[] _observationsData,
+    address _token0,
+    address _token1,
+    uint24 _fee
   );
 
   event AdapterWhitelisted(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted);
@@ -59,7 +66,9 @@ interface IDataFeed is IGovernable {
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
-    IUniswapV3Pool _pool,
+    address _token0,
+    address _token1,
+    uint24 _fee,
     uint32[] calldata _secondsAgos
   ) external;
 

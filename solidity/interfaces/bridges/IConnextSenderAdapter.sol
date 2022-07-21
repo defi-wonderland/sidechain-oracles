@@ -8,7 +8,15 @@ import {IDataFeed} from '../../interfaces/IDataFeed.sol';
 interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // EVENTS
 
-  event DataSent(address _to, uint32 _originDomainId, uint32 _destinationDomainId, IOracleSidechain.ObservationData[] _observationsData);
+  event DataSent(
+    address _to,
+    uint32 _originDomainId,
+    uint32 _destinationDomainId,
+    IOracleSidechain.ObservationData[] _observationsData,
+    address _token0,
+    address _token1,
+    uint24 _fee
+  );
 
   // ERRORS
 

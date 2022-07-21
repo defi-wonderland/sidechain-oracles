@@ -9,6 +9,9 @@ interface IBridgeSenderAdapter {
   function bridgeObservations(
     address _to,
     uint32 _destinationDomainId,
-    IOracleSidechain.ObservationData[] calldata _observationsData
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    address _token0,
+    address _token,
+    uint24 _fee
   ) external payable;
 }

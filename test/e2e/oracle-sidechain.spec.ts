@@ -1,7 +1,15 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { OracleSidechain, IOracleSidechain, DataReceiverForTest, DataReceiverForTest__factory } from '@typechained';
-import { evm } from '@utils';
+import {
+  OracleSidechain,
+  IOracleSidechain,
+  OracleFactory,
+  OracleFactory__factory,
+  DataReceiverForTest,
+  DataReceiverForTest__factory,
+} from '@typechained';
+import { evm, wallet } from '@utils';
+import { KP3R, WETH, FEE } from '@utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts } from './common';
@@ -10,8 +18,10 @@ import { expect } from 'chai';
 describe('@skip-on-coverage OracleSidechain.sol', () => {
   let deployer: SignerWithAddress;
   let governance: SignerWithAddress;
-  let oracleSidechain: OracleSidechain;
+  let oracleFactory: OracleFactory;
+  let oracleFactoryFactory: OracleFactory__factory;
   let unallowedDataReceiver: DataReceiverForTest;
+  let allowedDataReceiver: DataReceiverForTest;
   let dataReceiverFactory: DataReceiverForTest__factory;
   let snapshotId: string;
 
@@ -21,10 +31,17 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    ({ deployer, governance, oracleSidechain } = await setupContracts());
+    ({ deployer, governance } = await setupContracts());
+
+    const currentNonce = await ethers.provider.getTransactionCount(deployer.address);
+    const precalculatedDataReceiverAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
+
+    oracleFactoryFactory = await ethers.getContractFactory('OracleFactory');
+    oracleFactory = await oracleFactoryFactory.connect(deployer).deploy(governance.address, precalculatedDataReceiverAddress);
 
     dataReceiverFactory = await ethers.getContractFactory('DataReceiverForTest');
-    unallowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(oracleSidechain.address, governance.address);
+    allowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governance.address, oracleFactory.address);
+    unallowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governance.address, oracleFactory.address);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -47,7 +64,11 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     let observationsData = [observationData1, observationData2];
 
     it('should revert if the caller is not an allowed data receiver', async () => {
-      await expect(unallowedDataReceiver.addPermissionlessObservations(observationsData)).to.be.revertedWith('OnlyDataReceiver');
+      await allowedDataReceiver.addPermissionlessObservations(observationsData, KP3R, WETH, FEE);
+
+      await expect(unallowedDataReceiver.addPermissionlessObservations(observationsData, KP3R, WETH, FEE)).to.be.revertedWith(
+        'OnlyDataReceiver'
+      );
     });
 
     // TODO: add more specs when data is defined

@@ -1,16 +1,18 @@
-import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter, DataReceiver, OracleSidechain } from '@typechained';
 import { UniswapV3Pool } from '@eth-sdk-types';
 import { evm } from '@utils';
 import { RANDOM_CHAIN_ID, KP3R, WETH, FEE } from '@utils/constants';
-import { toBN } from '@utils/bn';
+import { toBN, toUnit } from '@utils/bn';
+import { getInitCodeHash } from '@utils/misc';
 import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts } from './common';
+import { setupContracts, observePool, calculateOracleObservations, uniswapV3Swap, getSecondsAgos } from './common';
 import { expect } from 'chai';
+import { ethers } from 'hardhat';
+import { pool } from 'typechained/@uniswap/v3-core/contracts/interfaces';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
   let governance: SignerWithAddress;
@@ -38,19 +40,27 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
+  describe('salt code hash', () => {
+    it('should be correctly set', async () => {
+      let ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
+    });
+  });
+
   describe('observation bridging flow', () => {
-    let secondsNow: number;
-    let secondsAgo = 30;
-    let secondsAgosDelta1 = 20;
-    let secondsAgosDelta2 = 10;
-    let secondsAgos = [secondsAgo, secondsAgo - secondsAgosDelta1, secondsAgo - (secondsAgosDelta1 + secondsAgosDelta2)];
-    let blockTimestamp1: number;
-    let blockTimestamp2: number;
-    let tickCumulativesDelta1: BigNumber;
-    let tickCumulativesDelta2: BigNumber;
+    let secondsAgos = [30, 10, 0];
+    let secondsAgosDeltas: number[];
+    let blockTimestamps: number[];
+    let blockTimestampsDelta: number;
     let tickCumulatives: BigNumber[];
-    let arithmeticMeanTick1: BigNumber;
-    let arithmeticMeanTick2: BigNumber;
+    let tickCumulativesDeltas: BigNumber[];
+    let arithmeticMeanTicks: BigNumber[];
+    let observationsIndex: number;
+    let observationsDeltas: number[];
+    let secondsPerLiquidityCumulativeX128s: BigNumber[];
+    let swapAmount = toUnit(10);
+    const hours = 3600;
+    let now: number;
 
     context('when the adapter is not set', () => {
       it('should revert', async () => {
@@ -117,141 +127,226 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await dataReceiver.connect(governance).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 
-      context('when the data is continuous with that of the oracle', () => {
+      context('when the oracle has no data', () => {
         beforeEach(async () => {
-          await evm.advanceTimeAndBlock(1);
-          secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
-          blockTimestamp1 = secondsNow - secondsAgos[1];
-          blockTimestamp2 = secondsNow - secondsAgos[2];
-          [tickCumulatives] = await uniswapV3K3PR.observe(secondsAgos);
-          tickCumulativesDelta1 = tickCumulatives[1].sub(tickCumulatives[0]);
-          tickCumulativesDelta2 = tickCumulatives[2].sub(tickCumulatives[1]);
-          arithmeticMeanTick1 = tickCumulativesDelta1.div(secondsAgosDelta1);
-          arithmeticMeanTick2 = tickCumulativesDelta2.div(secondsAgosDelta2);
-          await evm.advanceTimeAndBlock(-1);
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(KP3R, swapAmount.add(Math.floor(Math.random() * 10e9)), WETH, FEE);
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          await evm.advanceTimeAndBlock(hours / 2);
+
+          /// @notice: swap happens at now - hours/2
+          blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
+
+          ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(uniswapV3K3PR, blockTimestamps, 0, toBN(0)));
         });
 
         it('should bridge the data and add the observations correctly', async () => {
-          let observationsDelta2 = blockTimestamp2 - blockTimestamp1;
+          ({ tickCumulatives, secondsPerLiquidityCumulativeX128s } = calculateOracleObservations(
+            blockTimestamps,
+            arithmeticMeanTicks,
+            0,
+            toBN(0),
+            toBN(0),
+            toBN(0)
+          ));
+          observationsIndex = 0;
 
-          // tickCumulative in new observation formula = last tickCumulative + tick * delta, in this case we can omit last.tickCumulative as it's 0
-          // due to initialize() being the prev obs writer
-          let tickCumulative1 = toBN(0);
-          let tickCumulative2 = tickCumulative1.add(arithmeticMeanTick1.mul(observationsDelta2));
+          let expectedObservation1 = [blockTimestamps[1], tickCumulatives[1], secondsPerLiquidityCumulativeX128s[1], true];
+          let expectedObservation2 = [blockTimestamps[2], tickCumulatives[2], secondsPerLiquidityCumulativeX128s[2], true];
 
-          // formula = lastSecondsPLCX128 + (delta << 128) / (liquidity > 0 ? liquidity : 1)
-          // lastSecondsPLCX128 = 0 because of initialize initializing it as 0, delta remains as it is, and liquidity is 0 due to our changes so it will always be
-          // divided by 1
-          // final formula = lastSecondsPLCX128 + (delta << 128) / 1, which in this case is 0 + (delta << 128)
-          let secondsPerLiquidityCumulativeX128_1 = toBN(blockTimestamp1).shl(128);
-          let secondsPerLiquidityCumulativeX128_2 = secondsPerLiquidityCumulativeX128_1.add(toBN(observationsDelta2).shl(128));
-
-          let expectedObservation1 = [blockTimestamp1, tickCumulative1, secondsPerLiquidityCumulativeX128_1, true];
-          let expectedObservation2 = [blockTimestamp2, tickCumulative2, secondsPerLiquidityCumulativeX128_2, true];
+          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
           await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-          let observation1 = await oracleSidechain.observations(0);
-          let observation2 = await oracleSidechain.observations(1);
+
+          let observation1 = await oracleSidechain.observations(observationsIndex++);
+          let observation2 = await oracleSidechain.observations(observationsIndex++);
           let lastTick = await oracleSidechain.lastTick();
 
           expect(observation1).to.eql(expectedObservation1);
           expect(observation2).to.eql(expectedObservation2);
-          expect(lastTick).to.eq(arithmeticMeanTick2);
+          expect(lastTick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
         });
 
         it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
+          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
           await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-          let [oracleTickCumulatives] = await oracleSidechain.observe([secondsAgos[1], secondsAgos[2]]);
+
+          const sampleTimestamps = [now - 2 * hours, now]; // indexes 2 and 4
+          const sampleDelta = 2 * hours;
+
+          ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
+
+          let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+          let [poolTickCumulatives] = await uniswapV3K3PR.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+
           let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
-          expect(oracleTickCumulativesDelta).to.eq(tickCumulativesDelta2);
+          let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
+
+          // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
+          expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
         });
       });
 
-      context('when the data is discontinuous with that of the oracle', () => {
-        let secondsAgosDelta0 = 40;
+      context('when the oracle has data', () => {
         let lastBlockTimestampBridged: number;
         let lastTickCumulativeBridged: BigNumber;
         let lastArithmeticMeanTickBridged: BigNumber;
-        let blockTimestamp0: number;
-        let tickCumulativesDelta0: BigNumber;
-        let arithmeticMeanTick0: BigNumber;
-        let observationsDelta2: number;
-        let tickCumulative1: BigNumber;
         let lastTickCumulative: BigNumber;
-        let secondsPerLiquidityCumulativeX128_1: BigNumber;
         let lastSecondsPerLiquidityCumulativeX128: BigNumber;
-
         beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(KP3R, swapAmount.add(Math.floor(Math.random() * 10e9)), WETH, FEE);
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          await evm.advanceTimeAndBlock(hours / 2);
+
+          /// @notice: swap happens at now - hours/2
+          blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
+
+          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniswapV3K3PR, blockTimestamps, 0, toBN(0)));
+
+          lastBlockTimestampBridged = blockTimestamps[blockTimestamps.length - 1];
+          lastTickCumulativeBridged = tickCumulatives[tickCumulatives.length - 1];
+          lastArithmeticMeanTickBridged = arithmeticMeanTicks[arithmeticMeanTicks.length - 1];
+
+          ({ tickCumulatives, secondsPerLiquidityCumulativeX128s } = calculateOracleObservations(
+            blockTimestamps,
+            arithmeticMeanTicks,
+            0,
+            toBN(0),
+            toBN(0),
+            toBN(0)
+          ));
+          observationsIndex = blockTimestamps.length - 1;
+          lastTickCumulative = tickCumulatives[tickCumulatives.length - 1];
+          lastSecondsPerLiquidityCumulativeX128 = secondsPerLiquidityCumulativeX128s[secondsPerLiquidityCumulativeX128s.length - 1];
+
+          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
           await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-          secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
-          blockTimestamp1 = secondsNow - secondsAgos[1];
-          lastBlockTimestampBridged = secondsNow - secondsAgos[2];
-          [tickCumulatives] = await uniswapV3K3PR.observe(secondsAgos);
-          lastTickCumulativeBridged = tickCumulatives[2];
-          tickCumulativesDelta1 = tickCumulatives[1].sub(tickCumulatives[0]);
-          tickCumulativesDelta2 = tickCumulatives[2].sub(tickCumulatives[1]);
-          arithmeticMeanTick1 = tickCumulativesDelta1.div(secondsAgosDelta1);
-          lastArithmeticMeanTickBridged = tickCumulativesDelta2.div(secondsAgosDelta2);
-          observationsDelta2 = lastBlockTimestampBridged - blockTimestamp1;
-          tickCumulative1 = toBN(0);
-          lastTickCumulative = tickCumulative1.add(arithmeticMeanTick1.mul(observationsDelta2));
-          secondsPerLiquidityCumulativeX128_1 = toBN(blockTimestamp1).shl(128);
-          lastSecondsPerLiquidityCumulativeX128 = secondsPerLiquidityCumulativeX128_1.add(toBN(observationsDelta2).shl(128));
-          await evm.advanceTimeAndBlock(secondsAgo + secondsAgosDelta0);
-          secondsNow = (await ethers.provider.getBlock('latest')).timestamp;
-          blockTimestamp0 = secondsNow - secondsAgos[0];
-          blockTimestamp1 = secondsNow - secondsAgos[1];
-          blockTimestamp2 = secondsNow - secondsAgos[2];
-          [tickCumulatives] = await uniswapV3K3PR.observe(secondsAgos);
-          tickCumulativesDelta0 = tickCumulatives[0].sub(lastTickCumulativeBridged);
-          tickCumulativesDelta1 = tickCumulatives[1].sub(tickCumulatives[0]);
-          tickCumulativesDelta2 = tickCumulatives[2].sub(tickCumulatives[1]);
-          arithmeticMeanTick0 = tickCumulativesDelta0.div(secondsAgosDelta0);
-          arithmeticMeanTick1 = tickCumulativesDelta1.div(secondsAgosDelta1);
-          arithmeticMeanTick2 = tickCumulativesDelta2.div(secondsAgosDelta2);
-          await evm.advanceTimeAndBlock(-1);
+
+          await evm.advanceTimeAndBlock(4 * hours);
         });
 
-        it('should bridge the data and add the observations correctly', async () => {
-          let observationsDelta0 = blockTimestamp0 - lastBlockTimestampBridged;
-          let observationsDelta1 = blockTimestamp1 - blockTimestamp0;
-          observationsDelta2 = blockTimestamp2 - blockTimestamp1;
+        context('when the data to be sent is continuous with that of the oracle', () => {
+          beforeEach(async () => {
+            blockTimestamps = [now, now + hours, now + 2 * hours, now + 4 * hours];
 
-          // tickCumulative in new observation formula = last tickCumulative + tick * delta
-          let tickCumulative0 = lastTickCumulative.add(lastArithmeticMeanTickBridged.mul(observationsDelta0));
-          tickCumulative1 = tickCumulative0.add(arithmeticMeanTick0.mul(observationsDelta1));
-          let tickCumulative2 = tickCumulative1.add(arithmeticMeanTick1.mul(observationsDelta2));
+            ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(
+              uniswapV3K3PR,
+              blockTimestamps,
+              lastBlockTimestampBridged,
+              lastTickCumulativeBridged
+            ));
+          });
 
-          // formula = lastSecondsPLCX128 + (delta << 128) / (liquidity > 0 ? liquidity : 1)
-          // liquidity is 0 due to our changes so it will always be divided by 1
-          // final formula = lastSecondsPLCX128 + (delta << 128) / 1, which in this case is lastSecondsPLCX128 + (delta << 128)
-          let secondsPerLiquidityCumulativeX128_0 = lastSecondsPerLiquidityCumulativeX128.add(toBN(observationsDelta0).shl(128));
-          secondsPerLiquidityCumulativeX128_1 = secondsPerLiquidityCumulativeX128_0.add(toBN(observationsDelta1).shl(128));
-          let secondsPerLiquidityCumulativeX128_2 = secondsPerLiquidityCumulativeX128_1.add(toBN(observationsDelta2).shl(128));
+          it('should bridge the data and add the observations correctly', async () => {
+            ({ tickCumulatives, secondsPerLiquidityCumulativeX128s } = calculateOracleObservations(
+              blockTimestamps,
+              arithmeticMeanTicks,
+              lastBlockTimestampBridged,
+              lastArithmeticMeanTickBridged,
+              lastTickCumulative,
+              lastSecondsPerLiquidityCumulativeX128
+            ));
 
-          let expectedObservation0 = [blockTimestamp0, tickCumulative0, secondsPerLiquidityCumulativeX128_0, true];
-          let expectedObservation1 = [blockTimestamp1, tickCumulative1, secondsPerLiquidityCumulativeX128_1, true];
-          let expectedObservation2 = [blockTimestamp2, tickCumulative2, secondsPerLiquidityCumulativeX128_2, true];
+            let expectedObservation1 = [blockTimestamps[1], tickCumulatives[1], secondsPerLiquidityCumulativeX128s[1], true];
+            let expectedObservation2 = [blockTimestamps[2], tickCumulatives[2], secondsPerLiquidityCumulativeX128s[2], true];
 
-          await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-          let observation0 = await oracleSidechain.observations(2);
-          let observation1 = await oracleSidechain.observations(3);
-          let observation2 = await oracleSidechain.observations(4);
-          let lastTick = await oracleSidechain.lastTick();
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          expect(observation0).to.eql(expectedObservation0);
-          expect(observation1).to.eql(expectedObservation1);
-          expect(observation2).to.eql(expectedObservation2);
-          expect(lastTick).to.eq(arithmeticMeanTick2);
+            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+            let observation1 = await oracleSidechain.observations(observationsIndex++);
+            let observation2 = await oracleSidechain.observations(observationsIndex++);
+            let lastTick = await oracleSidechain.lastTick();
+
+            expect(observation1).to.eql(expectedObservation1);
+            expect(observation2).to.eql(expectedObservation2);
+            expect(lastTick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
+          });
+
+          it.skip('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+            await evm.advanceTimeAndBlock(2 * hours);
+
+            const sampleTimestamps = [now - 2 * hours, now + 4 * hours];
+            const sampleDelta = 6 * hours;
+
+            ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
+
+            let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+            let [poolTickCumulatives] = await uniswapV3K3PR.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+
+            let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
+            let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
+
+            // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
+            expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
+          });
         });
 
-        it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
-          await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-          let [oracleTickCumulatives] = await oracleSidechain.observe(secondsAgos);
-          let oracleTickCumulativesDelta1 = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
-          let oracleTickCumulativesDelta2 = oracleTickCumulatives[2].sub(oracleTickCumulatives[1]);
-          expect(oracleTickCumulativesDelta1).to.eq(tickCumulativesDelta1);
-          expect(oracleTickCumulativesDelta2).to.eq(tickCumulativesDelta2);
+        context('when the data to be sent is discontinuous with that of the oracle', () => {
+          beforeEach(async () => {
+            blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
+
+            ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(
+              uniswapV3K3PR,
+              blockTimestamps,
+              lastBlockTimestampBridged,
+              lastTickCumulativeBridged
+            ));
+          });
+
+          it('should bridge the data and add the observations correctly', async () => {
+            ({ tickCumulatives, secondsPerLiquidityCumulativeX128s } = calculateOracleObservations(
+              blockTimestamps,
+              arithmeticMeanTicks,
+              lastBlockTimestampBridged,
+              lastArithmeticMeanTickBridged,
+              lastTickCumulative,
+              lastSecondsPerLiquidityCumulativeX128
+            ));
+
+            let expectedObservation0 = [blockTimestamps[0], tickCumulatives[0], secondsPerLiquidityCumulativeX128s[0], true];
+            let expectedObservation1 = [blockTimestamps[1], tickCumulatives[1], secondsPerLiquidityCumulativeX128s[1], true];
+            let expectedObservation2 = [blockTimestamps[2], tickCumulatives[2], secondsPerLiquidityCumulativeX128s[2], true];
+
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+            let observation0 = await oracleSidechain.observations(observationsIndex++);
+            let observation1 = await oracleSidechain.observations(observationsIndex++);
+            let observation2 = await oracleSidechain.observations(observationsIndex++);
+            let lastTick = await oracleSidechain.lastTick();
+
+            expect(observation0).to.eql(expectedObservation0);
+            expect(observation1).to.eql(expectedObservation1);
+            expect(observation2).to.eql(expectedObservation2);
+            expect(lastTick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
+          });
+
+          it.skip('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+            await evm.advanceTimeAndBlock(2 * hours);
+
+            const sampleTimestamps = [now - 2 * hours, now + 4 * hours];
+            const sampleDelta = 6 * hours;
+
+            ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
+
+            let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+            let [poolTickCumulatives] = await uniswapV3K3PR.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+
+            let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
+            let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
+
+            // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
+            expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
+          });
         });
       });
     });

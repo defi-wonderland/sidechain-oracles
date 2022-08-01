@@ -5,7 +5,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleFactory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { ORACLE_INIT_CODE_HASH } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernance, onlyWhitelistedAdapter } from '@utils/behaviours';
 import { calculateSalt, sortTokens, getInitCodeHash } from '@utils/misc';
@@ -22,6 +21,7 @@ describe('DataReceiver.sol', () => {
   let oracleSidechain: FakeContract<IOracleSidechain>;
   let oracleFactory: FakeContract<IOracleFactory>;
   let salt: string;
+  let ORACLE_INIT_CODE_HASH: string;
   let precalculatedOracleAddress: string;
   let tx: ContractTransaction;
   let snapshotId: string;
@@ -40,6 +40,7 @@ describe('DataReceiver.sol', () => {
     dataReceiver = await dataReceiverFactory.deploy(governance.address, oracleFactory.address);
 
     salt = calculateSalt(tokenA, tokenB, randomFee);
+    ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
     precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, ORACLE_INIT_CODE_HASH);
 
     oracleSidechain = await smock.fake('IOracleSidechain', {
@@ -54,7 +55,7 @@ describe('DataReceiver.sol', () => {
 
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
-      expect(getInitCodeHash()).to.eq(ORACLE_INIT_CODE_HASH);
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
     });
   });
 

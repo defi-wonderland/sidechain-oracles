@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {LibConnextStorage, XCallArgs} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
+import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 
 interface IExecutorLike {
   function execute(

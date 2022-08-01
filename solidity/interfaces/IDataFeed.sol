@@ -3,8 +3,8 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/bridges/IConnextSenderAdapter.sol';
-import {IGovernable} from '../interfaces/peripherals/IGovernable.sol';
+import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from './bridges/IConnextSenderAdapter.sol';
+import {IGovernable} from './peripherals/IGovernable.sol';
 
 interface IDataFeed is IGovernable {
   // STRUCTS

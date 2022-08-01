@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {DataReceiver} from '../../contracts/DataReceiver.sol';
-import {OracleSidechain} from '../../contracts/OracleSidechain.sol';
-import {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../../interfaces/IDataReceiver.sol';
-import {IOracleFactory} from '../../interfaces/IOracleFactory.sol';
+import {DataReceiver} from '../contracts/DataReceiver.sol';
+import {OracleSidechain} from '../contracts/OracleSidechain.sol';
+import {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
+import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 
 contract DataReceiverForTest is DataReceiver {
   constructor(address _governance, IOracleFactory _oracleFactory) DataReceiver(_governance, _oracleFactory) {}

@@ -5,6 +5,7 @@ import { evm, wallet } from '@utils';
 import { KP3R, WETH, FEE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
+import { getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts } from './common';
@@ -32,6 +33,13 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
     await dataReceiver.connect(governance).whitelistAdapter(connextReceiverAdapter.address, true);
+  });
+
+  describe('salt code hash', () => {
+    it('should be correctly set', async () => {
+      let ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
+    });
   });
 
   describe('adding observations', () => {

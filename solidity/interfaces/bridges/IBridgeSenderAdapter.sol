@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
+import {IOracleSidechain} from '../IOracleSidechain.sol';
 
 interface IBridgeSenderAdapter {
   // FUNCTIONS

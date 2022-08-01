@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from '../contracts/peripherals/Governable.sol';
+import {Governable} from './peripherals/Governable.sol';
 import {IDataFeed, IUniswapV3Factory, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 
 contract DataFeed is IDataFeed, Governable {
@@ -95,8 +95,8 @@ contract DataFeed is IDataFeed, Governable {
     for (++_j; _i < _secondsAgosLength; _i = _j++) {
       _delta = _secondsAgos[_i] - _secondsAgos[_j];
       _tickCumulativesDelta = _tickCumulatives[_j] - _tickCumulatives[_i];
-      _blockTimestamp += _delta;
 
+      _blockTimestamp += _delta;
       _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
       // Always round to negative infinity
       if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;

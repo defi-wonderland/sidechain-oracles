@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
-import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
-import {IBridgeReceiverAdapter} from '../interfaces/bridges/IBridgeReceiverAdapter.sol';
-import {IGovernable} from '../interfaces/peripherals/IGovernable.sol';
+import {IOracleFactory} from './IOracleFactory.sol';
+import {IOracleSidechain} from './IOracleSidechain.sol';
+import {IBridgeReceiverAdapter} from './bridges/IBridgeReceiverAdapter.sol';
+import {IGovernable} from './peripherals/IGovernable.sol';
 
 /// @title The DataReceiver interface
 /// @author 0xJabberwock (from DeFi Wonderland)

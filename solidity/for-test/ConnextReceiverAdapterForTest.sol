@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {ConnextReceiverAdapter, IConnextHandler, IDataReceiver, IOracleSidechain} from '../../contracts/bridges/ConnextReceiverAdapter.sol';
+import {ConnextReceiverAdapter, IConnextHandler, IDataReceiver, IOracleSidechain} from '../contracts/bridges/ConnextReceiverAdapter.sol';
 
 contract ConnextReceiverAdapterForTest is ConnextReceiverAdapter {
   constructor(

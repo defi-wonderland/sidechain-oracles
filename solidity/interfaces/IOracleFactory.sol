@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
-import {IDataReceiver} from '../interfaces/IDataReceiver.sol';
-import {IGovernable} from '../interfaces/peripherals/IGovernable.sol';
+import {IOracleSidechain} from './IOracleSidechain.sol';
+import {IDataReceiver} from './IDataReceiver.sol';
+import {IGovernable} from './peripherals/IGovernable.sol';
 
 interface IOracleFactory is IGovernable {
   // STRUCTS

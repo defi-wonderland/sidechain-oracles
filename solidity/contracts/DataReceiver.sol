@@ -1,15 +1,15 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {OracleSidechain} from '../contracts/OracleSidechain.sol';
-import {Governable} from '../contracts/peripherals/Governable.sol';
+import {OracleSidechain} from './OracleSidechain.sol';
+import {Governable} from './peripherals/Governable.sol';
 import {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 
 contract DataReceiver is IDataReceiver, Governable {
   IOracleFactory public oracleFactory;
 
-  bytes32 internal constant _ORACLE_INIT_CODE_HASH = 0x98b91106d494463fbc9bd6738aebafcb27dd43266b8f0f6aa124cfbaa421e9ff;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x0a92aaa50279d939f5c0e878d67567e2b9775a74d54f1d1cd2def46048b73ab8;
 
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
@@ -49,7 +49,7 @@ contract DataReceiver is IDataReceiver, Governable {
     uint24 _fee
   ) internal pure returns (address _resultingAddress) {
     _resultingAddress = address(
-      uint160(uint256(keccak256(abi.encodePacked(hex'ff', _factory, keccak256(abi.encode(_token0, _token1, _fee)), _ORACLE_INIT_CODE_HASH))))
+      uint160(uint256(keccak256(abi.encodePacked(hex'ff', _factory, keccak256(abi.encode(_token0, _token1, _fee)), ORACLE_INIT_CODE_HASH))))
     );
   }
 

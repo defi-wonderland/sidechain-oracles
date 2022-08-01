@@ -2,8 +2,8 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IExecutor} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IExecutor.sol';
-import {IBridgeReceiverAdapter, IOracleSidechain} from '../../interfaces/bridges/IBridgeReceiverAdapter.sol';
-import {IDataReceiver} from '../../interfaces/IDataReceiver.sol';
+import {IBridgeReceiverAdapter, IOracleSidechain} from './IBridgeReceiverAdapter.sol';
+import {IDataReceiver} from '../IDataReceiver.sol';
 
 interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
   // STATE VARIABLES

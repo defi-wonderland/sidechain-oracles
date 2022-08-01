@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
+import {IOracleFactory} from './IOracleFactory.sol';
 
 /// @title The OracleSidechain interface
 /// @author 0xJabberwock (from DeFi Wonderland)

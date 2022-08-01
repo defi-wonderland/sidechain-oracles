@@ -2,8 +2,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {OracleSidechain} from '../contracts/OracleSidechain.sol';
-import {Governable} from '../contracts/peripherals/Governable.sol';
+import {OracleSidechain} from './OracleSidechain.sol';
+import {Governable} from './peripherals/Governable.sol';
 import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 import {IDataReceiver} from '../interfaces/IDataReceiver.sol';
 

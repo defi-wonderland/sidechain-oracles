@@ -10,6 +10,7 @@ import {
 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { KP3R, WETH, FEE } from '@utils/constants';
+import { getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts } from './common';
@@ -20,8 +21,8 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   let governance: SignerWithAddress;
   let oracleFactory: OracleFactory;
   let oracleFactoryFactory: OracleFactory__factory;
-  let unallowedDataReceiver: DataReceiverForTest;
   let allowedDataReceiver: DataReceiverForTest;
+  let unallowedDataReceiver: DataReceiverForTest;
   let dataReceiverFactory: DataReceiverForTest__factory;
   let snapshotId: string;
 
@@ -48,6 +49,13 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
+  });
+
+  describe('salt code hash', () => {
+    it('should be correctly set', async () => {
+      let ORACLE_INIT_CODE_HASH = await allowedDataReceiver.ORACLE_INIT_CODE_HASH();
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
+    });
   });
 
   describe('observing an observation', () => {

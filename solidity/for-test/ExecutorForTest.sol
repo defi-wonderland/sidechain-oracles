@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IBridgeReceiverAdapter} from '../../interfaces/bridges/IBridgeReceiverAdapter.sol';
-import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
+import {IBridgeReceiverAdapter} from '../interfaces/bridges/IBridgeReceiverAdapter.sol';
+import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 
 contract ExecutorForTest {
   error OnlyConnext();

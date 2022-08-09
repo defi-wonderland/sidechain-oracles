@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter, DataReceiver, OracleFactory, OracleSidechain, ERC20 } from '@typechained';
@@ -11,7 +12,6 @@ import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, observePool, calculateOracleObservations, uniswapV3Swap, getSecondsAgos, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
 import { pool } from 'typechained/@uniswap/v3-core/contracts/interfaces';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
@@ -167,11 +167,11 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           let observation1 = await oracleSidechain.observations(observationsIndex++);
           let observation2 = await oracleSidechain.observations(observationsIndex++);
-          let lastTick = await oracleSidechain.lastTick();
+          let tick = (await oracleSidechain.slot0()).tick;
 
           expect(observation1).to.eql(expectedObservation1);
           expect(observation2).to.eql(expectedObservation2);
-          expect(lastTick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
+          expect(tick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
         });
 
         it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
@@ -265,11 +265,11 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
             let observation1 = await oracleSidechain.observations(observationsIndex++);
             let observation2 = await oracleSidechain.observations(observationsIndex++);
-            let lastTick = await oracleSidechain.lastTick();
+            let tick = (await oracleSidechain.slot0()).tick;
 
             expect(observation1).to.eql(expectedObservation1);
             expect(observation2).to.eql(expectedObservation2);
-            expect(lastTick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
+            expect(tick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
           });
 
           it.skip('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
@@ -326,12 +326,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             let observation0 = await oracleSidechain.observations(observationsIndex++);
             let observation1 = await oracleSidechain.observations(observationsIndex++);
             let observation2 = await oracleSidechain.observations(observationsIndex++);
-            let lastTick = await oracleSidechain.lastTick();
+            let tick = (await oracleSidechain.slot0()).tick;
 
             expect(observation0).to.eql(expectedObservation0);
             expect(observation1).to.eql(expectedObservation1);
             expect(observation2).to.eql(expectedObservation2);
-            expect(lastTick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
+            expect(tick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
           });
 
           it.skip('should keep consistency of tickCumulativesDelta between bridged observations', async () => {

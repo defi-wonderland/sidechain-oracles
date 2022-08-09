@@ -54,6 +54,14 @@ describe('OracleSidechain.sol', () => {
       expect(await oracleSidechain.fee()).to.eq(randomFee);
     });
 
+    it('should initialize sqrtPriceX96 to 0', async () => {
+      expect((await oracleSidechain.slot0()).sqrtPriceX96).to.eq(0);
+    });
+
+    it('should initialize tick to 0', async () => {
+      expect((await oracleSidechain.slot0()).tick).to.eq(0);
+    });
+
     it('should initialize observationIndex to 1023', async () => {
       expect((await oracleSidechain.slot0()).observationIndex).to.eq(CARDINALITY - 1);
     });
@@ -64,6 +72,14 @@ describe('OracleSidechain.sol', () => {
 
     it('should initialize cardinalityNext to 1024', async () => {
       expect((await oracleSidechain.slot0()).observationCardinalityNext).to.eq(CARDINALITY);
+    });
+
+    it('should initialize feeProtocol to 0', async () => {
+      expect((await oracleSidechain.slot0()).feeProtocol).to.eq(0);
+    });
+
+    it('should initialize unlocked to true', async () => {
+      expect((await oracleSidechain.slot0()).unlocked).to.eq(true);
     });
   });
 
@@ -202,16 +218,10 @@ describe('OracleSidechain.sol', () => {
         });
 
         it('should update slot0', async () => {
-          let expectedSlot0 = [1, CARDINALITY, CARDINALITY];
+          let expectedSlot0 = [toBN(0), tick2, 1, CARDINALITY, CARDINALITY, 0, true];
           await oracleSidechain.connect(dataReceiver.wallet).write(observationsData);
           let slot0 = await oracleSidechain.slot0();
           expect(slot0).to.eql(expectedSlot0);
-        });
-
-        it('should update lastTick', async () => {
-          await oracleSidechain.connect(dataReceiver.wallet).write(observationsData);
-          let lastTick = await oracleSidechain.lastTick();
-          expect(lastTick).to.eq(tick2);
         });
 
         it('should emit ObservationWritten', async () => {

@@ -104,7 +104,7 @@ describe('@skip-on-coverage Dummy Data Briding', () => {
 
         let observation1 = await oracleSidechain.observations(0);
         let observation2 = await oracleSidechain.observations(1);
-        let lastTick = await oracleSidechain.lastTick();
+        let lastTick = (await oracleSidechain.slot0()).tick;
 
         expect(observation1).to.eql(expectedObservation1);
         expect(observation2).to.eql(expectedObservation2);

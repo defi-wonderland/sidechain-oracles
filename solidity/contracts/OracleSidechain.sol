@@ -14,12 +14,21 @@ contract OracleSidechain is IOracleSidechain {
   using Oracle for Oracle.Observation[65535];
 
   struct Slot0 {
+    // the current price
+    uint160 sqrtPriceX96;
+    // the current tick
+    int24 tick;
     // the most-recently updated index of the observations array
     uint16 observationIndex;
     // the current maximum number of observations that are being stored
     uint16 observationCardinality;
     // the next maximum number of observations to store, triggered in observations.write
     uint16 observationCardinalityNext;
+    // the current protocol fee as a percentage of the swap fee taken on withdrawal
+    // represented as an integer denominator (1/x)%
+    uint8 feeProtocol;
+    // whether the pool is locked
+    bool unlocked;
   }
   /// @inheritdoc IOracleSidechain
   Slot0 public slot0;
@@ -30,9 +39,6 @@ contract OracleSidechain is IOracleSidechain {
   /// @inheritdoc IOracleSidechain
   Oracle.Observation[65535] public observations;
 
-  /// @inheritdoc IOracleSidechain
-  int24 public lastTick;
-
   address public immutable token0;
 
   address public immutable token1;
@@ -42,7 +48,15 @@ contract OracleSidechain is IOracleSidechain {
   constructor() {
     uint16 _cardinality;
     (factory, token0, token1, fee, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
-    slot0 = Slot0({observationIndex: _cardinality - 1, observationCardinality: _cardinality, observationCardinalityNext: _cardinality});
+    slot0 = Slot0({
+      sqrtPriceX96: 0,
+      tick: 0,
+      observationIndex: _cardinality - 1,
+      observationCardinality: _cardinality,
+      observationCardinalityNext: _cardinality,
+      feeProtocol: 0,
+      unlocked: true
+    });
   }
 
   /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
@@ -56,7 +70,7 @@ contract OracleSidechain is IOracleSidechain {
     view
     returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s)
   {
-    return observations.observe(_getBlockTimestamp(), _secondsAgos, lastTick, slot0.observationIndex, 0, slot0.observationCardinality);
+    return observations.observe(_getBlockTimestamp(), _secondsAgos, slot0.tick, slot0.observationIndex, 0, slot0.observationCardinality);
   }
 
   /// @inheritdoc IOracleSidechain
@@ -76,13 +90,13 @@ contract OracleSidechain is IOracleSidechain {
     (uint16 _indexUpdated, uint16 _cardinalityUpdated) = observations.write(
       slot0.observationIndex,
       _observationData.blockTimestamp,
-      lastTick,
+      slot0.tick,
       0,
       slot0.observationCardinality,
       slot0.observationCardinalityNext
     );
     (slot0.observationIndex, slot0.observationCardinality) = (_indexUpdated, _cardinalityUpdated);
-    lastTick = _observationData.tick;
+    slot0.tick = _observationData.tick;
     emit ObservationWritten(msg.sender, _observationData);
   }
 }

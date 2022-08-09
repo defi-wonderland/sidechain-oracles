@@ -20,19 +20,25 @@ interface IOracleSidechain {
 
   /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
   /// when accessed externally.
+  /// @return _sqrtPriceX96 Used to maintain compatibility with Uniswap V3
+  /// @return _tick Used to maintain compatibility with Uniswap V3
   /// @return _observationIndex The index of the last oracle observation that was written,
   /// @return _observationCardinality The current maximum number of observations stored in the pool,
   /// @return _observationCardinalityNext The next maximum number of observations, to be updated when the observation.
+  /// @return _feeProtocol Used to maintain compatibility with Uniswap V3
+  /// @return _unlocked Used to maintain compatibility with Uniswap V3
   function slot0()
     external
     view
     returns (
+      uint160 _sqrtPriceX96,
+      int24 _tick,
       uint16 _observationIndex,
       uint16 _observationCardinality,
-      uint16 _observationCardinalityNext
+      uint16 _observationCardinalityNext,
+      uint8 _feeProtocol,
+      bool _unlocked
     );
-
-  function lastTick() external view returns (int24 _lastTick);
 
   function factory() external view returns (IOracleFactory _oracleFactory);
 

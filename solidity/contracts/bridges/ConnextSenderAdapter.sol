@@ -38,19 +38,17 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
       callData: _callData,
       originDomain: _originDomainId,
       destinationDomain: _destinationDomainId,
+      agent: address(0),
       recovery: _to,
+      forceSlow: true,
+      receiveLocal: false,
       callback: address(0),
       callbackFee: 0,
-      forceSlow: true,
-      receiveLocal: false
+      relayerFee: 0,
+      slippageTol: 9995
     });
 
-    XCallArgs memory _xcallArgs = XCallArgs({
-      params: _callParams,
-      transactingAssetId: _asset,
-      amount: 0,
-      relayerFee: 0 // TODO: will probably need to add an estimator for this when connext defines how this will be handled
-    });
+    XCallArgs memory _xcallArgs = XCallArgs({params: _callParams, transactingAssetId: _asset, amount: 0});
 
     connext.xcall(_xcallArgs);
 

@@ -4,12 +4,12 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { bn } from '@utils';
 import { BigNumber } from 'ethers';
+import { TEST_FEE } from '../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const uniswapV3RouterAddress = '0xe592427a0aece92de3edee1f18e0157c05861564';
   const maxUint256 = BigNumber.from('115792089237316195423570985008687907853269984665640564039457584007913129639935');
-  const fee = 10_000;
 
   const txSettings = {
     from: deployer,
@@ -36,10 +36,20 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('TokenB', txSettings, 'approve', swapRouter.address, maxUint256);
   }
 
-  const swapSettings = [tokenA.address, tokenB.address, fee, deployer, Date.now() + 3600, bn.toUnit(1), 0, 0];
+  const balanceA = await hre.deployments.read('TokenA', 'balanceOf', deployer);
+  const balanceB = await hre.deployments.read('TokenB', 'balanceOf', deployer);
+  let tokenIn: string;
+  let tokenOut: string;
+  if (balanceA >= balanceB) {
+    (tokenIn = tokenA.address), (tokenOut = tokenB.address);
+  } else {
+    (tokenIn = tokenB.address), (tokenOut = tokenA.address);
+  }
+
+  const swapSettings = [tokenIn, tokenOut, TEST_FEE, deployer, Date.now() + 3600, bn.toUnit(1), 0, 0];
 
   await hre.deployments.execute('SwapRouter', txSettings, 'exactInputSingle', swapSettings);
 };
-deployFunction.dependencies = [];
-deployFunction.tags = ['execute', 'make-swaps', 'mainnet', 'sender-actions', 'pool-actions'];
+deployFunction.dependencies = ['add-liquidity'];
+deployFunction.tags = ['execute', 'make-swaps', 'mainnet', 'sender-actions', 'token-actions'];
 export default deployFunction;

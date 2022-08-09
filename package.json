@@ -47,6 +47,9 @@
     "compile:test": "cross-env TEST=true hardhat compile",
     "coverage": "hardhat coverage",
     "deploy": "npx hardhat deploy",
+    "deploy:all": "yarn deploy --network receiver --tags receiver-stage-1 && yarn deploy --network sender --tags sender-stage-1 && yarn deploy --network receiver --tags receiver-stage-2 && yarn deploy --network sender --tags sender-stage-2,send-observation",
+    "deploy:send": "yarn deploy --network sender --tags send-observation",
+    "deploy:test": "yarn deploy --network receiver --tags test",
     "docs": "solidity-docgen --solc-module solc-0.8",
     "fork:node": "cross-env FORK=true hardhat node",
     "fork:script": "cross-env FORK=true hardhat run",
@@ -78,7 +81,7 @@
     "eth-gas-reporter/colors": "1.4.0"
   },
   "dependencies": {
-    "@connext/nxtp-contracts": "0.2.0-beta.10",
+    "@connext/nxtp-contracts": "0.2.0-beta.14",
     "@openzeppelin/contracts": "4.6.0",
     "@openzeppelin/contracts-upgradeable": "4.5.2",
     "@uniswap/v3-core": "1.0.2-solc-0.8-simulate",
@@ -91,7 +94,7 @@
     "@defi-wonderland/smock": "2.2.0",
     "@dethcrypto/eth-sdk": "0.3.1",
     "@dethcrypto/eth-sdk-client": "0.1.6",
-    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.13",
+    "@nomiclabs/hardhat-ethers": "2.1.0",
     "@nomiclabs/hardhat-etherscan": "3.0.3",
     "@nomiclabs/hardhat-waffle": "2.0.3",
     "@typechain/ethers-v5": "10.0.0",

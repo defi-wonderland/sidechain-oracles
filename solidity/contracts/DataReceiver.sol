@@ -9,7 +9,7 @@ import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 contract DataReceiver is IDataReceiver, Governable {
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x0a92aaa50279d939f5c0e878d67567e2b9775a74d54f1d1cd2def46048b73ab8;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x13e47a2e543289c37145a9cfbf8ca45e157628d982376a1b097d38e2c01d5c0d;
 
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 

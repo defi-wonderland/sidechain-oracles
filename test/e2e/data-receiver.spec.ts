@@ -1,14 +1,13 @@
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, IOracleSidechain } from '@typechained';
+import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, ERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
-import { KP3R, WETH, FEE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts } from './common';
+import { setupContracts, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage DataReceiver.sol', () => {
@@ -17,7 +16,11 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   let dataReceiver: DataReceiver;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let oracleSidechain: OracleSidechain;
+  let oracleFactory: OracleFactory;
   let snapshotId: string;
+  let tokenA: ERC20;
+  let tokenB: ERC20;
+  let fee: number;
 
   before(async () => {
     await evm.reset({
@@ -25,7 +28,9 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    ({ stranger, governance, dataReceiver, connextReceiverAdapter, oracleSidechain } = await setupContracts());
+    ({ tokenA, tokenB, fee } = await getEnvironment());
+
+    ({ stranger, governance, dataReceiver, connextReceiverAdapter, oracleFactory } = await setupContracts());
 
     snapshotId = await evm.snapshot.take();
   });
@@ -62,19 +67,28 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
     });
 
     it('should revert if the caller is not a whitelisted adapter', async () => {
-      await expect(dataReceiver.connect(stranger).addObservations(observationsData, KP3R, WETH, FEE)).to.be.revertedWith('UnallowedAdapter()');
+      await expect(dataReceiver.connect(stranger).addObservations(observationsData, tokenA.address, tokenB.address, fee)).to.be.revertedWith(
+        'UnallowedAdapter()'
+      );
     });
 
     context('when the caller is a whitelisted adapter', () => {
       context('when the observations are writable', () => {
         it('should add the observations', async () => {
-          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, KP3R, WETH, FEE);
+          let tx = await dataReceiver
+            .connect(connextReceiverAdapterSigner)
+            .addObservations(observationsData, tokenA.address, tokenB.address, fee);
+
+          ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+
           await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
           await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
         });
 
         it('should emit ObservationsAdded', async () => {
-          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, KP3R, WETH, FEE);
+          let tx = await dataReceiver
+            .connect(connextReceiverAdapterSigner)
+            .addObservations(observationsData, tokenA.address, tokenB.address, fee);
           let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
           let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
           expect(eventUser).to.eq(connextReceiverAdapter.address);
@@ -88,12 +102,12 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
         let oldObservationsData = [observationData2Before, observationData2];
 
         beforeEach(async () => {
-          await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, KP3R, WETH, FEE);
+          await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, tokenA.address, tokenB.address, fee);
         });
 
         it('should revert the tx', async () => {
           await expect(
-            dataReceiver.connect(connextReceiverAdapterSigner).addObservations(oldObservationsData, KP3R, WETH, FEE)
+            dataReceiver.connect(connextReceiverAdapterSigner).addObservations(oldObservationsData, tokenA.address, tokenB.address, fee)
           ).to.be.revertedWith('ObservationsNotWritable()');
         });
       });

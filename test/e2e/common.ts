@@ -12,11 +12,12 @@ import {
   ConnextReceiverAdapter,
   OracleFactory,
   OracleSidechain,
+  ERC20,
 } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Pool } from '@eth-sdk-types';
 import { wallet, evm } from '@utils';
-import { UNISWAP_V3_K3PR_ADDRESS, KP3R, WETH, FEE, KP3R_WHALE_ADDRESS, WETH_WHALE_ADDRESS } from '@utils/constants';
+import { UNISWAP_V3_K3PR_ADDRESS, KP3R, WETH, FEE, KP3R_WHALE_ADDRESS, WETH_WHALE_ADDRESS, ORACLE_INIT_CODE_HASH } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { calculateSalt } from '@utils/misc';
 import { RINKEBY_ORIGIN_DOMAIN_CONNEXT } from 'utils/constants';
@@ -25,10 +26,8 @@ export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
   deployer: SignerWithAddress;
   governance: SignerWithAddress;
-  uniswapV3K3PR: UniswapV3Pool;
   dataReceiver: DataReceiver;
   oracleFactory: OracleFactory;
-  oracleSidechain: OracleSidechain;
   dataFeed: DataFeed;
   connextHandler: ConnextHandlerForTest;
   executor: ExecutorForTest;
@@ -37,7 +36,6 @@ export async function setupContracts(): Promise<{
 }> {
   let currentNonce;
   const [, stranger, deployer, governance] = await ethers.getSigners();
-  const uniswapV3K3PR = getMainnetSdk(stranger).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
   const dataReceiverFactory = await ethers.getContractFactory('DataReceiver');
   const dataFeedFactory = await ethers.getContractFactory('DataFeed');
   const connextHandlerFactory = await ethers.getContractFactory('ConnextHandlerForTest');
@@ -72,25 +70,49 @@ export async function setupContracts(): Promise<{
       connextHandler.address
     )) as ConnextReceiverAdapter;
 
-  const salt = calculateSalt(KP3R, WETH, FEE);
-  const ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
-  const oracleSidechainAddress = getCreate2Address(oracleFactory.address, salt, ORACLE_INIT_CODE_HASH);
-  const oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleSidechainAddress)) as OracleSidechain;
-
   return {
     stranger,
     deployer,
     governance,
-    uniswapV3K3PR,
     dataReceiver,
     oracleFactory,
-    oracleSidechain,
     dataFeed,
     connextHandler,
     executor,
     connextSenderAdapter,
     connextReceiverAdapter,
   };
+}
+
+export async function getOracle(
+  factory: string,
+  tokenA: string,
+  tokenB: string,
+  fee: number
+): Promise<{
+  oracleSidechain: OracleSidechain;
+}> {
+  const salt = calculateSalt(tokenA, tokenB, fee);
+  const oracleSidechainAddress = getCreate2Address(factory, salt, ORACLE_INIT_CODE_HASH);
+  const oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleSidechainAddress)) as OracleSidechain;
+
+  return {
+    oracleSidechain,
+  };
+}
+
+export async function getEnvironment(): Promise<{
+  uniV3Pool: UniswapV3Pool;
+  tokenA: ERC20;
+  tokenB: ERC20;
+  fee: number;
+}> {
+  const [signer] = await ethers.getSigners();
+  const uniV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
+  const tokenA = (await ethers.getContractAt('ERC20', WETH)) as ERC20;
+  const tokenB = (await ethers.getContractAt('ERC20', KP3R)) as ERC20;
+
+  return { uniV3Pool, tokenA, tokenB, fee: FEE };
 }
 
 export async function getSecondsAgos(blockTimestamps: number[]): Promise<{ secondsAgos: number[] }> {

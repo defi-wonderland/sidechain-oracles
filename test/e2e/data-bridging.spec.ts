@@ -1,6 +1,6 @@
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter, DataReceiver, OracleSidechain } from '@typechained';
+import { DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter, DataReceiver, OracleFactory, OracleSidechain, ERC20 } from '@typechained';
 import { UniswapV3Pool } from '@eth-sdk-types';
 import { evm } from '@utils';
 import { RANDOM_CHAIN_ID, KP3R, WETH, FEE } from '@utils/constants';
@@ -9,7 +9,7 @@ import { getInitCodeHash } from '@utils/misc';
 import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts, observePool, calculateOracleObservations, uniswapV3Swap, getSecondsAgos } from './common';
+import { setupContracts, observePool, calculateOracleObservations, uniswapV3Swap, getSecondsAgos, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { pool } from 'typechained/@uniswap/v3-core/contracts/interfaces';
@@ -17,7 +17,11 @@ import { pool } from 'typechained/@uniswap/v3-core/contracts/interfaces';
 describe('@skip-on-coverage Data Bridging Flow', () => {
   let governance: SignerWithAddress;
   let dataFeed: DataFeed;
-  let uniswapV3K3PR: UniswapV3Pool;
+  let oracleFactory: OracleFactory;
+  let uniV3Pool: UniswapV3Pool;
+  let tokenA: ERC20;
+  let tokenB: ERC20;
+  let fee: number;
   let connextSenderAdapter: ConnextSenderAdapter;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataReceiver: DataReceiver;
@@ -30,8 +34,11 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    ({ governance, dataFeed, uniswapV3K3PR, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleSidechain } =
-      await setupContracts());
+    ({ uniV3Pool, tokenA, tokenB, fee } = await getEnvironment());
+
+    ({ governance, dataFeed, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } = await setupContracts());
+
+    ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
     snapshotId = await evm.snapshot.take();
   });
@@ -64,9 +71,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     context('when the adapter is not set', () => {
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.be.revertedWith(
-          'UnallowedAdapter()'
-        );
+        await expect(
+          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
+        ).to.be.revertedWith('UnallowedAdapter()');
       });
     });
 
@@ -76,9 +83,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.be.revertedWith(
-          'DestinationDomainIdNotSet()'
-        );
+        await expect(
+          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
+        ).to.be.revertedWith('DestinationDomainIdNotSet()');
       });
     });
 
@@ -91,9 +98,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.be.revertedWith(
-          'ReceiverNotSet()'
-        );
+        await expect(
+          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
+        ).to.be.revertedWith('ReceiverNotSet()');
       });
     });
 
@@ -109,9 +116,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.be.revertedWith(
-          'UnallowedAdapter()'
-        );
+        await expect(
+          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
+        ).to.be.revertedWith('UnallowedAdapter()');
       });
     });
 
@@ -137,7 +144,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           /// @notice: swap happens at now - hours/2
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(uniswapV3K3PR, blockTimestamps, 0, toBN(0)));
+          ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
         });
 
         it('should bridge the data and add the observations correctly', async () => {
@@ -178,7 +185,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
           let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
-          let [poolTickCumulatives] = await uniswapV3K3PR.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+          let [poolTickCumulatives] = await uniV3Pool.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
 
           let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
           let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -203,7 +210,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           /// @notice: swap happens at now - hours/2
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniswapV3K3PR, blockTimestamps, 0, toBN(0)));
+          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
 
           lastBlockTimestampBridged = blockTimestamps[blockTimestamps.length - 1];
           lastTickCumulativeBridged = tickCumulatives[tickCumulatives.length - 1];
@@ -233,7 +240,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             blockTimestamps = [now, now + hours, now + 2 * hours, now + 4 * hours];
 
             ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(
-              uniswapV3K3PR,
+              uniV3Pool,
               blockTimestamps,
               lastBlockTimestampBridged,
               lastTickCumulativeBridged
@@ -277,7 +284,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
             let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
-            let [poolTickCumulatives] = await uniswapV3K3PR.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+            let [poolTickCumulatives] = await uniV3Pool.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
 
             let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
             let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -292,7 +299,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
 
             ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(
-              uniswapV3K3PR,
+              uniV3Pool,
               blockTimestamps,
               lastBlockTimestampBridged,
               lastTickCumulativeBridged
@@ -339,7 +346,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
             let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
-            let [poolTickCumulatives] = await uniswapV3K3PR.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+            let [poolTickCumulatives] = await uniV3Pool.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
 
             let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
             let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);

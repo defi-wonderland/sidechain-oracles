@@ -7,6 +7,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const CONNEXT_SENDER = await getAddressFromAbi('deployments', 'sender', 'ConnextSenderAdapter.json');
   if (!CONNEXT_SENDER.exists) {
+    // TODO: does it fail like this? i'm getting "No deployment found for: ..."
     throw new Error(
       'Connext Sender has not been deployed. Make sure you are running the scripts in the correct order. Order is in the README.md file'
     );
@@ -30,6 +31,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await verifyContractIfNeeded(hre, deploy);
 };
 
-deployFunction.tags = ['deploy-connext-sender-adapter', 'connext-sender-adapter', 'sidechain', 'receiver'];
+deployFunction.tags = ['deploy-connext-receiver-adapter', 'connext-receiver-adapter', 'receiver-stage-2'];
 
 export default deployFunction;

@@ -39,20 +39,34 @@ export const shouldVerifyContract = async (deploy: DeployResult): Promise<boolea
 
 export const verifyContractIfNeeded = async (hre: HardhatRuntimeEnvironment, deploy: DeployResult): Promise<boolean> => {
   if (await shouldVerifyContract(deploy)) {
-    await hre.run('verify:verify', {
-      address: deploy.address,
-      constructorArguments: deploy.args,
-    });
+    await verifyContract(hre, deploy);
     return true;
   }
   return false;
 };
 
 export const verifyContract = async (hre: HardhatRuntimeEnvironment, deploy: DeployResult): Promise<void> => {
-  await hre.run('verify:verify', {
-    address: deploy.address,
-    constructorArguments: deploy.args,
-  });
+  if (hre.network.config.chainId === 31337 || !hre.config.etherscan.apiKey) {
+    return; // contract is deployed on local network or no apiKey is configured
+  }
+  try {
+    await hre.run('verify:verify', {
+      address: deploy.address,
+      constructorArguments: deploy.args,
+    });
+  } catch (err: any) {
+    if (err.message.includes('Reason: Already Verified')) {
+      console.log('Contract is already verified!');
+    }
+  }
+};
+
+export const verifyContractByAddress = async (hre: HardhatRuntimeEnvironment, address: string, args?: [any]): Promise<void> => {
+  const deploy = {
+    address,
+    args,
+  } as DeployResult;
+  await verifyContract(hre, deploy);
 };
 
 export const waitDeployment = async (deploy: DeployResult, blocks: number) => {
@@ -60,7 +74,9 @@ export const waitDeployment = async (deploy: DeployResult, blocks: number) => {
   await txReceipt.wait(blocks);
 };
 
-export const getAddressFromAbi = async (...pathsFromRoot: string[]): Promise<{ exists: boolean; address: string | undefined }> => {
+export const getAddressFromAbi = async (
+  ...pathsFromRoot: string[]
+): Promise<{ exists: boolean; address: string | undefined; bytecodeHash: string | undefined }> => {
   const filePath = path.join(__dirname, '..', ...pathsFromRoot);
   if (fs.existsSync(filePath)) {
     const abi = fs.readFileSync(filePath, 'utf-8');
@@ -68,11 +84,13 @@ export const getAddressFromAbi = async (...pathsFromRoot: string[]): Promise<{ e
     return {
       exists: true,
       address: parsedAbi.address,
+      bytecodeHash: parsedAbi.bytecodeHash,
     };
   }
   return {
     exists: false,
     address: undefined,
+    bytecodeHash: undefined,
   };
 };
 

@@ -13,17 +13,16 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   });
 
-  await verifyContractIfNeeded(hre, tokenA);
-
-  const tokenB = await hre.deployments.deploy('TokenB', {
+  await hre.deployments.deploy('TokenB', {
     contract: 'solidity/contracts/for-test/ERC20ForTest.sol:ERC20ForTest',
     from: deployer,
     args: ['TokenB', 'TKN-B', deployer, maxUint256],
     log: true,
   });
 
-  await verifyContractIfNeeded(hre, tokenB);
+  // Only one needs to be verified
+  await verifyContractIfNeeded(hre, tokenA);
 };
 deployFunction.dependencies = [];
-deployFunction.tags = ['deploy', 'test-tokens', 'mainnet', 'sender-actions', 'pool-actions'];
+deployFunction.tags = ['deploy', 'test-tokens', 'mainnet', 'token-actions'];
 export default deployFunction;

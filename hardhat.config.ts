@@ -4,12 +4,11 @@ import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
 import '@typechain/hardhat/dist/type-extensions';
-import { removeConsoleLog } from 'hardhat-preprocessor';
 import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import 'solidity-coverage';
-import { HardhatUserConfig, MultiSolcUserConfig, NetworksUserConfig } from 'hardhat/types';
+import { HardhatUserConfig, NetworksUserConfig } from 'hardhat/types';
 import * as env from './utils/env';
 import 'tsconfig-paths/register';
 
@@ -30,10 +29,12 @@ const networks: NetworksUserConfig =
         sender: {
           url: env.getNodeUrl('rinkeby'),
           accounts: env.getAccounts('rinkeby'),
+          chainId: 4,
         },
         receiver: {
           url: env.getNodeUrl('goerli'),
           accounts: env.getAccounts('goerli'),
+          chainId: 5,
         },
         ethereum: {
           url: env.getNodeUrl('ethereum'),
@@ -55,7 +56,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.12',
+        version: '0.8.15',
         settings: {
           optimizer: {
             enabled: true,
@@ -89,9 +90,6 @@ const config: HardhatUserConfig = {
     showMethodSig: true,
     onlyCalledMethods: false,
   },
-  preprocess: {
-    eachLine: removeConsoleLog((hre) => hre.network.name !== 'hardhat'),
-  },
   etherscan: {
     apiKey: env.getEtherscanAPIKeys(['ethereum', 'kovan', 'rinkeby', 'goerli']),
   },
@@ -103,18 +101,5 @@ const config: HardhatUserConfig = {
     sources: './solidity',
   },
 };
-
-if (process.env.LOCAL_TEST) {
-  (config.solidity as MultiSolcUserConfig).compilers = (config.solidity as MultiSolcUserConfig).compilers.map((compiler) => {
-    return {
-      ...compiler,
-      outputSelection: {
-        '*': {
-          '*': ['storageLayout'],
-        },
-      },
-    };
-  });
-}
 
 export default config;

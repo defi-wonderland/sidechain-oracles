@@ -24,6 +24,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   if (!WHITELISTED_ADAPTER) await hre.deployments.execute('DataReceiver', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);
 };
 
-deployFunction.dependencies = [];
-deployFunction.tags = ['execute', 'whitelist-receiver-adapter', 'sidechain', 'receiver-actions'];
+deployFunction.dependencies = ['deploy-connext-receiver-adapter'];
+deployFunction.tags = ['execute', 'whitelist-receiver-adapter', 'connext-receiver-adapter', 'receiver-stage-2'];
 export default deployFunction;

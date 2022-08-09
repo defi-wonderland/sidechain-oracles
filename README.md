@@ -2,25 +2,29 @@
 
 ## How to deploy
 
-Run the scripts in this order:
+Deploy all required contracts in both chains and bridge data
 
 ```
-yarn deploy --network sender --tags sender
+yarn deploy:all
 ```
 
-```
-yarn deploy --network receiver --tags receiver
-```
+Make a swap and bridge data
 
 ```
-yarn deploy --network receiver --tags receiver-actions
+yarn deploy:send
 ```
 
+Deploy dummy contracts in receiver chain and send observations (w/o bridging)
+
 ```
-yarn deploy --network sender --tags sender-actions
+yarn deploy:test
 ```
 
-## Changing Sender and Receiver
+### Verifying Contracts
+
+In the `.env` file, if you need to verify your contracts when they're deployed set the field `TEST=` to false
+
+### Changing Sender and Receiver
 
 To properly change sender and receiver:
 

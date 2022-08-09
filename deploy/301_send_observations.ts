@@ -1,6 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { getAddressFromAbi, getChainId, getDataFromChainId, getReceiverChainId } from 'utils/deploy';
+import { TEST_FEE } from '../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -30,7 +31,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 
   // TODO: do we want some specific value?
-  const RANDOM_SECONDS_AGO = [300, 100, 0];
+  const RANDOM_SECONDS_AGO = [10, 5, 0];
 
   const txSettings = {
     from: deployer,
@@ -38,7 +39,17 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  const SEND_OBSERVATION_ARGS = [CONNEXT_SENDER.address, RECEIVER_CHAIN_ID.chainId, SENDER_UNI_V3_POOL.address, RANDOM_SECONDS_AGO];
+  const tokenA = await hre.deployments.get('TokenA');
+  const tokenB = await hre.deployments.get('TokenB');
+
+  const SEND_OBSERVATION_ARGS = [
+    CONNEXT_SENDER.address,
+    RECEIVER_CHAIN_ID.chainId,
+    tokenA.address,
+    tokenB.address,
+    TEST_FEE,
+    RANDOM_SECONDS_AGO,
+  ];
 
   const IS_CONNEXT_SENDER_WHITELISTED = await hre.deployments.read('DataFeed', 'whitelistedAdapters', CONNEXT_SENDER.address);
   const SET_RECEIVER = await hre.deployments.read('DataFeed', 'receivers', CONNEXT_SENDER.address, domainIdDestination);
@@ -54,11 +65,14 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   if (IS_CONNEXT_SENDER_WHITELISTED && IS_RECEIVER_SET && IS_DESTINATION_DOMAIN_ID_SET) {
     await hre.deployments.execute('DataFeed', txSettings, 'sendObservations', ...SEND_OBSERVATION_ARGS);
+    // TODO: read event and log bridge txID for tracking
+    // XCalled topic = 0x9ff13ab44d4ea07af1c3b3ffb93494b9e0e32bb1564d8ba56e62e7ee9b7489d3
+    // console.log(event.data.transferId)
   } else {
     throw new Error('🚧 Setters not properly set. Skipping sending the observation');
   }
 };
 
-deployFunction.dependencies = [];
-deployFunction.tags = ['execute', 'send-observation', 'mainnet', 'sender-actions'];
+deployFunction.dependencies = ['sender-stage-2', 'token-actions'];
+deployFunction.tags = ['execute', 'send-observation', 'mainnet'];
 export default deployFunction;

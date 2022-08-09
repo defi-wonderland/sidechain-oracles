@@ -45,6 +45,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('DataFeed', txSettings, 'setDestinationDomainId', ...SET_DESTINATION_DOMAIN_ID_ARGS);
 };
 
-deployFunction.dependencies = [];
-deployFunction.tags = ['execute', 'set-setters', 'mainnet', 'actions', 'sender-actions'];
+deployFunction.dependencies = ['connext-sender-adapter'];
+deployFunction.tags = ['execute', 'setup-data-feed', 'mainnet', 'actions', 'sender-stage-2'];
 export default deployFunction;

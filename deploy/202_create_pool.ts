@@ -2,12 +2,12 @@ import IUniswapV3Factory from '../artifacts/@uniswap/v3-core/contracts/interface
 import IUniswapV3Pool from '../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { TEST_FEE } from '../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const uniswapV3FactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
   const addressZero = '0x0000000000000000000000000000000000000000';
-  const fee = 10_000;
 
   const txSettings = {
     from: deployer,
@@ -23,12 +23,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const tokenA = await hre.deployments.get('TokenA');
   const tokenB = await hre.deployments.get('TokenB');
 
-  let uniV3PoolAddress = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, fee);
+  let uniV3PoolAddress = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
   const poolExists = uniV3PoolAddress != addressZero;
 
   if (!poolExists) {
-    await hre.deployments.execute('UniV3Factory', txSettings, 'createPool', tokenA.address, tokenB.address, fee);
-    uniV3PoolAddress = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, fee);
+    await hre.deployments.execute('UniV3Factory', txSettings, 'createPool', tokenA.address, tokenB.address, TEST_FEE);
+    uniV3PoolAddress = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
   }
 
   await hre.deployments.save('UniV3Pool', {
@@ -46,6 +46,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   console.log('Pool deployed at ', uniV3PoolAddress);
 };
-deployFunction.dependencies = [];
-deployFunction.tags = ['execute', 'create-pool', 'mainnet', 'sender-actions', 'pool-actions'];
+deployFunction.dependencies = ['test-tokens'];
+deployFunction.tags = ['execute', 'create-pool', 'token-actions'];
 export default deployFunction;

@@ -5,16 +5,15 @@ import { verifyContractIfNeeded } from 'utils/deploy';
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
-  const deploy = await hre.deployments.deploy('DataFeed', {
-    contract: 'solidity/contracts/DataFeed.sol:DataFeed',
+  const deploy = await hre.deployments.deploy('DummyAdapterForTest', {
+    contract: 'solidity/contracts/for-test/DummyAdapterForTest.sol:DummyAdapterForTest',
     from: deployer,
     log: true,
-    args: [deployer],
   });
 
   await verifyContractIfNeeded(hre, deploy);
 };
 
-deployFunction.tags = ['deploy-data-feed', 'data-feed', 'sender-stage-1'];
+deployFunction.tags = ['deploy-dummy-adapter'];
 
 export default deployFunction;

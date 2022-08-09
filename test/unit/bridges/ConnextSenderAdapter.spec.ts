@@ -3,7 +3,7 @@ import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ConnextSenderAdapter, ConnextSenderAdapter__factory, IConnextHandler } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
-import { evm, wallet } from '@utils';
+import { evm, wallet, bn } from '@utils';
 import { ZERO_ADDRESS } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyDataFeed } from '@utils/behaviours';
@@ -103,17 +103,19 @@ describe('ConnextSenderAdapter.sol', () => {
       callData,
       originDomain: rinkebyOriginId,
       destinationDomain: randomDestinationDomainId,
+      agent: ZERO_ADDRESS,
       recovery: randomReceiverAdapterAddress,
-      callback: ZERO_ADDRESS,
-      callbackFee: BigNumber.from(0),
       forceSlow: true,
       receiveLocal: false,
+      callback: ZERO_ADDRESS,
+      callbackFee: bn.toBN(0),
+      relayerFee: bn.toBN(0),
+      slippageTol: bn.toBN(9995),
     };
     const xcallArgs = {
       params: callParams,
       transactingAssetId: '0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9',
-      amount: BigNumber.from(0),
-      relayerFee: BigNumber.from(0),
+      amount: bn.toBN(0),
     };
 
     return xcallArgs;

@@ -9,7 +9,7 @@ import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 contract DataReceiver is IDataReceiver, Governable {
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xe184aab4ba7412270743f34cc96511f3a432bc2e559fdfcf5765f71e3437dc44;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xd39e292a7d431cad5cd9b77d7bdf2f24b85287105b7dafce5950ebeb60755ecb;
 
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
@@ -27,18 +27,18 @@ contract DataReceiver is IDataReceiver, Governable {
 
   function addObservations(
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee
   ) external onlyWhitelistedAdapters {
-    (address _tokenA, address _tokenB) = _token0 < _token1 ? (_token0, _token1) : (_token1, _token0);
+    (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
 
-    IOracleSidechain _resultingAddress = IOracleSidechain(_calculateAddress(address(oracleFactory), _tokenA, _tokenB, _fee));
+    IOracleSidechain _resultingAddress = IOracleSidechain(_calculateAddress(address(oracleFactory), _token0, _token1, _fee));
     bool _isDeployed = address(_resultingAddress).code.length > 0;
     if (_isDeployed) {
       return _addObservations(_resultingAddress, _observationsData);
     }
-    address _deployedOracle = oracleFactory.deployOracle(_tokenA, _tokenB, _fee);
+    address _deployedOracle = oracleFactory.deployOracle(_token0, _token1, _fee);
     _addObservations(IOracleSidechain(_deployedOracle), _observationsData);
   }
 

@@ -1251,7 +1251,7 @@
     safe-buffer "^5.1.1"
     util.promisify "^1.0.0"
 
-"@nomiclabs/hardhat-ethers@2.1.0", "@nomiclabs/hardhat-ethers@^2.0.6":
+"@nomiclabs/hardhat-ethers@2.1.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.1.0.tgz#9b7dc94d669ad9dc286b94f6f2f1513118c7027b"
   integrity sha512-vlW90etB3675QWG7tMrHaDoTa7ymMB7irM4DAQ98g8zJoe9YqEggeDnbO6v5b+BLth/ty4vN6Ko/kaqRN1krHw==
@@ -1576,18 +1576,6 @@
   integrity sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==
   dependencies:
     defer-to-connect "^2.0.0"
-
-"@tenderly/hardhat-tenderly@1.1.4":
-  version "1.1.4"
-  resolved "https://registry.yarnpkg.com/@tenderly/hardhat-tenderly/-/hardhat-tenderly-1.1.4.tgz#cb84ebf05eaf75c6fffae4cee52d132b3eed986a"
-  integrity sha512-HqtJSaX/EVxUcNqoHSBtZzrwAF93hPXBV4buPU2UWCuL36na6wImqzjSVhrxghgrxP6MQv5BbU5THxOkKQ0gdw==
-  dependencies:
-    "@nomiclabs/hardhat-ethers" "^2.0.6"
-    axios "^0.21.1"
-    ethers "^5.6.8"
-    fs-extra "^9.0.1"
-    hardhat-deploy "^0.11.10"
-    js-yaml "^3.14.0"
 
 "@truffle/error@^0.1.0":
   version "0.1.0"
@@ -5650,7 +5638,7 @@ ethers@5.6.4, ethers@^5.0.1, ethers@^5.0.2, ethers@^5.5.2:
     "@ethersproject/web" "5.6.0"
     "@ethersproject/wordlists" "5.6.0"
 
-ethers@5.6.9, ethers@^5.6.8:
+ethers@5.6.9:
   version "5.6.9"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.6.9.tgz#4e12f8dfcb67b88ae7a78a9519b384c23c576a4d"
   integrity sha512-lMGC2zv9HC5EC+8r429WaWu3uWJUCgUCt8xxKCFqkrFuBDZXDYIdzDUECxzjf2BMF8IVBByY1EBoGSL3RTm8RA==
@@ -6319,7 +6307,7 @@ fs-extra@^8.1, fs-extra@^8.1.0:
     jsonfile "^4.0.0"
     universalify "^0.1.0"
 
-fs-extra@^9.0.1, fs-extra@^9.1.0:
+fs-extra@^9.1.0:
   version "9.1.0"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-9.1.0.tgz#5954460c764a8da2094ba3554bf839e6b9a7c86d"
   integrity sha512-hcg3ZmepS30/7BSFqRvoo3DOMQu7IjqxO5nCDt+zM9XWjb33Wg7ziNT+Qvqbuc3+gWpzO02JubVyk2G4Zvo1OQ==
@@ -6803,7 +6791,7 @@ hardhat-contract-sizer@2.6.1:
     chalk "^4.0.0"
     cli-table3 "^0.6.0"
 
-hardhat-deploy@0.11.11, hardhat-deploy@^0.11.10:
+hardhat-deploy@0.11.11:
   version "0.11.11"
   resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.11.11.tgz#479040ba84d5b6d582d8fc719a3e77656ba8dc66"
   integrity sha512-/37No1l6aFMMc4+t+a0/8gk6OwwD4tyW8bSQqV/0IZEiaHiNa7hOV4rTbC9B7277SDHVoFUrV/fwmk7IDiB8sQ==
@@ -7774,7 +7762,7 @@ js-yaml@3.13.1:
     argparse "^1.0.7"
     esprima "^4.0.0"
 
-js-yaml@3.x, js-yaml@^3.12.0, js-yaml@^3.13.0, js-yaml@^3.13.1, js-yaml@^3.14.0:
+js-yaml@3.x, js-yaml@^3.12.0, js-yaml@^3.13.0, js-yaml@^3.13.1:
   version "3.14.1"
   resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-3.14.1.tgz#dae812fdb3825fa306609a8717383c50c36a0537"
   integrity sha512-okMH7OXXJ7YrN9Ok3/SXrnu4iX9yOk+25nqX4imS2npuvTYDmo/QEZoqwZkYaIDk3jVvBOTOIEgEhaLOynBS9g==

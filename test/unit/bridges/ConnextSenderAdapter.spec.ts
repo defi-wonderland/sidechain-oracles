@@ -74,15 +74,15 @@ describe('ConnextSenderAdapter.sol', () => {
       let eventOriginDomainId = await readArgFromEvent(tx, 'DataSent', '_originDomainId');
       let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
       let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-      let eventToken0 = await readArgFromEvent(tx, 'DataSent', '_token0');
-      let eventToken1 = await readArgFromEvent(tx, 'DataSent', '_token1');
+      let eventTokenA = await readArgFromEvent(tx, 'DataSent', '_tokenA');
+      let eventTokenB = await readArgFromEvent(tx, 'DataSent', '_tokenB');
       let eventFee = await readArgFromEvent(tx, 'DataSent', '_fee');
       expect(eventTo).to.eq(randomReceiverAdapterAddress);
       expect(eventOriginDomainId).to.eq(rinkebyOriginId);
       expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
       expect(eventObservationsData).to.eql(observationsData);
-      expect(eventToken0).to.eql(randomToken0);
-      expect(eventToken1).to.eql(randomToken1);
+      expect(eventTokenA).to.eql(randomToken0);
+      expect(eventTokenB).to.eql(randomToken1);
       expect(eventFee).to.eql(randomFee);
     });
 

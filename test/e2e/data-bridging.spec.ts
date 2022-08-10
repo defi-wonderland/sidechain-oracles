@@ -2,8 +2,8 @@ import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter, DataReceiver, OracleFactory, OracleSidechain, ERC20 } from '@typechained';
-import { UniswapV3Pool } from '@eth-sdk-types';
-import { evm } from '@utils';
+import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
+import { evm, wallet } from '@utils';
 import { RANDOM_CHAIN_ID, KP3R, WETH, FEE } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { getInitCodeHash } from '@utils/misc';
@@ -12,12 +12,12 @@ import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, observePool, calculateOracleObservations, uniswapV3Swap, getSecondsAgos, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
-import { pool } from 'typechained/@uniswap/v3-core/contracts/interfaces';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
   let governance: SignerWithAddress;
   let dataFeed: DataFeed;
   let oracleFactory: OracleFactory;
+  let uniswapV3Factory: UniswapV3Factory;
   let uniV3Pool: UniswapV3Pool;
   let tokenA: ERC20;
   let tokenB: ERC20;
@@ -34,7 +34,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    ({ uniV3Pool, tokenA, tokenB, fee } = await getEnvironment());
+    ({ uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee } = await getEnvironment());
 
     ({ governance, dataFeed, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } = await setupContracts());
 
@@ -355,6 +355,50 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
           });
         });
+      });
+    });
+  });
+
+  describe('fetching observations indices', () => {
+    let time: number;
+    let secondsAgos: number[] = [];
+    let blockTimestamp: number;
+    let observationIndex: number;
+    let observationCardinality: number;
+    let expectedObservationsIndices: number[] = [];
+
+    it('should revert if the pool is not initialized', async () => {
+      let secondsAgos = [50];
+      let tokenA = wallet.generateRandomAddress();
+      let tokenB = wallet.generateRandomAddress();
+      let fee = 10000;
+      await uniswapV3Factory.createPool(tokenA, tokenB, fee);
+      let uniswapV3PoolAddress = await uniswapV3Factory.getPool(tokenA, tokenB, fee);
+      await expect(dataFeed.fetchObservationsIndices(uniswapV3PoolAddress, secondsAgos)).to.be.revertedWith('I()');
+    });
+
+    context('when the pool is initialized', () => {
+      beforeEach(async () => {
+        time = (await ethers.provider.getBlock('latest')).timestamp;
+        [, , observationIndex, observationCardinality] = await uniV3Pool.slot0();
+        for (let i = 0; i <= 10; i = i + 2) {
+          [blockTimestamp] = await uniV3Pool.observations(i);
+          secondsAgos[i] = time - blockTimestamp;
+          secondsAgos[i + 1] = time - blockTimestamp - 5;
+          expectedObservationsIndices[i] = i;
+          expectedObservationsIndices[i + 1] = i;
+        }
+      });
+
+      it('should revert if secondsAgos is too old', async () => {
+        let [oldestObservationTimestamp] = await uniV3Pool.observations(0);
+        let secondsAgos = [time - oldestObservationTimestamp + 1];
+        await expect(dataFeed.fetchObservationsIndices(uniV3Pool.address, secondsAgos)).to.be.revertedWith('OLD()');
+      });
+
+      it('should return the observations indices', async () => {
+        let observationsIndices = await dataFeed.fetchObservationsIndices(uniV3Pool.address, secondsAgos);
+        expect(observationsIndices).to.eql(expectedObservationsIndices);
       });
     });
   });

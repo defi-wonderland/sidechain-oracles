@@ -11,7 +11,7 @@ contract DummyAdapterForTest {
   event Create2Hash(bytes32);
 
   constructor() {
-    /// @dev Emitted to validate correct calculation of _ORACLE_INIT_CODE_HASH
+    /// @dev Emitted to validate correct calculation of ORACLE_INIT_CODE_HASH
     emit Create2Hash(keccak256(type(OracleSidechain).creationCode));
   }
 

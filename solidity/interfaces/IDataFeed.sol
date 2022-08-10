@@ -42,8 +42,8 @@ interface IDataFeed is IGovernable {
     address _dataReceiver,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] _observationsData,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee
   );
 
@@ -66,8 +66,8 @@ interface IDataFeed is IGovernable {
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee,
     uint32[] calldata _secondsAgos
   ) external;
@@ -76,6 +76,11 @@ interface IDataFeed is IGovernable {
     external
     view
     returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState);
+
+  function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
+    external
+    view
+    returns (uint16[] memory _observationsIndices);
 
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
 

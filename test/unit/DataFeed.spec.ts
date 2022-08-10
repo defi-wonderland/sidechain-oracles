@@ -609,6 +609,79 @@ describe('DataFeed.sol', () => {
     });
   });
 
+  describe('fetchObservationsIndices(...)', () => {
+    let time: number;
+    let secondsAgos = [50, 40, 30, 20, 10, 0];
+    let secondsAgo = secondsAgos[0];
+    let blockTimestamp: number;
+    let observationIndex = Math.ceil(secondsAgos.length / 2) - 1;
+    let observationCardinality: number;
+    let expectedObservationsIndices: number[] = [];
+
+    it('should revert if the pool is not initialized', async () => {
+      let observationCardinality = 0;
+      uniswapV3Pool.slot0.returns([0, 0, observationIndex, observationCardinality, 0, 0, 0]);
+      await expect(dataFeed.fetchObservationsIndices(uniswapV3Pool.address, secondsAgos)).to.be.revertedWith('I()');
+    });
+
+    context('when the pool is initialized', () => {
+      let i: number;
+      let j: number;
+
+      beforeEach(async () => {
+        time = (await ethers.provider.getBlock('latest')).timestamp;
+        i = 0;
+        j = 0;
+        for (i; i < secondsAgos.length; ++i) {
+          if (i % 2 == 0) {
+            blockTimestamp = time - secondsAgos[i];
+            uniswapV3Pool.observations.whenCalledWith(j).returns([blockTimestamp, 0, 0, true]);
+            expectedObservationsIndices[i] = j;
+          } else {
+            expectedObservationsIndices[i] = j++;
+          }
+        }
+      });
+
+      context('when each observation is initialized', () => {
+        before(async () => {
+          observationCardinality = observationIndex + 1;
+          uniswapV3Pool.slot0.returns([0, 0, observationIndex, observationCardinality, 0, 0, 0]);
+        });
+
+        it('should revert if secondsAgos is too old', async () => {
+          let secondsAgos = [secondsAgo + 1];
+          await expect(dataFeed.fetchObservationsIndices(uniswapV3Pool.address, secondsAgos)).to.be.revertedWith('OLD()');
+        });
+
+        it('should return the observations indices', async () => {
+          let observationsIndices = await dataFeed.fetchObservationsIndices(uniswapV3Pool.address, secondsAgos);
+          expect(observationsIndices).to.eql(expectedObservationsIndices);
+        });
+      });
+
+      context('when the last observations are not initialized', () => {
+        before(async () => {
+          observationCardinality = observationIndex + 4;
+          uniswapV3Pool.slot0.returns([0, 0, observationIndex, observationCardinality, 0, 0, 0]);
+          for (i = observationIndex + 1; i < observationCardinality; ++i) {
+            uniswapV3Pool.observations.whenCalledWith(i).returns([0, 0, 0, false]);
+          }
+        });
+
+        it('should revert if secondsAgos is too old', async () => {
+          let secondsAgos = [secondsAgo + 1];
+          await expect(dataFeed.fetchObservationsIndices(uniswapV3Pool.address, secondsAgos)).to.be.revertedWith('OLD()');
+        });
+
+        it('should return the observations indices', async () => {
+          let observationsIndices = await dataFeed.fetchObservationsIndices(uniswapV3Pool.address, secondsAgos);
+          expect(observationsIndices).to.eql(expectedObservationsIndices);
+        });
+      });
+    });
+  });
+
   describe('whitelistAdapter', () => {
     onlyGovernance(
       () => dataFeed,

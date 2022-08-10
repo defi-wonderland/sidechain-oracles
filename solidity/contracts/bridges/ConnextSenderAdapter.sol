@@ -20,8 +20,8 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     address _to,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee
   ) external payable {
     if (msg.sender != address(dataFeed)) revert OnlyDataFeed();
@@ -30,7 +30,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     address _asset = 0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9;
     bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],address,address,uint24)'));
 
-    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _token0, _token1, _fee);
+    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _tokenA, _tokenB, _fee);
     uint32 _originDomainId = 1111; // TODO: in theory if we are only going to bridge from mainnet, this could be hardcoded--1111 is rinkeby
 
     CallParams memory _callParams = CallParams({
@@ -52,6 +52,6 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
 
     connext.xcall(_xcallArgs);
 
-    emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _token0, _token1, _fee);
+    emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _tokenA, _tokenB, _fee);
   }
 }

@@ -11,18 +11,18 @@ contract DataReceiverForTest is DataReceiver {
 
   function addPermissionlessObservations(
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee
   ) external {
-    (address _tokenA, address _tokenB) = _token0 < _token1 ? (_token0, _token1) : (_token1, _token0);
+    (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
 
-    IOracleSidechain _resultingAddress = IOracleSidechain(_calculateAddress(address(oracleFactory), _tokenA, _tokenB, _fee));
+    IOracleSidechain _resultingAddress = IOracleSidechain(_calculateAddress(address(oracleFactory), _token0, _token1, _fee));
     bool _isDeployed = address(_resultingAddress).code.length > 0;
     if (_isDeployed) {
       return _addObservations(_resultingAddress, _observationsData);
     }
-    address _deployedOracle = oracleFactory.deployOracle(_tokenA, _tokenB, _fee);
+    address _deployedOracle = oracleFactory.deployOracle(_token0, _token1, _fee);
     _addObservations(IOracleSidechain(_deployedOracle), _observationsData);
   }
 }

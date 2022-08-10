@@ -13,8 +13,8 @@ interface IConnextSenderAdapter is IBridgeSenderAdapter {
     uint32 _originDomainId,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] _observationsData,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee
   );
 

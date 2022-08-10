@@ -18,7 +18,7 @@ interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
 
   // EVENTS
 
-  event DataSent(IOracleSidechain.ObservationData[] _observationsData, address _token0, address _token1, uint24 _fee);
+  event DataSent(IOracleSidechain.ObservationData[] _observationsData, address _tokenA, address _tokenB, uint24 _fee);
 
   // CUSTOM ERRORS
 

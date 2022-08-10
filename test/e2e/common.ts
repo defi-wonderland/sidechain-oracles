@@ -15,11 +15,11 @@ import {
   ERC20,
 } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
-import { UniswapV3Pool } from '@eth-sdk-types';
+import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
 import { wallet, evm } from '@utils';
-import { UNISWAP_V3_K3PR_ADDRESS, KP3R, WETH, FEE, KP3R_WHALE_ADDRESS, WETH_WHALE_ADDRESS, ORACLE_INIT_CODE_HASH } from '@utils/constants';
+import { UNISWAP_V3_K3PR_ADDRESS, KP3R, WETH, FEE, KP3R_WHALE_ADDRESS, WETH_WHALE_ADDRESS } from '@utils/constants';
 import { toBN } from '@utils/bn';
-import { calculateSalt } from '@utils/misc';
+import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { RINKEBY_ORIGIN_DOMAIN_CONNEXT } from 'utils/constants';
 
 export async function setupContracts(): Promise<{
@@ -93,7 +93,7 @@ export async function getOracle(
   oracleSidechain: OracleSidechain;
 }> {
   const salt = calculateSalt(tokenA, tokenB, fee);
-  const oracleSidechainAddress = getCreate2Address(factory, salt, ORACLE_INIT_CODE_HASH);
+  const oracleSidechainAddress = getCreate2Address(factory, salt, getInitCodeHash());
   const oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleSidechainAddress)) as OracleSidechain;
 
   return {
@@ -102,17 +102,19 @@ export async function getOracle(
 }
 
 export async function getEnvironment(): Promise<{
+  uniswapV3Factory: UniswapV3Factory;
   uniV3Pool: UniswapV3Pool;
   tokenA: ERC20;
   tokenB: ERC20;
   fee: number;
 }> {
   const [signer] = await ethers.getSigners();
+  const uniswapV3Factory = getMainnetSdk(signer).uniswapV3Factory;
   const uniV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
   const tokenA = (await ethers.getContractAt('ERC20', WETH)) as ERC20;
   const tokenB = (await ethers.getContractAt('ERC20', KP3R)) as ERC20;
 
-  return { uniV3Pool, tokenA, tokenB, fee: FEE };
+  return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE };
 }
 
 export async function getSecondsAgos(blockTimestamps: number[]): Promise<{ secondsAgos: number[] }> {

@@ -21,9 +21,9 @@ export const getCreate2AddressWithArgs = (factory: string, salt: string): string
   Same consideration here. This is not generic. It'll only work for address, address, uint24 as inputs.
   Modify it accordingly if inputs change.
 */
-export const calculateSalt = (token0: string, token1: string, fee: number): string => {
-  const [tokenA, tokenB] = sortTokens([token0, token1]);
-  return keccak256(defaultAbiCoder.encode(['address', 'address', 'uint24'], [tokenA, tokenB, fee]));
+export const calculateSalt = (tokenA: string, tokenB: string, fee: number): string => {
+  const [token0, token1] = sortTokens([tokenA, tokenB]);
+  return keccak256(defaultAbiCoder.encode(['address', 'address', 'uint24'], [token0, token1, fee]));
 };
 
 export const sortTokens = (tokens: string[]): string[] => {

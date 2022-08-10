@@ -30,8 +30,8 @@ interface IDataReceiver is IGovernable {
 
   function addObservations(
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee
   ) external;
 

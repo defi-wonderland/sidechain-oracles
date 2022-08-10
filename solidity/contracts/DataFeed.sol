@@ -3,6 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './peripherals/Governable.sol';
 import {IDataFeed, IUniswapV3Factory, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
+import {OracleFork} from '../libraries/OracleFork.sol';
 
 contract DataFeed is IDataFeed, Governable {
   IUniswapV3Factory public constant UNISWAP_FACTORY = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
@@ -30,8 +31,8 @@ contract DataFeed is IDataFeed, Governable {
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
-    address _token0,
-    address _token1,
+    address _tokenA,
+    address _tokenB,
     uint24 _fee,
     uint32[] calldata _secondsAgos
   ) external {
@@ -43,13 +44,13 @@ contract DataFeed is IDataFeed, Governable {
     address _dataReceiver = receivers[_bridgeSenderAdapter][_destinationDomainId];
     if (_dataReceiver == address(0)) revert ReceiverNotSet();
 
-    IUniswapV3Pool _pool = IUniswapV3Pool(UNISWAP_FACTORY.getPool(_token0, _token1, _fee));
+    IUniswapV3Pool _pool = IUniswapV3Pool(UNISWAP_FACTORY.getPool(_tokenA, _tokenB, _fee));
 
     IOracleSidechain.ObservationData[] memory _observationsData;
     (_observationsData, lastPoolStateBridged) = fetchObservations(_pool, _secondsAgos);
 
-    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _token0, _token1, _fee);
-    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _token0, _token1, _fee);
+    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _tokenA, _tokenB, _fee);
+    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _tokenA, _tokenB, _fee);
   }
 
   /// @inheritdoc IDataFeed
@@ -112,6 +113,25 @@ contract DataFeed is IDataFeed, Governable {
       tickCumulative: _tickCumulatives[_secondsAgosLength],
       arithmeticMeanTick: _arithmeticMeanTick
     });
+  }
+
+  function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
+    external
+    view
+    returns (uint16[] memory _observationsIndices)
+  {
+    (, , uint16 _observationIndex, uint16 _observationCardinality, , , ) = _pool.slot0();
+    uint256 _secondsAgosLength = _secondsAgos.length;
+    uint32 _time = uint32(block.timestamp);
+    uint32 _target;
+    uint16 _beforeOrAtIndex;
+    _observationsIndices = new uint16[](_secondsAgosLength);
+
+    for (uint256 _i; _i < _secondsAgosLength; ++_i) {
+      _target = _time - _secondsAgos[_i];
+      _beforeOrAtIndex = OracleFork.getPreviousObservationIndex(_pool, _time, _target, _observationIndex, _observationCardinality);
+      _observationsIndices[_i] = _beforeOrAtIndex;
+    }
   }
 
   /// @inheritdoc IDataFeed

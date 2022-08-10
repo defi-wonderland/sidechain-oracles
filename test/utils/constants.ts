@@ -8,4 +8,3 @@ export const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 export const FEE = 10000;
 export const RANDOM_CHAIN_ID = 42;
 export const CARDINALITY = 144;
-export const ORACLE_INIT_CODE_HASH = '0xe184aab4ba7412270743f34cc96511f3a432bc2e559fdfcf5765f71e3437dc44';

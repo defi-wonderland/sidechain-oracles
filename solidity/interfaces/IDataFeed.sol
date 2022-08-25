@@ -72,10 +72,11 @@ interface IDataFeed is IGovernable {
     uint32[] calldata _secondsAgos
   ) external;
 
-  function fetchObservations(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
-    external
-    view
-    returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState);
+  function fetchObservations(
+    IUniswapV3Pool _pool,
+    uint32[] calldata _secondsAgos,
+    bool _stitch
+  ) external view returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState);
 
   function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     external

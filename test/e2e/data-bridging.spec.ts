@@ -1,11 +1,21 @@
 import { ethers } from 'hardhat';
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataFeed, ConnextSenderAdapter, ConnextReceiverAdapter, DataReceiver, OracleFactory, OracleSidechain, ERC20 } from '@typechained';
+import {
+  DataFeed,
+  ConnextSenderAdapter,
+  ConnextReceiverAdapter,
+  DataReceiver,
+  OracleFactory,
+  OracleSidechain,
+  IOracleSidechain,
+  ERC20,
+} from '@typechained';
 import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
 import { RANDOM_CHAIN_ID, KP3R, WETH, FEE } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
+import { readArgFromEvent } from '@utils/event-utils';
 import { getInitCodeHash } from '@utils/misc';
 import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
@@ -26,6 +36,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataReceiver: DataReceiver;
   let oracleSidechain: OracleSidechain;
+  let tx: ContractTransaction;
   let snapshotId: string;
 
   before(async () => {
@@ -56,18 +67,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
   describe('observation bridging flow', () => {
     let secondsAgos = [30, 10, 0];
-    let secondsAgosDeltas: number[];
     let blockTimestamps: number[];
-    let blockTimestampsDelta: number;
     let tickCumulatives: BigNumber[];
-    let tickCumulativesDeltas: BigNumber[];
     let arithmeticMeanTicks: BigNumber[];
     let observationsIndex: number;
-    let observationsDeltas: number[];
     let secondsPerLiquidityCumulativeX128s: BigNumber[];
     let swapAmount = toUnit(10);
-    const hours = 3600;
     let now: number;
+    const hours = 10_000;
 
     context('when the adapter is not set', () => {
       it('should revert', async () => {
@@ -136,15 +143,32 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
       context('when the oracle has no data', () => {
         beforeEach(async () => {
+          await evm.advanceTimeAndBlock(10 * hours);
           /// @notice: creates a random swap to avoid cache
           await uniswapV3Swap(KP3R, swapAmount.add(Math.floor(Math.random() * 10e9)), WETH, FEE);
           now = (await ethers.provider.getBlock('latest')).timestamp;
-          await evm.advanceTimeAndBlock(hours / 2);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+          now = (await ethers.provider.getBlock('latest')).timestamp;
 
-          /// @notice: swap happens at now - hours/2
+          /// @notice: swap happens at now - 1.5 hours                         / here
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
+          ({ arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
+
+          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+        });
+
+        it('should bridge an amount of observations 1 lesser than amount of secondsAgos', async () => {
+          const observationsBridged = (await readArgFromEvent(
+            tx,
+            'DataSent',
+            '_observationsData'
+          )) as IOracleSidechain.ObservationDataStructOutput[];
+
+          expect(observationsBridged.length).to.eq(secondsAgos.length - 1);
+          expect(observationsBridged[observationsBridged.length - 1].blockTimestamp).not.to.eq(0);
         });
 
         it('should bridge the data and add the observations correctly', async () => {
@@ -153,43 +177,38 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             arithmeticMeanTicks,
             0,
             toBN(0),
+            0,
             toBN(0),
             toBN(0)
           ));
+
           observationsIndex = 0;
 
-          let expectedObservation1 = [blockTimestamps[1], tickCumulatives[1], secondsPerLiquidityCumulativeX128s[1], true];
-          let expectedObservation2 = [blockTimestamps[2], tickCumulatives[2], secondsPerLiquidityCumulativeX128s[2], true];
+          for (let i = 1; i < blockTimestamps.length; ++i) {
+            let expectedObservation = [blockTimestamps[i - 1], tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i], true];
+            let observation = await oracleSidechain.observations(observationsIndex++);
+            expect(observation).to.eql(expectedObservation);
+          }
 
-          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-
-          await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-
-          let observation1 = await oracleSidechain.observations(observationsIndex++);
-          let observation2 = await oracleSidechain.observations(observationsIndex++);
           let tick = (await oracleSidechain.slot0()).tick;
-
-          expect(observation1).to.eql(expectedObservation1);
-          expect(observation2).to.eql(expectedObservation2);
           expect(tick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
         });
 
         it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
-          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-
-          await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-
-          const sampleTimestamps = [now - 2 * hours, now]; // indexes 2 and 4
-          const sampleDelta = 2 * hours;
+          const sampleTimestamps = [now - 3 * hours, now - 2 * hours, now - hours, now];
 
           ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
-          let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
-          let [poolTickCumulatives] = await uniV3Pool.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+          let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
+          let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
 
-          let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
-          let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
+          const range = secondsAgos.length - 1;
+          const sampleDelta = sampleTimestamps[range] - sampleTimestamps[0];
+          let poolTickCumulativesDelta = poolTickCumulatives[range].sub(poolTickCumulatives[0]);
+          let oracleTickCumulativesDelta = oracleTickCumulatives[range].sub(oracleTickCumulatives[0]);
 
+          await observePool(uniV3Pool, sampleTimestamps, 0, toBN(0));
+          await observePool(oracleSidechain, sampleTimestamps, 0, toBN(0));
           // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
           expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
         });
@@ -199,15 +218,17 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         let lastBlockTimestampBridged: number;
         let lastTickCumulativeBridged: BigNumber;
         let lastArithmeticMeanTickBridged: BigNumber;
+        let lastBlockTimestamp: number;
         let lastTickCumulative: BigNumber;
         let lastSecondsPerLiquidityCumulativeX128: BigNumber;
+
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
           await uniswapV3Swap(KP3R, swapAmount.add(Math.floor(Math.random() * 10e9)), WETH, FEE);
+          await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
-          await evm.advanceTimeAndBlock(hours / 2);
 
-          /// @notice: swap happens at now - hours/2
+          /// @notice: swap happens at now - 1.5 hours                         / here
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
           ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
@@ -221,76 +242,52 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             arithmeticMeanTicks,
             0,
             toBN(0),
+            0,
             toBN(0),
             toBN(0)
           ));
+
           observationsIndex = blockTimestamps.length - 1;
+          lastBlockTimestamp = blockTimestamps[blockTimestamps.length - 2];
           lastTickCumulative = tickCumulatives[tickCumulatives.length - 1];
           lastSecondsPerLiquidityCumulativeX128 = secondsPerLiquidityCumulativeX128s[secondsPerLiquidityCumulativeX128s.length - 1];
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
 
           await evm.advanceTimeAndBlock(4 * hours);
+        });
+
+        context('when the data to be sent is old compared with that of the oracle', () => {
+          beforeEach(async () => {
+            blockTimestamps = [now - hours, now + hours, now + 2 * hours, now + 4 * hours];
+
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+          });
+
+          it('should revert', async () => {
+            await expect(
+              dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)
+            ).to.be.revertedWith(
+              'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
+            );
+          });
         });
 
         context('when the data to be sent is continuous with that of the oracle', () => {
           beforeEach(async () => {
             blockTimestamps = [now, now + hours, now + 2 * hours, now + 4 * hours];
 
-            ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(
-              uniV3Pool,
-              blockTimestamps,
-              lastBlockTimestampBridged,
-              lastTickCumulativeBridged
-            ));
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
           });
 
-          it('should bridge the data and add the observations correctly', async () => {
-            ({ tickCumulatives, secondsPerLiquidityCumulativeX128s } = calculateOracleObservations(
-              blockTimestamps,
-              arithmeticMeanTicks,
-              lastBlockTimestampBridged,
-              lastArithmeticMeanTickBridged,
-              lastTickCumulative,
-              lastSecondsPerLiquidityCumulativeX128
-            ));
-
-            let expectedObservation1 = [blockTimestamps[1], tickCumulatives[1], secondsPerLiquidityCumulativeX128s[1], true];
-            let expectedObservation2 = [blockTimestamps[2], tickCumulatives[2], secondsPerLiquidityCumulativeX128s[2], true];
-
-            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-
-            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-            let observation1 = await oracleSidechain.observations(observationsIndex++);
-            let observation2 = await oracleSidechain.observations(observationsIndex++);
-            let tick = (await oracleSidechain.slot0()).tick;
-
-            expect(observation1).to.eql(expectedObservation1);
-            expect(observation2).to.eql(expectedObservation2);
-            expect(tick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
-          });
-
-          it.skip('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
-            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-
-            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-            await evm.advanceTimeAndBlock(2 * hours);
-
-            const sampleTimestamps = [now - 2 * hours, now + 4 * hours];
-            const sampleDelta = 6 * hours;
-
-            ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
-
-            let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
-            let [poolTickCumulatives] = await uniV3Pool.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
-
-            let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
-            let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
-
-            // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
-            expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
+          it('should revert', async () => {
+            await expect(
+              dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)
+            ).to.be.revertedWith(
+              'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
+            );
           });
         });
 
@@ -298,12 +295,22 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           beforeEach(async () => {
             blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
 
-            ({ tickCumulativesDeltas, arithmeticMeanTicks } = await observePool(
-              uniV3Pool,
-              blockTimestamps,
-              lastBlockTimestampBridged,
-              lastTickCumulativeBridged
-            ));
+            ({ arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, lastBlockTimestampBridged, lastTickCumulativeBridged));
+
+            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+            tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+          });
+
+          it('should bridge an amount of observations equal to the amount of secondsAgos', async () => {
+            const observationsBridged = (await readArgFromEvent(
+              tx,
+              'DataSent',
+              '_observationsData'
+            )) as IOracleSidechain.ObservationDataStructOutput[];
+
+            expect(observationsBridged.length).to.eq(secondsAgos.length);
+            expect(observationsBridged[observationsBridged.length - 1].blockTimestamp).not.to.eq(0);
           });
 
           it('should bridge the data and add the observations correctly', async () => {
@@ -312,36 +319,28 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
               arithmeticMeanTicks,
               lastBlockTimestampBridged,
               lastArithmeticMeanTickBridged,
+              lastBlockTimestamp,
               lastTickCumulative,
               lastSecondsPerLiquidityCumulativeX128
             ));
 
-            let expectedObservation0 = [blockTimestamps[0], tickCumulatives[0], secondsPerLiquidityCumulativeX128s[0], true];
-            let expectedObservation1 = [blockTimestamps[1], tickCumulatives[1], secondsPerLiquidityCumulativeX128s[1], true];
-            let expectedObservation2 = [blockTimestamps[2], tickCumulatives[2], secondsPerLiquidityCumulativeX128s[2], true];
+            const expectedStitchedObservation = [lastBlockTimestampBridged, tickCumulatives[0], secondsPerLiquidityCumulativeX128s[0], true];
+            const stitchedObservation = await oracleSidechain.observations(observationsIndex++);
+            expect(stitchedObservation).to.eql(expectedStitchedObservation);
 
-            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+            for (let i = 1; i < blockTimestamps.length; ++i) {
+              let expectedObservation = [blockTimestamps[i - 1], tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i], true];
+              let observation = await oracleSidechain.observations(observationsIndex++);
+              expect(observation).to.eql(expectedObservation);
+            }
 
-            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-            let observation0 = await oracleSidechain.observations(observationsIndex++);
-            let observation1 = await oracleSidechain.observations(observationsIndex++);
-            let observation2 = await oracleSidechain.observations(observationsIndex++);
             let tick = (await oracleSidechain.slot0()).tick;
-
-            expect(observation0).to.eql(expectedObservation0);
-            expect(observation1).to.eql(expectedObservation1);
-            expect(observation2).to.eql(expectedObservation2);
             expect(tick).to.eq(arithmeticMeanTicks[arithmeticMeanTicks.length - 1]);
           });
 
-          it.skip('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
-            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-
-            await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
-            await evm.advanceTimeAndBlock(2 * hours);
-
-            const sampleTimestamps = [now - 2 * hours, now + 4 * hours];
-            const sampleDelta = 6 * hours;
+          it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
+            const sampleTimestamps = [now - 3 * hours, now + 4 * hours];
+            const sampleDelta = sampleTimestamps[1] - sampleTimestamps[0];
 
             ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
@@ -363,8 +362,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let time: number;
     let secondsAgos: number[] = [];
     let blockTimestamp: number;
-    let observationIndex: number;
-    let observationCardinality: number;
     let expectedObservationsIndices: number[] = [];
 
     it('should revert if the pool is not initialized', async () => {
@@ -380,7 +377,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     context('when the pool is initialized', () => {
       beforeEach(async () => {
         time = (await ethers.provider.getBlock('latest')).timestamp;
-        [, , observationIndex, observationCardinality] = await uniV3Pool.slot0();
         for (let i = 0; i <= 10; i = i + 2) {
           [blockTimestamp] = await uniV3Pool.observations(i);
           secondsAgos[i] = time - blockTimestamp;

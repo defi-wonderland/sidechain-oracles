@@ -134,8 +134,9 @@ export async function getSecondsAgos(blockTimestamps: number[]): Promise<{ secon
   return { secondsAgos };
 }
 
+// TODO: refactor to be able to use fn w/o lastBridged functionality
 export async function observePool(
-  pool: UniswapV3Pool,
+  pool: UniswapV3Pool | OracleSidechain,
   blockTimestamps: number[],
   lastBlockTimestampBridged: number,
   lastTickCumulativeBridged: BigNumber
@@ -147,7 +148,7 @@ export async function observePool(
 }> {
   let { secondsAgos } = await getSecondsAgos(blockTimestamps);
 
-  let isDiscontinuous = lastBlockTimestampBridged < blockTimestamps[0] && lastBlockTimestampBridged != 0;
+  let isDiscontinuous = lastBlockTimestampBridged != 0;
 
   let secondsAgosDeltas: number[] = [];
   let secondsAgosDelta = 0;
@@ -203,23 +204,26 @@ export function calculateOracleObservations(
   arithmeticMeanTicks: BigNumber[],
   lastBlockTimestampBridged: number,
   lastArithmeticMeanTickBridged: BigNumber,
+  lastBlockTimestamp: number,
   lastTickCumulative: BigNumber,
   lastSecondsPerLiquidityCumulativeX128: BigNumber
 ): { observationsDeltas: number[]; tickCumulatives: BigNumber[]; secondsPerLiquidityCumulativeX128s: BigNumber[] } {
-  let isDiscontinuous = lastBlockTimestampBridged < blockTimestamps[0] && lastBlockTimestampBridged != 0;
+  let isDiscontinuous = lastBlockTimestampBridged != 0;
 
   let observationsDeltas: number[] = [];
   let observationsDelta = 0;
   if (isDiscontinuous) {
+    observationsDelta = lastBlockTimestampBridged - lastBlockTimestamp;
+    observationsDeltas.push(observationsDelta);
     observationsDelta = blockTimestamps[0] - lastBlockTimestampBridged;
     observationsDeltas.push(observationsDelta);
   } else {
     observationsDeltas.push(observationsDelta);
-    observationsDelta = blockTimestamps[1] - lastBlockTimestampBridged;
+    observationsDelta = blockTimestamps[0] - lastBlockTimestamp;
     observationsDeltas.push(observationsDelta);
   }
   for (let i = observationsDeltas.length; i < blockTimestamps.length; ++i) {
-    observationsDelta = blockTimestamps[i] - blockTimestamps[i - 1];
+    observationsDelta = blockTimestamps[i - 1] - blockTimestamps[i - 2];
     observationsDeltas.push(observationsDelta);
   }
 

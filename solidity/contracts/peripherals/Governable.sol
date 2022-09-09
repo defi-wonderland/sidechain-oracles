@@ -5,38 +5,44 @@ import {IGovernable} from '../../interfaces/peripherals/IGovernable.sol';
 
 abstract contract Governable is IGovernable {
   /// @inheritdoc IGovernable
-  address public governance;
-
+  address public governor;
   /// @inheritdoc IGovernable
-  address public pendingGovernance;
+  address public pendingGovernor;
 
-  constructor(address _governance) {
-    if (_governance == address(0)) revert NoGovernanceZeroAddress();
-    governance = _governance;
+  constructor(address _governor) {
+    if (_governor == address(0)) revert ZeroAddress();
+    governor = _governor;
   }
 
   /// @inheritdoc IGovernable
-  function setGovernance(address _governance) external onlyGovernance {
-    pendingGovernance = _governance;
-    emit GovernanceProposal(_governance);
+  function setPendingGovernor(address _pendingGovernor) external onlyGovernor {
+    _setPendingGovernor(_pendingGovernor);
   }
 
   /// @inheritdoc IGovernable
-  function acceptGovernance() external onlyPendingGovernance {
-    governance = pendingGovernance;
-    delete pendingGovernance;
-    emit GovernanceSet(governance);
+  function acceptPendingGovernor() external onlyPendingGovernor {
+    _acceptPendingGovernor();
   }
 
-  /// @notice Functions with this modifier can only be called by governance
-  modifier onlyGovernance() {
-    if (msg.sender != governance) revert OnlyGovernance();
+  function _setPendingGovernor(address _pendingGovernor) internal {
+    if (_pendingGovernor == address(0)) revert ZeroAddress();
+    pendingGovernor = _pendingGovernor;
+    emit PendingGovernorSet(governor, pendingGovernor);
+  }
+
+  function _acceptPendingGovernor() internal {
+    governor = pendingGovernor;
+    pendingGovernor = address(0);
+    emit PendingGovernorAccepted(governor);
+  }
+
+  modifier onlyGovernor() {
+    if (msg.sender != governor) revert OnlyGovernor();
     _;
   }
 
-  /// @notice Functions with this modifier can only be called by pendingGovernance
-  modifier onlyPendingGovernance() {
-    if (msg.sender != pendingGovernance) revert OnlyPendingGovernance();
+  modifier onlyPendingGovernor() {
+    if (msg.sender != pendingGovernor) revert OnlyPendingGovernor();
     _;
   }
 }

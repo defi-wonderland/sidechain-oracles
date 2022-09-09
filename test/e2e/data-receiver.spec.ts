@@ -13,7 +13,7 @@ import { expect } from 'chai';
 
 describe('@skip-on-coverage DataReceiver.sol', () => {
   let stranger: SignerWithAddress;
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
   let dataReceiver: DataReceiver;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let oracleSidechain: OracleSidechain;
@@ -33,14 +33,14 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
     ({ tokenA, tokenB, fee } = await getEnvironment());
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ stranger, governance, dataReceiver, connextReceiverAdapter, oracleFactory } = await setupContracts());
+    ({ stranger, governor, dataReceiver, connextReceiverAdapter, oracleFactory } = await setupContracts());
 
     snapshotId = await evm.snapshot.take();
   });
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    await dataReceiver.connect(governance).whitelistAdapter(connextReceiverAdapter.address, true);
+    await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
   });
 
   describe('salt code hash', () => {

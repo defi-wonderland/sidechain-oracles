@@ -18,6 +18,16 @@ interface IOracleSidechain {
 
   // TODO: complete natspec
 
+  function factory() external view returns (IOracleFactory _oracleFactory);
+
+  function token0() external view returns (address _token0);
+
+  function token1() external view returns (address _token1);
+
+  function fee() external view returns (uint24 _fee);
+
+  function poolSalt() external view returns (bytes32 _poolSalt);
+
   /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
   /// when accessed externally.
   /// @return _sqrtPriceX96 Used to maintain compatibility with Uniswap V3
@@ -40,12 +50,6 @@ interface IOracleSidechain {
       bool _unlocked
     );
 
-  function factory() external view returns (IOracleFactory _oracleFactory);
-
-  function token0() external view returns (address _token0);
-
-  function token1() external view returns (address _token1);
-
   /// @notice Returns data about a specific observation index
   /// @param _index The element of the observations array to fetch
   /// @dev You most likely want to use #observe() instead of this method to get an observation as of some amount of time
@@ -64,21 +68,14 @@ interface IOracleSidechain {
       bool _initialized
     );
 
-  // EVENTS;
-
-  /// @notice Emitted by the pool for increases to the number of observations that can be stored
-  /// @dev observationCardinalityNext is not the observation cardinality until an observation is written at the index
-  /// just before a mint/swap/burn.
-  /// @param _observationCardinalityNextOld The previous value of the next observation cardinality
-  /// @param _observationCardinalityNextNew The updated value of the next observation cardinality
-  event IncreaseObservationCardinalityNext(uint16 _observationCardinalityNextOld, uint16 _observationCardinalityNextNew);
+  // EVENTS
 
   event ObservationWritten(address _user, ObservationData _observationData);
 
-  // CUSTOM ERRORS
+  // ERRORS
 
-  error AI();
   error OnlyDataReceiver();
+  error AI();
 
   // FUNCTIONS
 

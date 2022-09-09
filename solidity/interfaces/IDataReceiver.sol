@@ -11,19 +11,26 @@ import {IGovernable} from './peripherals/IGovernable.sol';
 /// @notice Contains state variables, events, custom errors and functions used in DataReceiver
 interface IDataReceiver is IGovernable {
   // STATE VARIABLES
+
   function oracleFactory() external view returns (IOracleFactory _oracleFactory);
+
+  //solhint-disable-next-line func-name-mixedcase
+  function ORACLE_INIT_CODE_HASH() external view returns (bytes32 _oracleInitCodeHash);
 
   function whitelistedAdapters(IBridgeReceiverAdapter _adapter) external view returns (bool _isAllowed);
 
   // EVENTS
 
   event ObservationsAdded(address _user, IOracleSidechain.ObservationData[] _observationsData);
+
   event AdapterWhitelisted(IBridgeReceiverAdapter _adapter, bool _isAllowed);
 
-  // CUSTOM ERRORS
+  // ERRORS
 
   error ObservationsNotWritable();
+
   error UnallowedAdapter();
+
   error LengthMismatch();
 
   // FUNCTIONS

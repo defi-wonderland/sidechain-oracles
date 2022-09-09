@@ -4,7 +4,7 @@ import { OracleFactory, OracleSidechain, DataReceiver, ERC20 } from '@typechaine
 import { evm, wallet } from '@utils';
 import { ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
 import { toUnit } from '@utils/bn';
-import { onlyGovernance, onlyDataReceiver } from '@utils/behaviours';
+import { onlyDataReceiver, onlyGovernor } from '@utils/behaviours';
 import { sortTokens, calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -12,7 +12,7 @@ import { setupContracts, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage OracleFactory.sol', () => {
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
   let dataReceiverAdapterSigner: SignerWithAddress;
   let dataReceiver: DataReceiver;
   let oracleFactory: OracleFactory;
@@ -37,7 +37,7 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
     [token0, token1] = sortTokens([tokenA.address, tokenB.address]);
     salt = calculateSalt(token0, token1, fee);
 
-    ({ governance, dataReceiver, oracleFactory } = await setupContracts());
+    ({ governor, dataReceiver, oracleFactory } = await setupContracts());
 
     snapshotId = await evm.snapshot.take();
   });
@@ -104,10 +104,10 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
   });
 
   describe('setting data receiver', () => {
-    onlyGovernance(
+    onlyGovernor(
       () => oracleFactory,
       'setDataReceiver(address)',
-      () => governance.address,
+      () => governor.address,
       () => [randomAddress]
     );
   });

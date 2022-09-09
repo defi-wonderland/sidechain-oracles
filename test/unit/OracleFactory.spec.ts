@@ -6,14 +6,14 @@ import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wo
 import { evm, wallet } from '@utils';
 import { CARDINALITY, ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
 import { toUnit } from '@utils/bn';
-import { onlyGovernance, onlyDataReceiver } from '@utils/behaviours';
+import { onlyGovernor, onlyDataReceiver } from '@utils/behaviours';
 import { sortTokens, calculateSalt, getInitCodeHash, getCreate2Address, getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
 describe('OracleFactory.sol', () => {
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
   let dataReceiver: FakeContract<IDataReceiver>;
   let oracleFactory: MockContract<OracleFactory>;
   let oracleFactoryFactory: MockContractFactory<OracleFactory__factory>;
@@ -30,10 +30,10 @@ describe('OracleFactory.sol', () => {
   const randomSalt = getRandomBytes32();
 
   before(async () => {
-    [, governance] = await ethers.getSigners();
+    [, governor] = await ethers.getSigners();
     dataReceiver = await smock.fake('IOracleFactory');
     oracleFactoryFactory = await smock.mock('OracleFactory');
-    oracleFactory = await oracleFactoryFactory.deploy(governance.address, dataReceiver.address);
+    oracleFactory = await oracleFactoryFactory.deploy(governor.address, dataReceiver.address);
     await wallet.setBalance(dataReceiver.address, toUnit(10));
     snapshotId = await evm.snapshot.take();
   });
@@ -43,8 +43,8 @@ describe('OracleFactory.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should initialize governance to the provided address', async () => {
-      expect(await oracleFactory.governance()).to.eq(governance.address);
+    it('should initialize governor to the provided address', async () => {
+      expect(await oracleFactory.governor()).to.eq(governor.address);
     });
 
     it('should initialize data receiver to the provided address', async () => {
@@ -118,39 +118,39 @@ describe('OracleFactory.sol', () => {
   });
 
   describe('setDataReceiver(...)', () => {
-    onlyGovernance(
+    onlyGovernor(
       () => oracleFactory,
       'setDataReceiver(address)',
-      () => governance.address,
+      () => governor.address,
       () => [randomAddress]
     );
 
     it('should set data receiver to the provided address', async () => {
-      await oracleFactory.connect(governance).setDataReceiver(randomAddress);
+      await oracleFactory.connect(governor).setDataReceiver(randomAddress);
       expect(await oracleFactory.dataReceiver()).to.eq(randomAddress);
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(governance).setDataReceiver(randomAddress);
+      tx = await oracleFactory.connect(governor).setDataReceiver(randomAddress);
       await expect(tx).to.emit(oracleFactory, 'DataReceiverSet').withArgs(randomAddress);
     });
   });
 
   describe('setInitialCardinality(...)', () => {
-    onlyGovernance(
+    onlyGovernor(
       () => oracleFactory,
       'setInitialCardinality(uint16)',
-      () => governance.address,
+      () => governor.address,
       () => [randomCardinality]
     );
 
     it('should set the initial cardinality to the provided address', async () => {
-      await oracleFactory.connect(governance).setInitialCardinality(randomCardinality);
+      await oracleFactory.connect(governor).setInitialCardinality(randomCardinality);
       expect(await oracleFactory.initialCardinality()).to.eq(randomCardinality);
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(governance).setInitialCardinality(randomCardinality);
+      tx = await oracleFactory.connect(governor).setInitialCardinality(randomCardinality);
       await expect(tx).to.emit(oracleFactory, 'InitialCardinalitySet').withArgs(randomCardinality);
     });
   });

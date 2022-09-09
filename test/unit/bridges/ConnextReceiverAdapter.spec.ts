@@ -11,6 +11,7 @@ import {
 } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
+import { VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
@@ -32,7 +33,7 @@ describe('ConnextReceiverAdapter.sol', () => {
   const randomOriginId = 3;
   const rinkebyOriginId = 1111;
 
-  const randomSalt = getRandomBytes32();
+  const randomSalt = VALID_POOL_SALT;
 
   before(async () => {
     [, randomUser] = await ethers.getSigners();

@@ -261,6 +261,13 @@
   dependencies:
     "@cspotcode/source-map-consumer" "0.8.0"
 
+"@defi-wonderland/keep3r-v2@0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@defi-wonderland/keep3r-v2/-/keep3r-v2-0.0.7.tgz#57f690753f2da2a9195701ba143c801ff171e139"
+  integrity sha512-bfiEkSwFMN3Fn4FPcQWKoQWi6+ZLq9qmBd9vmlZ6Sj7UFG8Sy0JpAkKJSuwjQZ65VYZDpAmEv4z1uYIs8n4uHQ==
+  dependencies:
+    "@openzeppelin/contracts" "4.3.0"
+
 "@defi-wonderland/smock@2.3.0":
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/@defi-wonderland/smock/-/smock-2.3.0.tgz#97d0eac4ada78230b42123b7404f162f50d95e5a"
@@ -1506,6 +1513,11 @@
   version "3.4.2-solc-0.7"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.4.2-solc-0.7.tgz#38f4dbab672631034076ccdf2f3201fab1726635"
   integrity sha512-W6QmqgkADuFcTLzHL8vVoNBtkwjvQRpYIAom7KiUNoLKghyx3FgH0GBjt8NRvigV1ZmMOBllvE1By1C+bi8WpA==
+
+"@openzeppelin/contracts@4.3.0":
+  version "4.3.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.3.0.tgz#345236d4ec73ef381ab4907c6ef66fd55e5dedad"
+  integrity sha512-+uBDl/TrmR0Kch6mq3tuxMex/fK7huR6+fQMae+zJk1K5T+dp0pFl12Hbc+1L6oYMXoyDSBJ8zqhRIntrREDFA==
 
 "@openzeppelin/contracts@4.6.0":
   version "4.6.0"

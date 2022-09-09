@@ -13,6 +13,9 @@ import {IDataReceiver} from '../interfaces/IDataReceiver.sol';
 contract OracleSidechain is IOracleSidechain {
   using Oracle for Oracle.Observation[65535];
 
+  /// @inheritdoc IOracleSidechain
+  IOracleFactory public immutable factory;
+
   struct Slot0 {
     // the current price
     uint160 sqrtPriceX96;
@@ -34,14 +37,15 @@ contract OracleSidechain is IOracleSidechain {
   Slot0 public slot0;
 
   /// @inheritdoc IOracleSidechain
-  IOracleFactory public immutable factory;
-
-  /// @inheritdoc IOracleSidechain
   Oracle.Observation[65535] public observations;
 
+  /// @inheritdoc IOracleSidechain
   bytes32 public immutable poolSalt;
+  /// @inheritdoc IOracleSidechain
   address public token0;
+  /// @inheritdoc IOracleSidechain
   address public token1;
+  /// @inheritdoc IOracleSidechain
   uint24 public fee;
 
   // TODO: move to interface

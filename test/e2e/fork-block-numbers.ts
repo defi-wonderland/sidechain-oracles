@@ -1,5 +1,5 @@
 const forkBlockNumber: { [name: string]: number } = {
-  oracleSidechain: 14200000,
+  oracleSidechain: 14600000,
 };
 
 export default forkBlockNumber;

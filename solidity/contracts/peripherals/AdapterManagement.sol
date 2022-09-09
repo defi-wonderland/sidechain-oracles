@@ -19,12 +19,12 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
   mapping(IBridgeSenderAdapter => mapping(uint16 => uint32)) public destinationDomainIds;
 
   /// @inheritdoc IAdapterManagement
-  function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external onlyGovernance {
+  function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external onlyGovernor {
     _whitelistAdapter(_bridgeSenderAdapter, _isWhitelisted);
   }
 
   /// @inheritdoc IAdapterManagement
-  function whitelistAdapters(IBridgeSenderAdapter[] calldata _bridgeSenderAdapters, bool[] calldata _isWhitelisted) external onlyGovernance {
+  function whitelistAdapters(IBridgeSenderAdapter[] calldata _bridgeSenderAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
     if (_bridgeSenderAdapterLength != _isWhitelisted.length) revert LengthMismatch();
     uint256 _i;
@@ -40,7 +40,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint32 _destinationDomainId,
     address _dataReceiver
-  ) external onlyGovernance {
+  ) external onlyGovernor {
     _setReceiver(_bridgeSenderAdapter, _destinationDomainId, _dataReceiver);
   }
 
@@ -49,7 +49,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     IBridgeSenderAdapter[] calldata _bridgeSenderAdapters,
     uint32[] calldata _destinationDomainIds,
     address[] calldata _dataReceivers
-  ) external onlyGovernance {
+  ) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
     if (_bridgeSenderAdapterLength != _destinationDomainIds.length || _bridgeSenderAdapterLength != _dataReceivers.length)
       revert LengthMismatch();
@@ -66,7 +66,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     uint32 _destinationDomainId
-  ) external onlyGovernance {
+  ) external onlyGovernor {
     _setDestinationDomainId(_bridgeSenderAdapter, _chainId, _destinationDomainId);
   }
 
@@ -75,7 +75,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     IBridgeSenderAdapter[] calldata _bridgeSenderAdapters,
     uint16[] calldata _chainIds,
     uint32[] calldata _destinationDomainIds
-  ) external onlyGovernance {
+  ) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
     if (_bridgeSenderAdapterLength != _destinationDomainIds.length || _bridgeSenderAdapterLength != _chainIds.length) revert LengthMismatch();
     uint256 _i;

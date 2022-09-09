@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ConnextSenderAdapter, ConnextSenderAdapter__factory, IConnextHandler } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { ZERO_ADDRESS } from '@utils/constants';
+import { ZERO_ADDRESS, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyDataFeed } from '@utils/behaviours';
@@ -23,7 +23,7 @@ describe('ConnextSenderAdapter.sol', () => {
   const randomDestinationDomainId = 3;
   const rinkebyOriginId = 1111;
 
-  const randomSalt = getRandomBytes32();
+  const randomSalt = VALID_POOL_SALT;
 
   before(async () => {
     [, randomFeed] = await ethers.getSigners();

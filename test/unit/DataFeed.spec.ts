@@ -13,7 +13,8 @@ import chai, { expect } from 'chai';
 chai.use(smock.matchers);
 
 describe('DataFeed.sol', () => {
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
+  let randomUser: SignerWithAddress;
   let dataFeed: MockContract<DataFeed>;
   let dataFeedFactory: MockContractFactory<DataFeed__factory>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
@@ -29,7 +30,7 @@ describe('DataFeed.sol', () => {
   const randomSalt = VALID_POOL_SALT;
 
   before(async () => {
-    [, governance] = await ethers.getSigners();
+    [, governor] = await ethers.getSigners();
 
     connextSenderAdapter = await smock.fake('IConnextSenderAdapter');
     uniswapV3Factory = await smock.fake('IUniswapV3Factory', {
@@ -47,12 +48,12 @@ describe('DataFeed.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    dataFeed = await dataFeedFactory.deploy(governance.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address);
   });
 
   describe('constructor(...)', () => {
-    it('should initialize governance to the address passed to the constructor', async () => {
-      expect(await dataFeed.governance()).to.eq(governance.address);
+    it('should initialize governor to the address passed to the constructor', async () => {
+      expect(await dataFeed.governor()).to.eq(governor.address);
     });
   });
 
@@ -72,9 +73,9 @@ describe('DataFeed.sol', () => {
     let arithmeticMeanTick2: number;
 
     beforeEach(async () => {
-      await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
-      await dataFeed.connect(governance).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
-      await dataFeed.connect(governance).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
+      await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+      await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
+      await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
       connextSenderAdapter.bridgeObservations.reset();
     });
 

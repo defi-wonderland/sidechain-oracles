@@ -1,8 +1,10 @@
 import { ethers } from 'hardhat';
 import { BigNumber, ContractTransaction } from 'ethers';
+import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   DataFeed,
+  DataFeedJob,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
   DataReceiver,
@@ -11,7 +13,7 @@ import {
   IOracleSidechain,
   ERC20,
 } from '@typechained';
-import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
+import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
 import { KP3R, WETH, FEE, RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
@@ -24,18 +26,22 @@ import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool,
 import { expect } from 'chai';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
+  let keeper: JsonRpcSigner;
+  let kp3rProxyGovernor: JsonRpcSigner;
   let dataFeed: DataFeed;
-  let oracleFactory: OracleFactory;
+  let dataFeedJob: DataFeedJob;
   let uniswapV3Factory: UniswapV3Factory;
   let uniV3Pool: UniswapV3Pool;
   let tokenA: ERC20;
   let tokenB: ERC20;
   let fee: number;
+  let keep3rV2: Keep3rV2;
   let salt: string;
   let connextSenderAdapter: ConnextSenderAdapter;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataReceiver: DataReceiver;
+  let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
   let tx: ContractTransaction;
   let snapshotId: string;
@@ -46,16 +52,11 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    /*
-     * tokenA = KP3R
-     * tokenB = WETH
-     * fee = 1_000
-     */
-    ({ uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee } = await getEnvironment());
+    ({ uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee, keep3rV2, keeper, kp3rProxyGovernor } = await getEnvironment());
 
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ governance, dataFeed, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } = await setupContracts());
+    ({ governor, dataFeed, dataFeedJob, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } = await setupContracts());
 
     ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
@@ -94,7 +95,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     context('when only the adapter is set', () => {
       beforeEach(async () => {
-        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
       });
 
       it('should revert', async () => {
@@ -106,9 +107,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     context('when only the adapter and the destination domain are set', () => {
       beforeEach(async () => {
-        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed
-          .connect(governance)
+          .connect(governor)
           .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
       });
 
@@ -121,12 +122,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     context('when the adapter, destination domain and receiver are set, but the adapter is not whitelisted in the data receiver', () => {
       beforeEach(async () => {
-        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed
-          .connect(governance)
+          .connect(governor)
           .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
         await dataFeed
-          .connect(governance)
+          .connect(governor)
           .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
       });
 
@@ -139,14 +140,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     context('when the adapter, destination domain and receiver are set and whitelisted', () => {
       beforeEach(async () => {
-        await dataFeed.connect(governance).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed
-          .connect(governance)
+          .connect(governor)
           .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
         await dataFeed
-          .connect(governance)
+          .connect(governor)
           .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
-        await dataReceiver.connect(governance).whitelistAdapter(connextReceiverAdapter.address, true);
+        await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 
       context('when the oracle has no data', () => {
@@ -399,6 +400,53 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       it('should return the observations indices', async () => {
         let observationsIndices = await dataFeed.fetchObservationsIndices(uniV3Pool.address, secondsAgos);
         expect(observationsIndices).to.eql(expectedObservationsIndices);
+      });
+    });
+  });
+
+  describe('keep3r job', () => {
+    let secondsAgos = [30, 10, 0];
+    let bondTime: BigNumber;
+
+    beforeEach(async () => {
+      bondTime = await keep3rV2.bondTime();
+      await keep3rV2.connect(keeper).bond(tokenB.address, 0);
+      await evm.advanceTimeAndBlock(bondTime.toNumber());
+      await keep3rV2.connect(keeper).activate(tokenB.address);
+      await keep3rV2.addJob(dataFeedJob.address);
+      await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedJob.address, toUnit(10));
+    });
+
+    context('when the adapter, destination domain and receiver are set and whitelisted', () => {
+      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed
+          .connect(governor)
+          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
+        await dataFeed
+          .connect(governor)
+          .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
+        await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
+      });
+
+      it('should revert if the keeper is not valid', async () => {
+        await expect(
+          dataFeedJob.connect(governor).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)
+        ).to.be.revertedWith('KeeperNotValid()');
+      });
+
+      it('should work the job', async () => {
+        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.emit(
+          dataFeed,
+          'DataSent'
+        );
+      });
+
+      it('should pay the keeper', async () => {
+        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.emit(
+          keep3rV2,
+          'KeeperWork'
+        );
       });
     });
   });

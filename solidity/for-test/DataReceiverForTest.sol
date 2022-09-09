@@ -8,7 +8,7 @@ import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
 contract DataReceiverForTest is DataReceiver {
-  constructor(address _governance, IOracleFactory _oracleFactory) DataReceiver(_governance, _oracleFactory) {}
+  constructor(address _governor, IOracleFactory _oracleFactory) DataReceiver(_governor, _oracleFactory) {}
 
   // TODO: reuse logic from DataReceiver (don't rewrite code)
   function addPermissionlessObservations(IOracleSidechain.ObservationData[] calldata _observationsData, bytes32 _poolSalt) external {

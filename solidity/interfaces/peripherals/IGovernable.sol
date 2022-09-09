@@ -1,46 +1,43 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-/// @title Governable contract
-/// @notice Manages the governance role
 interface IGovernable {
-  // Events
+  // STATE VARIABLES
 
-  /// @notice Emitted when pendingGovernance accepts to be governance
-  /// @param _governance Address of the new governance
-  event GovernanceSet(address _governance);
+  /// @return _governor Address of the current governor
+  function governor() external view returns (address _governor);
 
-  /// @notice Emitted when a new governance is proposed
-  /// @param _pendingGovernance Address that is proposed to be the new governance
-  event GovernanceProposal(address _pendingGovernance);
+  /// @return _pendingGovernor Address of the current pending governor
+  function pendingGovernor() external view returns (address _pendingGovernor);
 
-  // Errors
+  // EVENTS
 
-  /// @notice Throws if the caller of the function is not governance
-  error OnlyGovernance();
+  /// @notice Emitted when a new pending governor is set
+  /// @param _governor Address of the current governor
+  /// @param _pendingGovernor Address of the proposed next governor
+  event PendingGovernorSet(address _governor, address _pendingGovernor);
 
-  /// @notice Throws if the caller of the function is not pendingGovernance
-  error OnlyPendingGovernance();
+  /// @notice Emitted when a new governor is set
+  /// @param _newGovernor Address of the new governor
+  event PendingGovernorAccepted(address _newGovernor);
 
-  /// @notice Throws if trying to set governance to zero address
-  error NoGovernanceZeroAddress();
+  // ERRORS
 
-  // Variables
+  /// @notice Throws if a variable is assigned to the zero address
+  error ZeroAddress();
 
-  /// @notice Stores the governance address
-  /// @return _governance The governance addresss
-  function governance() external view returns (address _governance);
+  /// @notice Throws if a non-governor user tries to call a OnlyGovernor function
+  error OnlyGovernor();
 
-  /// @notice Stores the pendingGovernance address
-  /// @return _pendingGovernance The pendingGovernance addresss
-  function pendingGovernance() external view returns (address _pendingGovernance);
+  /// @notice Throws if a non-pending-governor user tries to call a OnlyPendingGovernor function
+  error OnlyPendingGovernor();
 
-  // Methods
+  // FUNCTIONS
 
-  /// @notice Proposes a new address to be governance
-  /// @param _governance The address being proposed as the new governance
-  function setGovernance(address _governance) external;
+  /// @notice Allows a governor to propose a new governor
+  /// @param _pendingGovernor Address of the proposed new governor
+  function setPendingGovernor(address _pendingGovernor) external;
 
-  /// @notice Changes the governance from the current governance to the previously proposed address
-  function acceptGovernance() external;
+  /// @notice Allows a proposed governor to accept the governance
+  function acceptPendingGovernor() external;
 }

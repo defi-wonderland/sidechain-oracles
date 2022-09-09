@@ -9,13 +9,15 @@ import {IDataReceiver} from '../interfaces/IDataReceiver.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
 contract OracleFactory is IOracleFactory, Governable {
+  /// @inheritdoc IOracleFactory
   IDataReceiver public dataReceiver;
-
-  uint16 public initialCardinality = 144;
 
   OracleParameters public oracleParameters;
 
-  constructor(address _governance, IDataReceiver _dataReceiver) Governable(_governance) {
+  /// @inheritdoc IOracleFactory
+  uint16 public initialCardinality = 144;
+
+  constructor(address _governor, IDataReceiver _dataReceiver) Governable(_governor) {
     dataReceiver = _dataReceiver;
   }
 
@@ -27,12 +29,14 @@ contract OracleFactory is IOracleFactory, Governable {
     emit OracleDeployed(_deployedOracle, _poolSalt, initialCardinality);
   }
 
-  function setDataReceiver(IDataReceiver _dataReceiver) external onlyGovernance {
+  /// @inheritdoc IOracleFactory
+  function setDataReceiver(IDataReceiver _dataReceiver) external onlyGovernor {
     dataReceiver = _dataReceiver;
     emit DataReceiverSet(dataReceiver);
   }
 
-  function setInitialCardinality(uint16 _initialCardinality) external onlyGovernance {
+  /// @inheritdoc IOracleFactory
+  function setInitialCardinality(uint16 _initialCardinality) external onlyGovernor {
     initialCardinality = _initialCardinality;
     emit InitialCardinalitySet(initialCardinality);
   }

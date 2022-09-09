@@ -8,13 +8,15 @@ import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
 contract DataReceiver is IDataReceiver, Governable {
+  /// @inheritdoc IDataReceiver
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xff738c27977cb06ff63c2b4640f8371d66e6b7fe2d4f8b3d12d3ccf9bc9957b2;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xe69bca862eeab819f0666373619d495888a9c537b2ce090e3941cc5cab137385;
 
+  /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
-  constructor(address _governance, IOracleFactory _oracleFactory) Governable(_governance) {
+  constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
     oracleFactory = _oracleFactory;
   }
 
@@ -38,11 +40,12 @@ contract DataReceiver is IDataReceiver, Governable {
     _addObservations(IOracleSidechain(_deployedOracle), _observationsData);
   }
 
-  function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernance {
+  function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {
     _whitelistAdapter(_receiverAdapter, _isWhitelisted);
   }
 
-  function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external onlyGovernance {
+  /// @inheritdoc IDataReceiver
+  function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {
     uint256 _receiverAdapterLength = _receiverAdapters.length;
     if (_receiverAdapterLength != _isWhitelisted.length) revert LengthMismatch();
     uint256 _i;

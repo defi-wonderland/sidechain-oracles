@@ -92,6 +92,7 @@ contract DataFeed is IDataFeed, AdapterManagement {
     });
   }
 
+  /// @inheritdoc IDataFeed
   function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     external
     view

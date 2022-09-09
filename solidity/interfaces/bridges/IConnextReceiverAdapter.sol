@@ -20,7 +20,7 @@ interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
 
   event DataSent(IOracleSidechain.ObservationData[] _observationsData, bytes32 _poolSalt);
 
-  // CUSTOM ERRORS
+  // ERRORS
 
   error UnauthorizedCaller();
 }

@@ -19,7 +19,7 @@ import { expect } from 'chai';
 
 describe('@skip-on-coverage OracleSidechain.sol', () => {
   let deployer: SignerWithAddress;
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
   let oracleFactory: OracleFactory;
   let oracleFactoryFactory: OracleFactory__factory;
   let oracleSidechain: OracleSidechain;
@@ -41,17 +41,17 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     ({ tokenA, tokenB, fee } = await getEnvironment());
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ deployer, governance } = await setupContracts());
+    ({ deployer, governor } = await setupContracts());
 
     const currentNonce = await ethers.provider.getTransactionCount(deployer.address);
     const precalculatedDataReceiverAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
 
     const oracleFactoryFactory = (await ethers.getContractFactory('OracleFactory')) as OracleFactory__factory;
-    oracleFactory = await oracleFactoryFactory.connect(deployer).deploy(governance.address, precalculatedDataReceiverAddress);
+    oracleFactory = await oracleFactoryFactory.connect(deployer).deploy(governor.address, precalculatedDataReceiverAddress);
 
     const dataReceiverFactory = (await ethers.getContractFactory('DataReceiverForTest')) as DataReceiverForTest__factory;
-    allowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governance.address, oracleFactory.address);
-    unallowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governance.address, oracleFactory.address);
+    allowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governor.address, oracleFactory.address);
+    unallowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governor.address, oracleFactory.address);
 
     snapshotId = await evm.snapshot.take();
   });

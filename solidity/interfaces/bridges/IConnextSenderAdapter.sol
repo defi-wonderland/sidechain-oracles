@@ -6,6 +6,12 @@ import {IBridgeSenderAdapter, IOracleSidechain} from './IBridgeSenderAdapter.sol
 import {IDataFeed} from '../IDataFeed.sol';
 
 interface IConnextSenderAdapter is IBridgeSenderAdapter {
+  // STATE VARIABLES
+
+  function connext() external view returns (IConnextHandler _connext);
+
+  function dataFeed() external view returns (IDataFeed _dataFeed);
+
   // EVENTS
 
   event DataSent(
@@ -19,10 +25,4 @@ interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // ERRORS
 
   error OnlyDataFeed();
-
-  // STATE VARIABLES
-
-  function connext() external view returns (IConnextHandler _connext);
-
-  function dataFeed() external view returns (IDataFeed _dataFeed);
 }

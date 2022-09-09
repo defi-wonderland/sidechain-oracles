@@ -6,14 +6,14 @@ import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wo
 import { evm } from '@utils';
 import { ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
-import { onlyGovernance, onlyWhitelistedAdapter } from '@utils/behaviours';
+import { onlyGovernor, onlyWhitelistedAdapter } from '@utils/behaviours';
 import { getInitCodeHash, getCreate2Address, getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
 describe('DataReceiver.sol', () => {
-  let governance: SignerWithAddress;
+  let governor: SignerWithAddress;
   let fakeAdapter: SignerWithAddress;
   let randomAdapter: SignerWithAddress;
   let dataReceiver: MockContract<DataReceiver>;
@@ -29,10 +29,12 @@ describe('DataReceiver.sol', () => {
   const randomSalt = getRandomBytes32();
 
   before(async () => {
-    [, governance, fakeAdapter, randomAdapter] = await ethers.getSigners();
+    [, governor, fakeAdapter, randomAdapter] = await ethers.getSigners();
+
     oracleFactory = await smock.fake('IOracleFactory');
+
     dataReceiverFactory = await smock.mock('DataReceiver');
-    dataReceiver = await dataReceiverFactory.deploy(governance.address, oracleFactory.address);
+    dataReceiver = await dataReceiverFactory.deploy(governor.address, oracleFactory.address);
 
     ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
     precalculatedOracleAddress = getCreate2Address(oracleFactory.address, existingSalt, ORACLE_INIT_CODE_HASH);
@@ -40,6 +42,7 @@ describe('DataReceiver.sol', () => {
     oracleSidechain = await smock.fake('IOracleSidechain', {
       address: precalculatedOracleAddress,
     });
+
     snapshotId = await evm.snapshot.take();
   });
 
@@ -54,8 +57,8 @@ describe('DataReceiver.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should initialize governance to the provided address', async () => {
-      expect(await dataReceiver.governance()).to.eq(governance.address);
+    it('should initialize governor to the provided address', async () => {
+      expect(await dataReceiver.governor()).to.eq(governor.address);
     });
 
     it('should initialize oracleFactory to the provided address', async () => {
@@ -73,7 +76,7 @@ describe('DataReceiver.sol', () => {
     let observationsData = [observationData1, observationData2];
 
     beforeEach(async () => {
-      await dataReceiver.connect(governance).whitelistAdapter(fakeAdapter.address, true);
+      await dataReceiver.connect(governor).whitelistAdapter(fakeAdapter.address, true);
       oracleSidechain.write.whenCalledWith(observationsData).returns(true);
     });
 
@@ -149,44 +152,44 @@ describe('DataReceiver.sol', () => {
     });
   });
 
-  describe('whitelistAdapter', () => {
-    onlyGovernance(
+  describe('whitelistAdapter(...)', () => {
+    onlyGovernor(
       () => dataReceiver,
       'whitelistAdapter',
-      () => governance,
+      () => governor,
       () => [randomAdapter.address, true]
     );
 
     it('should whitelist the adapter', async () => {
-      await dataReceiver.connect(governance).whitelistAdapter(randomAdapter.address, true);
+      await dataReceiver.connect(governor).whitelistAdapter(randomAdapter.address, true);
       expect(await dataReceiver.whitelistedAdapters(randomAdapter.address)).to.eq(true);
     });
 
     it('should remove whitelist from the adapter', async () => {
-      await dataReceiver.connect(governance).whitelistAdapter(randomAdapter.address, true);
-      await dataReceiver.connect(governance).whitelistAdapter(randomAdapter.address, false);
+      await dataReceiver.connect(governor).whitelistAdapter(randomAdapter.address, true);
+      await dataReceiver.connect(governor).whitelistAdapter(randomAdapter.address, false);
       expect(await dataReceiver.whitelistedAdapters(randomAdapter.address)).to.eq(false);
     });
 
     it('should emit an event when adapter is whitelisted', async () => {
-      await expect(await dataReceiver.connect(governance).whitelistAdapter(randomAdapter.address, true))
+      await expect(await dataReceiver.connect(governor).whitelistAdapter(randomAdapter.address, true))
         .to.emit(dataReceiver, 'AdapterWhitelisted')
         .withArgs(randomAdapter.address, true);
     });
 
     it('should emit an event when adapter whitelist is revoked', async () => {
-      await dataReceiver.connect(governance).whitelistAdapter(randomAdapter.address, true);
-      await expect(await dataReceiver.connect(governance).whitelistAdapter(randomAdapter.address, false))
+      await dataReceiver.connect(governor).whitelistAdapter(randomAdapter.address, true);
+      await expect(await dataReceiver.connect(governor).whitelistAdapter(randomAdapter.address, false))
         .to.emit(dataReceiver, 'AdapterWhitelisted')
         .withArgs(randomAdapter.address, false);
     });
   });
 
-  describe('whitelistAdapters', () => {
-    onlyGovernance(
+  describe('whitelistAdapters(...)', () => {
+    onlyGovernor(
       () => dataReceiver,
       'whitelistAdapters',
-      () => governance,
+      () => governor,
       () => [
         [randomAdapter.address, fakeAdapter.address],
         [true, true],
@@ -194,39 +197,39 @@ describe('DataReceiver.sol', () => {
     );
 
     it('should revert if the lengths of the arguments dont match', async () => {
-      await expect(dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true])).to.be.revertedWith(
+      await expect(dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true])).to.be.revertedWith(
         'LengthMismatch()'
       );
 
-      await expect(dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address], [true, true])).to.be.revertedWith(
+      await expect(dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address], [true, true])).to.be.revertedWith(
         'LengthMismatch()'
       );
     });
 
     it('should whitelist the adapters', async () => {
-      await dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
+      await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
       expect(await dataReceiver.whitelistedAdapters(randomAdapter.address)).to.eq(true);
       expect(await dataReceiver.whitelistedAdapters(fakeAdapter.address)).to.eq(true);
     });
 
     it('should remove whitelist from the adapters', async () => {
-      await dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
-      await dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [false, false]);
+      await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
+      await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [false, false]);
       expect(await dataReceiver.whitelistedAdapters(randomAdapter.address)).to.eq(false);
       expect(await dataReceiver.whitelistedAdapters(fakeAdapter.address)).to.eq(false);
     });
 
     it('should emit n events when n adapters are whitelisted', async () => {
-      tx = await dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
+      tx = await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(randomAdapter.address, true);
 
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(fakeAdapter.address, true);
     });
 
     it('should emit n events when n adapters whitelists are revoked', async () => {
-      tx = await dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [false, false]);
+      tx = await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [false, false]);
 
-      await dataReceiver.connect(governance).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
+      await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(randomAdapter.address, false);
 
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(fakeAdapter.address, false);

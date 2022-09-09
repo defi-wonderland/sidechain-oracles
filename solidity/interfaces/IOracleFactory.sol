@@ -18,9 +18,6 @@ interface IOracleFactory is IGovernable {
 
   function dataReceiver() external view returns (IDataReceiver _dataReceiver);
 
-  /// @return _initialCardinality The initial size of the observations memory storage for newly deployed pools
-  function initialCardinality() external view returns (uint16 _initialCardinality);
-
   /// @return _factory The address of the deployer factory
   /// @return _poolSalt The id of both the oracle and the pool
   /// @return _cardinality The size of the observations memory storage
@@ -33,13 +30,17 @@ interface IOracleFactory is IGovernable {
       uint16 _cardinality
     );
 
+  /// @return _initialCardinality The initial size of the observations memory storage for newly deployed pools
+  function initialCardinality() external view returns (uint16 _initialCardinality);
+
   // EVENTS
 
   event OracleDeployed(address _oracle, bytes32 _poolSalt, uint16 _cardinality);
   event DataReceiverSet(IDataReceiver _dataReceiver);
+
   event InitialCardinalitySet(uint16 _initialCardinality);
 
-  // CUSTOM ERRORS
+  // ERRORS
 
   error OnlyDataReceiver();
 

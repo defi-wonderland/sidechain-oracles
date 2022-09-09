@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';
@@ -39,15 +39,41 @@ contract OracleSidechain is IOracleSidechain {
   /// @inheritdoc IOracleSidechain
   Oracle.Observation[65535] public observations;
 
-  address public immutable token0;
+  bytes32 public immutable poolSalt;
+  address public token0;
+  address public token1;
+  uint24 public fee;
 
-  address public immutable token1;
+  // TODO: move to interface
+  error InvalidPool();
+  event PoolInfoInitialized(bytes32 indexed poolSalt, address token0, address token1, uint24 fee);
 
-  uint24 public immutable fee;
+  /*
+   * NOTE: public function that allows signer to register token0, token1 and fee
+   *       before someone registers, oracle can be found with poolSalt, but token0 and token1 views will return address(0)
+   */
+  function initializePoolInfo(
+    address _tokenA,
+    address _tokenB,
+    uint24 _fee
+  ) external {
+    if (!slot0.unlocked) revert AI();
+
+    (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
+    if (poolSalt != keccak256(abi.encode(_token0, _token1, _fee))) revert InvalidPool();
+
+    token0 = _token0;
+    token1 = _token1;
+    fee = _fee;
+    slot0.unlocked = false;
+
+    emit PoolInfoInitialized(poolSalt, _token0, _token1, _fee);
+  }
 
   constructor() {
     uint16 _cardinality;
-    (factory, token0, token1, fee, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
+    (factory, poolSalt, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
+
     slot0 = Slot0({
       sqrtPriceX96: 0,
       tick: 0,

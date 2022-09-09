@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IExecutor} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IExecutor.sol';
@@ -18,7 +18,7 @@ interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
 
   // EVENTS
 
-  event DataSent(IOracleSidechain.ObservationData[] _observationsData, address _tokenA, address _tokenB, uint24 _fee);
+  event DataSent(IOracleSidechain.ObservationData[] _observationsData, bytes32 _poolSalt);
 
   // CUSTOM ERRORS
 

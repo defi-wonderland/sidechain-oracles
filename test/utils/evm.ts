@@ -1,5 +1,5 @@
-import { BigNumber, BigNumberish } from 'ethers';
 import { network } from 'hardhat';
+import { BigNumber, BigNumberish } from 'ethers';
 
 export const advanceTimeAndBlock = async (time: number): Promise<void> => {
   await advanceTime(time);

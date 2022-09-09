@@ -1,9 +1,9 @@
-import { smock } from '@defi-wonderland/smock';
-import { Provider } from '@ethersproject/providers';
-import chai, { expect } from 'chai';
 import { Signer } from 'ethers';
+import { Provider } from '@ethersproject/providers';
+import { smock } from '@defi-wonderland/smock';
 import { wallet } from '@utils';
 import { toUnit } from '@utils/bn';
+import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 

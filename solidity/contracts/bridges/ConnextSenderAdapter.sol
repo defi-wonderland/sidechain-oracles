@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {LibConnextStorage, CallParams, XCallArgs} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
@@ -20,17 +20,15 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     address _to,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee
+    bytes32 _poolSalt
   ) external payable {
     if (msg.sender != address(dataFeed)) revert OnlyDataFeed();
 
     // TODO: asset will be deprecated, we have to have one for now--will delete as soon as it's deprecated. This address is a random placeholder
     address _asset = 0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9;
-    bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],address,address,uint24)'));
+    bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],bytes32)'));
 
-    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _tokenA, _tokenB, _fee);
+    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _poolSalt);
     uint32 _originDomainId = 1111; // TODO: in theory if we are only going to bridge from mainnet, this could be hardcoded--1111 is rinkeby
 
     CallParams memory _callParams = CallParams({
@@ -52,6 +50,6 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
 
     connext.xcall(_xcallArgs);
 
-    emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _tokenA, _tokenB, _fee);
+    emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _poolSalt);
   }
 }

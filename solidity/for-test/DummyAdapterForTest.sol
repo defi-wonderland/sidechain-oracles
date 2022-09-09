@@ -1,9 +1,9 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {OracleSidechain} from '../OracleSidechain.sol';
-import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
-import {IDataReceiver} from '../../interfaces/IDataReceiver.sol';
+import {OracleSidechain} from '../contracts/OracleSidechain.sol';
+import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
+import {IDataReceiver} from '../interfaces/IDataReceiver.sol';
 
 contract DummyAdapterForTest {
   // TODO: factorize interfaces so that this adapter can use same as sender/receiver
@@ -19,11 +19,9 @@ contract DummyAdapterForTest {
     IDataReceiver _to,
     uint32,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee
+    bytes32 _poolSalt
   ) external payable {
-    _to.addObservations(_observationsData, _tokenA, _tokenB, _fee);
+    _to.addObservations(_observationsData, _poolSalt);
     emit SentData(_to, _observationsData);
   }
 }

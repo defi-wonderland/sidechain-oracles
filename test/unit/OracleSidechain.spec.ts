@@ -3,9 +3,10 @@ import { BigNumber } from 'ethers';
 import { OracleSidechain, OracleSidechain__factory, IOracleSidechain, OracleFactory, DataReceiver } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { CARDINALITY } from '@utils/constants';
+import { ZERO_ADDRESS, CARDINALITY } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { onlyDataReceiver } from '@utils/behaviours';
+import { sortTokens, calculateSalt } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -20,6 +21,7 @@ describe('OracleSidechain.sol', () => {
   const randomToken0 = wallet.generateRandomAddress();
   const randomToken1 = wallet.generateRandomAddress();
   const randomFee = 3000;
+  const salt = calculateSalt(randomToken0, randomToken1, randomFee);
 
   before(async () => {
     dataReceiver = await smock.fake('DataReceiver');
@@ -27,14 +29,14 @@ describe('OracleSidechain.sol', () => {
     oracleFactory = await smock.fake('OracleFactory');
     await wallet.setBalance(oracleFactory.address, toUnit(10));
     oracleFactory.dataReceiver.returns(dataReceiver.address);
-    oracleFactory.oracleParameters.returns([oracleFactory.address, randomToken0, randomToken1, randomFee, CARDINALITY]);
+    oracleFactory.oracleParameters.returns([oracleFactory.address, salt, CARDINALITY]);
     oracleSidechainFactory = await smock.mock('OracleSidechain');
-    oracleSidechain = await oracleSidechainFactory.connect(oracleFactory.wallet).deploy();
     snapshotId = await evm.snapshot.take();
   });
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
+    oracleSidechain = await oracleSidechainFactory.connect(oracleFactory.wallet).deploy();
   });
 
   describe('constructor(...)', () => {
@@ -42,16 +44,16 @@ describe('OracleSidechain.sol', () => {
       expect(await oracleSidechain.factory()).to.eq(oracleFactory.address);
     });
 
-    it('should return the correct token0', async () => {
-      expect(await oracleSidechain.token0()).to.eq(randomToken0);
+    it('should not initialize token0', async () => {
+      expect(await oracleSidechain.token0()).to.eq(ZERO_ADDRESS);
     });
 
-    it('should return the correct token1', async () => {
-      expect(await oracleSidechain.token1()).to.eq(randomToken1);
+    it('should not initialize token1', async () => {
+      expect(await oracleSidechain.token1()).to.eq(ZERO_ADDRESS);
     });
 
-    it('should return the correct fee', async () => {
-      expect(await oracleSidechain.fee()).to.eq(randomFee);
+    it('should not initialize fee', async () => {
+      expect(await oracleSidechain.fee()).to.eq(0);
     });
 
     it('should initialize sqrtPriceX96 to 0', async () => {
@@ -62,15 +64,15 @@ describe('OracleSidechain.sol', () => {
       expect((await oracleSidechain.slot0()).tick).to.eq(0);
     });
 
-    it('should initialize observationIndex to 1023', async () => {
+    it('should initialize observationIndex to initial cardinality - 1', async () => {
       expect((await oracleSidechain.slot0()).observationIndex).to.eq(CARDINALITY - 1);
     });
 
-    it('should initialize cardinality to 1024', async () => {
+    it('should initialize cardinality to initial cardinality', async () => {
       expect((await oracleSidechain.slot0()).observationCardinality).to.eq(CARDINALITY);
     });
 
-    it('should initialize cardinalityNext to 1024', async () => {
+    it('should initialize cardinalityNext to initial cardinality', async () => {
       expect((await oracleSidechain.slot0()).observationCardinalityNext).to.eq(CARDINALITY);
     });
 
@@ -80,6 +82,51 @@ describe('OracleSidechain.sol', () => {
 
     it('should initialize unlocked to true', async () => {
       expect((await oracleSidechain.slot0()).unlocked).to.eq(true);
+    });
+  });
+
+  describe('initializePoolInfo(...)', async () => {
+    it('should revert if pool info is incorrect', async () => {
+      await expect(oracleSidechain.initializePoolInfo(randomToken0, randomToken1, 0)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, randomToken1, randomFee)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(randomToken0, ZERO_ADDRESS, randomFee)).to.be.revertedWith('InvalidPool()');
+    });
+
+    it('should work with disordered tokens', async () => {
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomToken0, randomToken1, randomFee)).not.to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomToken1, randomToken0, randomFee)).not.to.be.revertedWith('InvalidPool()');
+    });
+
+    it('should set token0', async () => {
+      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
+      const [token0] = sortTokens([randomToken0, randomToken1]);
+
+      expect(await oracleSidechain.token0()).to.eq(token0);
+    });
+
+    it('should set token1', async () => {
+      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
+      const [, token1] = sortTokens([randomToken0, randomToken1]);
+
+      expect(await oracleSidechain.token1()).to.eq(token1);
+    });
+
+    it('should set fee', async () => {
+      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
+
+      expect(await oracleSidechain.fee()).to.eq(randomFee);
+    });
+
+    it('should set unlocked to false', async () => {
+      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
+
+      expect((await oracleSidechain.slot0()).unlocked).to.eq(false);
+    });
+
+    it('should revert after pool info was initialized', async () => {
+      await oracleSidechain.setVariable('slot0', { ['unlocked']: false });
+
+      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith('AI()');
     });
   });
 

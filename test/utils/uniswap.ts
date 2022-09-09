@@ -1,10 +1,10 @@
+import { ethers } from 'hardhat';
+import { BigNumber, Contract, Signer } from 'ethers';
 import UniswapV2FactoryContract from '@uniswap/v2-core/build/UniswapV2Factory.json';
 import UniswapV2Router02Contract from '@uniswap/v2-periphery/build/UniswapV2Router02.json';
 import IUniswapV2Pair from '@uniswap/v2-core/build/IUniswapV2Pair.json';
 import WETHContract from '@uniswap/v2-periphery/build/WETH9.json';
 import { deployContract } from 'ethereum-waffle';
-import { BigNumber, Contract, Signer } from 'ethers';
-import { ethers } from 'hardhat';
 
 let WETH: Contract, uniswapV2Factory: Contract, uniswapV2Router02: Contract;
 

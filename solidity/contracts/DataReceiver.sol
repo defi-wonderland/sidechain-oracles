@@ -1,15 +1,16 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {OracleSidechain} from './OracleSidechain.sol';
 import {Governable} from './peripherals/Governable.sol';
 import {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
+import {Create2Address} from '../libraries/Create2Address.sol';
 
 contract DataReceiver is IDataReceiver, Governable {
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xd39e292a7d431cad5cd9b77d7bdf2f24b85287105b7dafce5950ebeb60755ecb;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xff738c27977cb06ff63c2b4640f8371d66e6b7fe2d4f8b3d12d3ccf9bc9957b2;
 
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
@@ -25,32 +26,16 @@ contract DataReceiver is IDataReceiver, Governable {
     }
   }
 
-  function addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee
-  ) external onlyWhitelistedAdapters {
-    (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
-
-    IOracleSidechain _resultingAddress = IOracleSidechain(_calculateAddress(address(oracleFactory), _token0, _token1, _fee));
+  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData, bytes32 _poolSalt) external onlyWhitelistedAdapters {
+    IOracleSidechain _resultingAddress = IOracleSidechain(
+      Create2Address.computeAddress(address(oracleFactory), _poolSalt, ORACLE_INIT_CODE_HASH)
+    );
     bool _isDeployed = address(_resultingAddress).code.length > 0;
     if (_isDeployed) {
       return _addObservations(_resultingAddress, _observationsData);
     }
-    address _deployedOracle = oracleFactory.deployOracle(_token0, _token1, _fee);
+    address _deployedOracle = oracleFactory.deployOracle(_poolSalt);
     _addObservations(IOracleSidechain(_deployedOracle), _observationsData);
-  }
-
-  function _calculateAddress(
-    address _factory,
-    address _token0,
-    address _token1,
-    uint24 _fee
-  ) internal pure returns (address _resultingAddress) {
-    _resultingAddress = address(
-      uint160(uint256(keccak256(abi.encodePacked(hex'ff', _factory, keccak256(abi.encode(_token0, _token1, _fee)), ORACLE_INIT_CODE_HASH))))
-    );
   }
 
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernance {

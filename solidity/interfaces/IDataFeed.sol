@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
@@ -18,7 +18,12 @@ interface IDataFeed is IGovernable, IAdapterManagement {
 
   // STATE VARIABLES
 
-  function lastPoolStateBridged()
+  /// @notice Tracks the last bridged pool state by salt
+  /// @param _poolSalt The id of both the oracle and the pool
+  /// @return _lastBlockTimestampBridged Last bridged timestamp
+  /// @return _lastTickCumulativeBridged Pool's tickCumulative at last bridged timestamp
+  /// @return _lastArithmeticMeanTickBridged Last bridged arithmeticMeanTick
+  function lastPoolStateBridged(bytes32 _poolSalt)
     external
     view
     returns (
@@ -27,9 +32,6 @@ interface IDataFeed is IGovernable, IAdapterManagement {
       int24 _lastArithmeticMeanTickBridged
     );
 
-  //solhint-disable-next-line func-name-mixedcase
-  function UNISWAP_FACTORY() external view returns (IUniswapV3Factory _uniswapFactory);
-
   // EVENTS
 
   event DataSent(
@@ -37,9 +39,7 @@ interface IDataFeed is IGovernable, IAdapterManagement {
     address _dataReceiver,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] _observationsData,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee
+    bytes32 _poolSalt
   );
 
   // ERRORS
@@ -51,14 +51,12 @@ interface IDataFeed is IGovernable, IAdapterManagement {
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee,
+    bytes32 _poolSalt,
     uint32[] calldata _secondsAgos
   ) external;
 
   function fetchObservations(
-    IUniswapV3Pool _pool,
+    bytes32 _poolSalt,
     uint32[] calldata _secondsAgos,
     bool _stitch
   ) external view returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState);

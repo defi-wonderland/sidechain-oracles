@@ -1,20 +1,7 @@
-import { defaultAbiCoder, getCreate2Address, keccak256, solidityKeccak256 } from 'ethers/lib/utils';
-import OracleSidechainABI from '../../artifacts/solidity/contracts/OracleSidechain.sol/OracleSidechain.json';
+import { keccak256, defaultAbiCoder, solidityKeccak256, getCreate2Address, randomBytes, hexlify } from 'ethers/lib/utils';
 
-export const getInitCodeHash = (): string => {
-  const creationCode = OracleSidechainABI.bytecode;
-  return solidityKeccak256(['bytes'], [creationCode]);
-};
-
-/*
-  Bare in mind I didn't do this generic. If arguments passed into create2's deployment change,
-  add and encode the new args accordingly.
-  So instead of cardinality, you would add the new arg and change the encode function to include the new arg
-*/
-export const getCreate2AddressWithArgs = (factory: string, salt: string): string => {
-  const creationCode = OracleSidechainABI.bytecode;
-  const formattedArgs = solidityKeccak256(['bytes'], [creationCode]);
-  return getCreate2Address(factory, salt, formattedArgs);
+export const sortTokens = (tokens: string[]): string[] => {
+  return tokens.sort();
 };
 
 /*
@@ -26,6 +13,12 @@ export const calculateSalt = (tokenA: string, tokenB: string, fee: number): stri
   return keccak256(defaultAbiCoder.encode(['address', 'address', 'uint24'], [token0, token1, fee]));
 };
 
-export const sortTokens = (tokens: string[]): string[] => {
-  return tokens.sort();
+export const getInitCodeHash = (creationCode: string): string => {
+  return solidityKeccak256(['bytes'], [creationCode]);
+};
+
+export { getCreate2Address };
+
+export const getRandomBytes32 = (): string => {
+  return hexlify(randomBytes(32));
 };

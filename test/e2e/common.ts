@@ -1,33 +1,40 @@
 import { ethers } from 'hardhat';
 import { BigNumber } from 'ethers';
-import { getCreate2Address } from 'ethers/lib/utils';
 import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
+  OracleFactory,
+  OracleSidechain,
   DataReceiver,
   DataFeed,
   ConnextHandlerForTest,
   ExecutorForTest,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
-  OracleFactory,
-  OracleSidechain,
   ERC20,
 } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
-import { wallet, evm } from '@utils';
-import { UNISWAP_V3_K3PR_ADDRESS, KP3R, WETH, FEE, KP3R_WHALE_ADDRESS, WETH_WHALE_ADDRESS } from '@utils/constants';
+import { evm, wallet } from '@utils';
+import {
+  UNISWAP_V3_K3PR_ADDRESS,
+  KP3R,
+  WETH,
+  FEE,
+  KP3R_WHALE_ADDRESS,
+  WETH_WHALE_ADDRESS,
+  ORACLE_SIDECHAIN_CREATION_CODE,
+} from '@utils/constants';
 import { toBN } from '@utils/bn';
-import { calculateSalt, getInitCodeHash } from '@utils/misc';
+import { calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
 import { RINKEBY_ORIGIN_DOMAIN_CONNEXT } from 'utils/constants';
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
   deployer: SignerWithAddress;
   governance: SignerWithAddress;
-  dataReceiver: DataReceiver;
   oracleFactory: OracleFactory;
+  dataReceiver: DataReceiver;
   dataFeed: DataFeed;
   connextHandler: ConnextHandlerForTest;
   executor: ExecutorForTest;
@@ -36,13 +43,13 @@ export async function setupContracts(): Promise<{
 }> {
   let currentNonce;
   const [, stranger, deployer, governance] = await ethers.getSigners();
+  const oracleFactoryFactory = await ethers.getContractFactory('OracleFactory');
   const dataReceiverFactory = await ethers.getContractFactory('DataReceiver');
   const dataFeedFactory = await ethers.getContractFactory('DataFeed');
   const connextHandlerFactory = await ethers.getContractFactory('ConnextHandlerForTest');
   const executorFactory = await ethers.getContractFactory('ExecutorForTest');
   const connextSenderAdapterFactory = await ethers.getContractFactory('ConnextSenderAdapter');
   const connextReceiverAdapterFactory = await ethers.getContractFactory('ConnextReceiverAdapter');
-  const oracleFactoryFactory = await ethers.getContractFactory('OracleFactory');
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);
   const precalculatedDataReceiverAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
@@ -74,30 +81,13 @@ export async function setupContracts(): Promise<{
     stranger,
     deployer,
     governance,
-    dataReceiver,
     oracleFactory,
+    dataReceiver,
     dataFeed,
     connextHandler,
     executor,
     connextSenderAdapter,
     connextReceiverAdapter,
-  };
-}
-
-export async function getOracle(
-  factory: string,
-  tokenA: string,
-  tokenB: string,
-  fee: number
-): Promise<{
-  oracleSidechain: OracleSidechain;
-}> {
-  const salt = calculateSalt(tokenA, tokenB, fee);
-  const oracleSidechainAddress = getCreate2Address(factory, salt, getInitCodeHash());
-  const oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleSidechainAddress)) as OracleSidechain;
-
-  return {
-    oracleSidechain,
   };
 }
 
@@ -115,6 +105,23 @@ export async function getEnvironment(): Promise<{
   const tokenB = (await ethers.getContractAt('ERC20', KP3R)) as ERC20;
 
   return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE };
+}
+
+export async function getOracle(
+  factory: string,
+  tokenA: string,
+  tokenB: string,
+  fee: number
+): Promise<{
+  oracleSidechain: OracleSidechain;
+}> {
+  const salt = calculateSalt(tokenA, tokenB, fee);
+  const oracleSidechainAddress = getCreate2Address(factory, salt, getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
+  const oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleSidechainAddress)) as OracleSidechain;
+
+  return {
+    oracleSidechain,
+  };
 }
 
 export async function getSecondsAgos(blockTimestamps: number[]): Promise<{ secondsAgos: number[] }> {

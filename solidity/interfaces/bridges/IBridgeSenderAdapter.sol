@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleSidechain} from '../IOracleSidechain.sol';
@@ -10,8 +10,6 @@ interface IBridgeSenderAdapter {
     address _to,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee
+    bytes32 _poolSalt
   ) external payable;
 }

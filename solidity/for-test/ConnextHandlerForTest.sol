@@ -10,9 +10,7 @@ interface IExecutorLike {
     address _receiverAdapter,
     uint32 _originDomain,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee
+    bytes32 _poolSalt
   ) external;
 }
 
@@ -24,11 +22,11 @@ contract ConnextHandlerForTest {
   }
 
   function xcall(XCallArgs calldata _args) external payable returns (bytes32) {
-    (IOracleSidechain.ObservationData[] memory _observationsData, address _tokenA, address _tokenB, uint24 _fee) = abi.decode(
+    (IOracleSidechain.ObservationData[] memory _observationsData, bytes32 _poolSalt) = abi.decode(
       _args.params.callData[4:],
-      (IOracleSidechain.ObservationData[], address, address, uint24)
+      (IOracleSidechain.ObservationData[], bytes32)
     );
-    executor.execute(msg.sender, _args.params.to, _args.params.originDomain, _observationsData, _tokenA, _tokenB, _fee);
+    executor.execute(msg.sender, _args.params.to, _args.params.originDomain, _observationsData, _poolSalt);
     return bytes32(abi.encode('random'));
   }
 }

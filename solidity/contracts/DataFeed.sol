@@ -1,16 +1,18 @@
-//SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './peripherals/Governable.sol';
 import {AdapterManagement} from './peripherals/AdapterManagement.sol';
 import {IDataFeed, IUniswapV3Factory, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 import {OracleFork} from '../libraries/OracleFork.sol';
+import {Create2Address} from '../libraries/Create2Address.sol';
 
 contract DataFeed is IDataFeed, AdapterManagement {
-  IUniswapV3Factory public constant UNISWAP_FACTORY = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+  address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+  bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
   /// @inheritdoc IDataFeed
-  PoolState public lastPoolStateBridged;
+  mapping(bytes32 => PoolState) public lastPoolStateBridged;
 
   constructor(address _governance) Governable(_governance) {}
 
@@ -18,33 +20,29 @@ contract DataFeed is IDataFeed, AdapterManagement {
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
-    address _tokenA,
-    address _tokenB,
-    uint24 _fee,
+    bytes32 _poolSalt,
     uint32[] calldata _secondsAgos
   ) external {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
 
-    // TODO: replace getPool with pure calculation
-    IUniswapV3Pool _pool = IUniswapV3Pool(UNISWAP_FACTORY.getPool(_tokenA, _tokenB, _fee));
-
     IOracleSidechain.ObservationData[] memory _observationsData;
     // TODO: make lastPoolStateBridged a mapping[bytes?]
-    (_observationsData, lastPoolStateBridged) = fetchObservations(_pool, _secondsAgos, true);
+    (_observationsData, lastPoolStateBridged[_poolSalt]) = fetchObservations(_poolSalt, _secondsAgos, true);
 
-    // TODO: sort tokens
-    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _tokenA, _tokenB, _fee);
-    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _tokenA, _tokenB, _fee);
+    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
+    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
   }
 
   /// @inheritdoc IDataFeed
   function fetchObservations(
-    IUniswapV3Pool _pool,
+    bytes32 _poolSalt,
     uint32[] calldata _secondsAgos,
     bool _stitch
   ) public view returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState) {
+    IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
+    _lastPoolState = lastPoolStateBridged[_poolSalt];
+
     (int56[] memory _tickCumulatives, ) = _pool.observe(_secondsAgos);
-    _lastPoolState = lastPoolStateBridged;
 
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     uint32 _secondsAgo;

@@ -1,10 +1,16 @@
+import OracleSidechainABI from '../../artifacts/solidity/contracts/OracleSidechain.sol/OracleSidechain.json';
+
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const KP3R_WHALE_ADDRESS = '0xa0f75491720835b36edc92d06ddc468d201e9b73';
 export const WETH_WHALE_ADDRESS = '0x821A96fbD4465D02726EDbAa936A0d6d1032dE46';
-export const UNI_FACTORY = '0x1f98431c8ad98523631ae4a59f267346ea31f984';
+export const UNI_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
+export const POOL_INIT_CODE_HASH = '0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54';
 export const UNISWAP_V3_K3PR_ADDRESS = '0x11B7a6bc0259ed6Cf9DB8F499988F9eCc7167bf5';
 export const KP3R = '0x1cEB5cB57C4D4E2b2433641b95Dd330A33185A44';
 export const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 export const FEE = 10000;
-export const RANDOM_CHAIN_ID = 42;
 export const CARDINALITY = 144;
+export const RANDOM_CHAIN_ID = 42;
+
+export const ORACLE_SIDECHAIN_CREATION_CODE = OracleSidechainABI.bytecode;
+export const VALID_POOL_SALT = '0x6824af7e58fc7ba5540f66d2ea9414ab3bec9ec9c67f775700bfe3fa7ce674d3';

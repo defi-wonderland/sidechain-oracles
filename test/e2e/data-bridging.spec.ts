@@ -13,14 +13,14 @@ import {
 } from '@typechained';
 import { UniswapV3Factory, UniswapV3Pool } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
-import { RANDOM_CHAIN_ID, KP3R, WETH, FEE } from '@utils/constants';
+import { KP3R, WETH, FEE, RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
-import { getInitCodeHash } from '@utils/misc';
+import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts, observePool, calculateOracleObservations, uniswapV3Swap, getSecondsAgos, getEnvironment, getOracle } from './common';
+import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
@@ -32,6 +32,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let tokenA: ERC20;
   let tokenB: ERC20;
   let fee: number;
+  let salt: string;
   let connextSenderAdapter: ConnextSenderAdapter;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataReceiver: DataReceiver;
@@ -45,7 +46,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
+    /*
+     * tokenA = KP3R
+     * tokenB = WETH
+     * fee = 1_000
+     */
     ({ uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee } = await getEnvironment());
+
+    salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
     ({ governance, dataFeed, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } = await setupContracts());
 
@@ -61,7 +69,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
       let ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
-      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 
@@ -78,9 +86,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     context('when the adapter is not set', () => {
       it('should revert', async () => {
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
-        ).to.be.revertedWith('UnallowedAdapter()');
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+          'UnallowedAdapter()'
+        );
       });
     });
 
@@ -90,9 +98,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
-        ).to.be.revertedWith('DestinationDomainIdNotSet()');
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+          'DestinationDomainIdNotSet()'
+        );
       });
     });
 
@@ -105,9 +113,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
-        ).to.be.revertedWith('ReceiverNotSet()');
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+          'ReceiverNotSet()'
+        );
       });
     });
 
@@ -123,9 +131,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, tokenA.address, tokenB.address, fee, secondsAgos)
-        ).to.be.revertedWith('UnallowedAdapter()');
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+          'UnallowedAdapter()'
+        );
       });
     });
 
@@ -157,7 +165,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos);
         });
 
         it('should bridge an amount of observations 1 lesser than amount of secondsAgos', async () => {
@@ -254,7 +262,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos);
 
           await evm.advanceTimeAndBlock(4 * hours);
         });
@@ -267,9 +275,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           });
 
           it('should revert', async () => {
-            await expect(
-              dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)
-            ).to.be.revertedWith(
+            await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
               'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
             );
           });
@@ -283,9 +289,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           });
 
           it('should revert', async () => {
-            await expect(
-              dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)
-            ).to.be.revertedWith(
+            await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
               'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
             );
           });
@@ -299,7 +303,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-            tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos);
+            tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos);
           });
 
           it('should bridge an amount of observations equal to the amount of secondsAgos', async () => {

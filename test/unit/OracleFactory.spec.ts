@@ -4,10 +4,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { OracleFactory, OracleFactory__factory, IDataReceiver } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { CARDINALITY } from '@utils/constants';
+import { CARDINALITY, ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
 import { toUnit } from '@utils/bn';
-import { onlyDataReceiver, onlyGovernance } from '@utils/behaviours';
-import { calculateSalt, getCreate2AddressWithArgs, sortTokens } from '@utils/misc';
+import { onlyGovernance, onlyDataReceiver } from '@utils/behaviours';
+import { sortTokens, calculateSalt, getInitCodeHash, getCreate2Address, getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -26,6 +26,8 @@ describe('OracleFactory.sol', () => {
   const [tokenA, tokenB] = sortTokens([randomToken0, randomToken1]);
   const randomFee = 3000;
   const randomCardinality = 2000;
+
+  const randomSalt = getRandomBytes32();
 
   before(async () => {
     [, governance] = await ethers.getSigners();
@@ -55,35 +57,63 @@ describe('OracleFactory.sol', () => {
     let precalculatedOracleAddress: string;
     beforeEach(() => {
       salt = calculateSalt(tokenA, tokenB, randomFee);
-      precalculatedOracleAddress = getCreate2AddressWithArgs(oracleFactory.address, salt);
+      precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
 
     onlyDataReceiver(
       () => oracleFactory,
-      'deployOracle(address,address,uint24)',
+      'deployOracle(bytes32)',
       () => dataReceiver.wallet,
-      () => [tokenA, tokenB, randomFee]
+      () => [randomSalt]
     );
 
     it('should deploy a new Oracle', async () => {
       expect(await ethers.provider.getCode(precalculatedOracleAddress)).to.eq('0x');
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(tokenA, tokenB, randomFee);
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
       expect((await ethers.provider.getCode(precalculatedOracleAddress)).length).to.be.gt(100);
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(dataReceiver.wallet).deployOracle(tokenA, tokenB, randomFee);
-      await expect(tx).to.emit(oracleFactory, 'OracleDeployed').withArgs(precalculatedOracleAddress, tokenA, tokenB, randomFee, CARDINALITY);
+      tx = await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
+      await expect(tx).to.emit(oracleFactory, 'OracleDeployed').withArgs(precalculatedOracleAddress, salt, CARDINALITY);
+    });
+  });
+
+  describe('getPool(...)', () => {
+    let salt: string;
+    let precalculatedOracleAddress: string;
+    beforeEach(() => {
+      salt = calculateSalt(tokenA, tokenB, randomFee);
+      precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
 
-    it('should add the deployed oracle to the getPool mapping with sorted tokens', async () => {
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(tokenA, tokenB, randomFee);
+    it('should return zero address when oracle is not deployed', async () => {
+      expect(await oracleFactory.getPool(tokenA, tokenB, randomFee)).to.eq(ZERO_ADDRESS);
+    });
+
+    it('should return oracle address when tokens are sorted', async () => {
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
       expect(await oracleFactory.getPool(tokenA, tokenB, randomFee)).to.eq(precalculatedOracleAddress);
     });
 
-    it('should add the deployed oracle to the getPool mapping with unsorted tokens', async () => {
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(tokenA, tokenB, randomFee);
+    it('should return oracle address when tokens are unsorted', async () => {
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
       expect(await oracleFactory.getPool(tokenB, tokenA, randomFee)).to.eq(precalculatedOracleAddress);
+    });
+  });
+
+  describe('getPoolSalt(...)', () => {
+    let salt: string;
+    beforeEach(() => {
+      salt = calculateSalt(tokenA, tokenB, randomFee);
+    });
+
+    it('should return the correct salt when tokens are sorted', async () => {
+      expect(await oracleFactory.getPoolSalt(tokenA, tokenB, randomFee)).to.eq(salt);
+    });
+
+    it('should return the correct salt when tokens are unsorted', async () => {
+      expect(await oracleFactory.getPoolSalt(tokenB, tokenA, randomFee)).to.eq(salt);
     });
   });
 

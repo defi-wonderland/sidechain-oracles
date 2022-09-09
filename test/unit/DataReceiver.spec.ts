@@ -1,13 +1,13 @@
 import { ethers } from 'hardhat';
 import { ContractTransaction } from 'ethers';
-import { getCreate2Address } from 'ethers/lib/utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleFactory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
-import { evm, wallet } from '@utils';
+import { evm } from '@utils';
+import { ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernance, onlyWhitelistedAdapter } from '@utils/behaviours';
-import { calculateSalt, sortTokens, getInitCodeHash } from '@utils/misc';
+import { getInitCodeHash, getCreate2Address, getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -20,18 +20,13 @@ describe('DataReceiver.sol', () => {
   let dataReceiverFactory: MockContractFactory<DataReceiver__factory>;
   let oracleSidechain: FakeContract<IOracleSidechain>;
   let oracleFactory: FakeContract<IOracleFactory>;
-  let salt: string;
   let ORACLE_INIT_CODE_HASH: string;
   let precalculatedOracleAddress: string;
   let tx: ContractTransaction;
   let snapshotId: string;
 
-  const randomToken0 = wallet.generateRandomAddress();
-  const randomToken1 = wallet.generateRandomAddress();
-  const randomToken2 = wallet.generateRandomAddress();
-  const [tokenA, tokenB] = sortTokens([randomToken0, randomToken1]);
-  const [tokenC, tokenD] = sortTokens([randomToken1, randomToken2]);
-  const randomFee = 3000;
+  const existingSalt = getRandomBytes32();
+  const randomSalt = getRandomBytes32();
 
   before(async () => {
     [, governance, fakeAdapter, randomAdapter] = await ethers.getSigners();
@@ -39,9 +34,8 @@ describe('DataReceiver.sol', () => {
     dataReceiverFactory = await smock.mock('DataReceiver');
     dataReceiver = await dataReceiverFactory.deploy(governance.address, oracleFactory.address);
 
-    salt = calculateSalt(tokenA, tokenB, randomFee);
     ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
-    precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, ORACLE_INIT_CODE_HASH);
+    precalculatedOracleAddress = getCreate2Address(oracleFactory.address, existingSalt, ORACLE_INIT_CODE_HASH);
 
     oracleSidechain = await smock.fake('IOracleSidechain', {
       address: precalculatedOracleAddress,
@@ -55,7 +49,7 @@ describe('DataReceiver.sol', () => {
 
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
-      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 
@@ -87,7 +81,7 @@ describe('DataReceiver.sol', () => {
       () => dataReceiver,
       'addObservations',
       () => fakeAdapter,
-      () => [observationsData, tokenA, tokenB, randomFee]
+      () => [observationsData, existingSalt]
     );
 
     /*
@@ -101,19 +95,19 @@ describe('DataReceiver.sol', () => {
     */
     context('when an oracle already exists for a given pair', () => {
       it('should not call OracleFactory', async () => {
-        await dataReceiver.connect(fakeAdapter).addObservations(observationsData, tokenA, tokenB, randomFee);
+        await dataReceiver.connect(fakeAdapter).addObservations(observationsData, existingSalt);
         expect(oracleFactory.deployOracle).to.not.be.called;
       });
 
       it('should revert if the observations are not writable', async () => {
         oracleSidechain.write.whenCalledWith(observationsData).returns(false);
-        await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, tokenA, tokenB, randomFee)).to.be.revertedWith(
+        await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, existingSalt)).to.be.revertedWith(
           'ObservationsNotWritable()'
         );
       });
 
       it('should emit ObservationsAdded', async () => {
-        tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, tokenA, tokenB, randomFee);
+        tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, existingSalt);
         let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
         let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
         expect(eventUser).to.eq(fakeAdapter.address);
@@ -134,19 +128,19 @@ describe('DataReceiver.sol', () => {
       });
 
       it('should call oracleFactory with the correct arguments', async () => {
-        await dataReceiver.connect(fakeAdapter).addObservations(observationsData, tokenC, tokenD, randomFee);
-        expect(oracleFactory.deployOracle).to.have.been.calledOnceWith(tokenC, tokenD, randomFee);
+        await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt);
+        expect(oracleFactory.deployOracle).to.have.been.calledOnceWith(randomSalt);
       });
 
       it('should revert if the observations are not writable', async () => {
         oracleSidechain.write.whenCalledWith(observationsData).returns(false);
-        await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, tokenC, tokenD, randomFee)).to.be.revertedWith(
+        await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt)).to.be.revertedWith(
           'ObservationsNotWritable()'
         );
       });
 
       it('should emit ObservationsAdded', async () => {
-        let tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, tokenC, tokenD, randomFee);
+        let tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt);
         let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
         let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
         expect(eventUser).to.eq(fakeAdapter.address);

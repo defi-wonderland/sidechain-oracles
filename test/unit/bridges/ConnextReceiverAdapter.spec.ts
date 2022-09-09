@@ -12,6 +12,7 @@ import {
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { readArgFromEvent } from '@utils/event-utils';
+import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -31,9 +32,7 @@ describe('ConnextReceiverAdapter.sol', () => {
   const randomOriginId = 3;
   const rinkebyOriginId = 1111;
 
-  const randomToken0 = wallet.generateRandomAddress();
-  const randomToken1 = wallet.generateRandomAddress();
-  const randomFee = 3000;
+  const randomSalt = getRandomBytes32();
 
   before(async () => {
     [, randomUser] = await ethers.getSigners();
@@ -88,15 +87,7 @@ describe('ConnextReceiverAdapter.sol', () => {
     context('when the origin sender is not allowed', async () => {
       it('should revert', async () => {
         await expect(
-          executor.permissionlessExecute(
-            randomOriginSender,
-            connextReceiverAdapter.address,
-            rinkebyOriginId,
-            observationsData,
-            randomToken0,
-            randomToken1,
-            randomFee
-          )
+          executor.permissionlessExecute(randomOriginSender, connextReceiverAdapter.address, rinkebyOriginId, observationsData, randomSalt)
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
@@ -109,9 +100,7 @@ describe('ConnextReceiverAdapter.sol', () => {
             connextReceiverAdapter.address,
             randomOriginId,
             observationsData,
-            randomToken0,
-            randomToken1,
-            randomFee
+            randomSalt
           )
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
@@ -119,9 +108,9 @@ describe('ConnextReceiverAdapter.sol', () => {
 
     context('when the caller is not the executor contract', async () => {
       it('should revert', async () => {
-        await expect(
-          connextReceiverAdapter.connect(randomUser).addObservations(observationsData, randomToken0, randomToken1, randomFee)
-        ).to.be.revertedWith('UnauthorizedCaller()');
+        await expect(connextReceiverAdapter.connect(randomUser).addObservations(observationsData, randomSalt)).to.be.revertedWith(
+          'UnauthorizedCaller()'
+        );
       });
     });
 
@@ -133,29 +122,23 @@ describe('ConnextReceiverAdapter.sol', () => {
             connextReceiverAdapter.address,
             rinkebyOriginId,
             observationsData,
-            randomToken0,
-            randomToken1,
-            randomFee
+            randomSalt
           )
         ).not.to.be.reverted;
       });
 
       it('should call data receiver with the correct arguments', async () => {
         dataReceiver.addObservations.reset();
-        await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomToken0, randomToken1, randomFee);
-        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomToken0, randomToken1, randomFee);
+        await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt);
+        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomSalt);
       });
 
       it('should emit an event', async () => {
-        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomToken0, randomToken1, randomFee);
+        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt);
         let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-        let eventTokenA = await readArgFromEvent(tx, 'DataSent', '_tokenA');
-        let eventTokenB = await readArgFromEvent(tx, 'DataSent', '_tokenB');
-        let eventFee = await readArgFromEvent(tx, 'DataSent', '_fee');
+        let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
         expect(eventObservationsData).to.eql(observationsData);
-        expect(eventTokenA).to.eql(randomToken0);
-        expect(eventTokenB).to.eql(randomToken1);
-        expect(eventFee).to.eql(randomFee);
+        expect(eventPoolSalt).to.eq(randomSalt);
       });
     });
   });

@@ -10,11 +10,11 @@ import {
   ERC20,
 } from '@typechained';
 import { evm, wallet } from '@utils';
-import { KP3R, WETH, FEE } from '@utils/constants';
-import { getInitCodeHash } from '@utils/misc';
+import { KP3R, WETH, FEE, UNI_FACTORY, POOL_INIT_CODE_HASH, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { getInitCodeHash, calculateSalt, getCreate2Address } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts, getEnvironment } from './common';
+import { setupContracts, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage OracleSidechain.sol', () => {
@@ -30,6 +30,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   let tokenA: ERC20;
   let tokenB: ERC20;
   let fee: number;
+  let salt: string;
 
   before(async () => {
     await evm.reset({
@@ -38,6 +39,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     });
 
     ({ tokenA, tokenB, fee } = await getEnvironment());
+    salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
     ({ deployer, governance } = await setupContracts());
 
@@ -61,7 +63,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
       let ORACLE_INIT_CODE_HASH = await allowedDataReceiver.ORACLE_INIT_CODE_HASH();
-      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash());
+      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 
@@ -79,18 +81,15 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     let observationsData = [observationData1, observationData2];
 
     it('should revert if the caller is not an allowed data receiver', async () => {
-      await allowedDataReceiver.addPermissionlessObservations(observationsData, tokenA.address, tokenB.address, fee);
+      await allowedDataReceiver.addPermissionlessObservations(observationsData, salt);
 
-      await expect(
-        unallowedDataReceiver.addPermissionlessObservations(observationsData, tokenA.address, tokenB.address, fee)
-      ).to.be.revertedWith('OnlyDataReceiver');
+      await expect(unallowedDataReceiver.addPermissionlessObservations(observationsData, salt)).to.be.revertedWith('OnlyDataReceiver');
     });
 
     it('should deploy a oracleSidechain and write an observation', async () => {
-      await allowedDataReceiver.addPermissionlessObservations(observationsData, tokenA.address, tokenB.address, fee);
+      await allowedDataReceiver.addPermissionlessObservations(observationsData, salt);
 
-      let oracleSidechainAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, fee);
-      oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleSidechainAddress)) as OracleSidechain;
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
       let observation = await oracleSidechain.observations(0);
       expect(observation[3]); // initialized

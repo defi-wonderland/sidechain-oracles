@@ -5,8 +5,9 @@ import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from './bridges/IConnextSenderAdapter.sol';
 import {IGovernable} from './peripherals/IGovernable.sol';
+import {IAdapterManagement} from './peripherals/IAdapterManagement.sol';
 
-interface IDataFeed is IGovernable {
+interface IDataFeed is IGovernable, IAdapterManagement {
   // STRUCTS
 
   struct PoolState {
@@ -26,12 +27,6 @@ interface IDataFeed is IGovernable {
       int24 _lastArithmeticMeanTickBridged
     );
 
-  function whitelistedAdapters(IBridgeSenderAdapter _bridgeSenderAdapter) external view returns (bool _isWhitelisted);
-
-  function receivers(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId) external view returns (address _dataReceiver);
-
-  function destinationDomainIds(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId) external view returns (uint32 _destinationDomainId);
-
   //solhint-disable-next-line func-name-mixedcase
   function UNISWAP_FACTORY() external view returns (IUniswapV3Factory _uniswapFactory);
 
@@ -47,19 +42,9 @@ interface IDataFeed is IGovernable {
     uint24 _fee
   );
 
-  event AdapterWhitelisted(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted);
-
-  event ReceiverSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId, address _dataReceiver);
-
-  event DestinationDomainIdSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId, uint32 _destinationDomainId);
-
   // ERRORS
 
-  error UnallowedAdapter();
-  error DestinationDomainIdNotSet();
-  error ReceiverNotSet();
   error InvalidSecondsAgos();
-  error LengthMismatch();
 
   // FUNCTIONS
 
@@ -82,32 +67,4 @@ interface IDataFeed is IGovernable {
     external
     view
     returns (uint16[] memory _observationsIndices);
-
-  function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
-
-  function whitelistAdapters(IBridgeSenderAdapter[] calldata _bridgeSenderAdapters, bool[] calldata _isWhitelisted) external;
-
-  function setReceiver(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint32 _destinationDomainId,
-    address _dataReceiver
-  ) external;
-
-  function setReceivers(
-    IBridgeSenderAdapter[] calldata _bridgeSenderAdapters,
-    uint32[] calldata _destinationDomainIds,
-    address[] calldata _dataReceivers
-  ) external;
-
-  function setDestinationDomainId(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
-    uint32 _destinationDomainId
-  ) external;
-
-  function setDestinationDomainIds(
-    IBridgeSenderAdapter[] calldata _bridgeSenderAdapter,
-    uint16[] calldata _chainId,
-    uint32[] calldata _destinationDomainId
-  ) external;
 }

@@ -130,7 +130,7 @@
     "solhint": "3.3.7",
     "solhint-plugin-prettier": "0.0.5",
     "solhint-plugin-wonderland": "0.0.1",
-    "solidity-coverage": "0.7.21",
+    "solidity-coverage": "0.8.1",
     "solidity-docgen": "0.5.16",
     "sort-package-json": "1.57.0",
     "standard-version": "9.3.2",

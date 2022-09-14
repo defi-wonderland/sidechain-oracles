@@ -25,6 +25,8 @@ import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
 import { expect } from 'chai';
 
+const KP3R_WETH_SALT = calculateSalt(KP3R, WETH, FEE);
+
 describe('@skip-on-coverage Data Bridging Flow', () => {
   let governor: SignerWithAddress;
   let keeper: JsonRpcSigner;
@@ -430,20 +432,20 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(
-          dataFeedJob.connect(governor).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)
-        ).to.be.revertedWith('KeeperNotValid()');
+        await expect(dataFeedJob.connect(governor).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R_WETH_SALT)).to.be.revertedWith(
+          'KeeperNotValid()'
+        );
       });
 
       it('should work the job', async () => {
-        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.emit(
+        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R_WETH_SALT)).to.emit(
           dataFeed,
           'DataSent'
         );
       });
 
       it('should pay the keeper', async () => {
-        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R, WETH, FEE, secondsAgos)).to.emit(
+        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R_WETH_SALT)).to.emit(
           keep3rV2,
           'KeeperWork'
         );

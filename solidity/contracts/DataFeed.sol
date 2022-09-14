@@ -93,6 +93,7 @@ contract DataFeed is IDataFeed, AdapterManagement {
   }
 
   /// @inheritdoc IDataFeed
+  /// @dev High gas consuming view, avoid using in txs
   function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     external
     view

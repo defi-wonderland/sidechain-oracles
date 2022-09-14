@@ -206,9 +206,9 @@ describe('DataFeed.sol', () => {
               tickCumulative + tickCumulativesDelta1,
               tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
             ];
-            arithmeticMeanTick0 = Math.trunc(tickCumulativesDelta0 / delta0);
-            arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
-            arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+            arithmeticMeanTick0 = Math.floor(tickCumulativesDelta0 / delta0);
+            arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+            arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           });
 
@@ -369,8 +369,8 @@ describe('DataFeed.sol', () => {
             tickCumulative + tickCumulativesDelta1,
             tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
           ];
-          arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
-          arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+          arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+          arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
         });
 
@@ -496,9 +496,9 @@ describe('DataFeed.sol', () => {
               tickCumulative + tickCumulativesDelta1,
               tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
             ];
-            arithmeticMeanTick0 = Math.trunc(tickCumulativesDelta0 / delta0);
-            arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
-            arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+            arithmeticMeanTick0 = Math.floor(tickCumulativesDelta0 / delta0);
+            arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+            arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           });
 

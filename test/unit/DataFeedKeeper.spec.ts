@@ -1,21 +1,20 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataFeedJob, DataFeedJob__factory, IKeep3r, IDataFeed } from '@typechained';
+import { DataFeedKeeper, DataFeedKeeper__factory, IKeep3r, IDataFeed } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { KEEP3R, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { onlyGovernor } from '@utils/behaviours';
-import { sortTokens, calculateSalt } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
-describe('DataFeedJob.sol', () => {
+describe('DataFeedKeeper.sol', () => {
   let governor: SignerWithAddress;
   let keeper: SignerWithAddress;
-  let dataFeedJob: MockContract<DataFeedJob>;
-  let dataFeedJobFactory: MockContractFactory<DataFeedJob__factory>;
+  let dataFeedKeeper: MockContract<DataFeedKeeper>;
+  let dataFeedKeeperFactory: MockContractFactory<DataFeedKeeper__factory>;
   let keep3r: FakeContract<IKeep3r>;
   let dataFeed: FakeContract<IDataFeed>;
   let snapshotId: string;
@@ -25,13 +24,7 @@ describe('DataFeedJob.sol', () => {
 
   const randomSenderAdapterAddress = wallet.generateRandomAddress();
   const randomChainId = 32;
-
-  // const randomTokenA = wallet.generateRandomAddress();
-  // const randomTokenB = wallet.generateRandomAddress();
-  // const randomFee = 3000;
-
-  const randomSalt = VALID_POOL_SALT; //calculateSalt(randomTokenA, randomTokenB, randomFee);
-  const saltAndChainId = toBN(randomSalt).add(toBN(randomChainId));
+  const randomSalt = VALID_POOL_SALT;
 
   before(async () => {
     [, governor, keeper] = await ethers.getSigners();
@@ -40,8 +33,8 @@ describe('DataFeedJob.sol', () => {
     keep3r.isKeeper.whenCalledWith(keeper.address).returns(true);
     dataFeed = await smock.fake('IDataFeed');
 
-    dataFeedJobFactory = await smock.mock('DataFeedJob');
-    dataFeedJob = await dataFeedJobFactory.deploy(dataFeed.address, governor.address, initialJobCooldown);
+    dataFeedKeeperFactory = await smock.mock('DataFeedKeeper');
+    dataFeedKeeper = await dataFeedKeeperFactory.deploy(governor.address, dataFeed.address, initialJobCooldown);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -52,16 +45,16 @@ describe('DataFeedJob.sol', () => {
 
   describe('constructor(...)', () => {
     it('should set the governor', async () => {
-      expect(await dataFeedJob.governor()).to.eq(governor.address);
+      expect(await dataFeedKeeper.governor()).to.eq(governor.address);
     });
 
     it('should initialize dataFeed interface', async () => {
-      let dataFeedInterface = await dataFeedJob.dataFeed();
+      let dataFeedInterface = await dataFeedKeeper.dataFeed();
       expect(dataFeedInterface).to.eq(dataFeed.address);
     });
 
     it('should set the jobCooldown', async () => {
-      let jobCooldown = await dataFeedJob.jobCooldown();
+      let jobCooldown = await dataFeedKeeper.jobCooldown();
       expect(jobCooldown).to.eq(initialJobCooldown);
     });
   });
@@ -71,80 +64,81 @@ describe('DataFeedJob.sol', () => {
     let periodLength: number;
 
     beforeEach(async () => {
-      lastWorkedAt = await dataFeedJob.lastWorkedAt(randomChainId, randomSalt);
-      periodLength = await dataFeedJob.periodLength();
+      periodLength = await dataFeedKeeper.periodLength();
+      lastWorkedAt = await dataFeedKeeper.lastWorkedAt(randomChainId, randomSalt);
     });
 
     it('should revert if the keeper is not valid', async () => {
       keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
-      await expect(dataFeedJob.connect(governor).work(randomSenderAdapterAddress, randomChainId, randomSalt)).to.be.revertedWith(
+      await expect(dataFeedKeeper.connect(governor).work(randomSenderAdapterAddress, randomChainId, randomSalt)).to.be.revertedWith(
         'KeeperNotValid()'
       );
     });
 
     it('should revert if the job is not workable', async () => {
       let now = (await ethers.provider.getBlock('latest')).timestamp;
-      await dataFeedJob.setVariable('lastWorkedAt', {
+      await dataFeedKeeper.setVariable('lastWorkedAt', {
         [randomChainId]: { [randomSalt]: now },
       });
-      await expect(dataFeedJob.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt)).to.be.revertedWith('NotWorkable()');
+      await expect(dataFeedKeeper.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt)).to.be.revertedWith(
+        'NotWorkable()'
+      );
     });
 
     it('should update the last work timestamp', async () => {
-      await dataFeedJob.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
+      await dataFeedKeeper.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
       let workTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-      let lastWorkTimestamp = await dataFeedJob.lastWorkedAt(randomChainId, randomSalt);
+      let lastWorkTimestamp = await dataFeedKeeper.lastWorkedAt(randomChainId, randomSalt);
       expect(lastWorkTimestamp).to.eq(workTimestamp);
     });
 
     it('should call to send observations', async () => {
       dataFeed.sendObservations.reset();
-
-      await dataFeedJob.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
-      const secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, lastWorkedAt);
+      await dataFeedKeeper.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
+      const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastWorkedAt);
       expect(dataFeed.sendObservations).to.have.been.calledOnceWith(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
     });
 
     it('should emit Bridged', async () => {
-      const tx = await dataFeedJob.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
-      const secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, lastWorkedAt);
+      const tx = await dataFeedKeeper.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
+      const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastWorkedAt);
 
       await expect(tx)
-        .to.emit(dataFeedJob, 'Bridged')
+        .to.emit(dataFeedKeeper, 'Bridged')
         .withArgs(keeper.address, randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
     });
 
     it('should call to pay the keeper', async () => {
       keep3r.worked.reset();
-      await dataFeedJob.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
+      await dataFeedKeeper.connect(keeper).work(randomSenderAdapterAddress, randomChainId, randomSalt);
       expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
     });
   });
 
   describe('forceWork(...)', () => {
     onlyGovernor(
-      () => dataFeedJob,
+      () => dataFeedKeeper,
       'forceWork',
       () => governor,
       () => [randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos]
     );
 
     it('should update the last work timestamp', async () => {
-      await dataFeedJob.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
+      await dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
       let forceWorkTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-      let lastWorkTimestamp = await dataFeedJob.lastWorkedAt(randomChainId, randomSalt);
+      let lastWorkTimestamp = await dataFeedKeeper.lastWorkedAt(randomChainId, randomSalt);
       expect(lastWorkTimestamp).to.eq(forceWorkTimestamp);
     });
 
     it('should call to send observations', async () => {
       dataFeed.sendObservations.reset();
-      await dataFeedJob.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
+      await dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
       expect(dataFeed.sendObservations).to.have.been.calledOnceWith(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
     });
 
     it('should emit ForceBridged', async () => {
-      await expect(dataFeedJob.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos))
-        .to.emit(dataFeedJob, 'ForceBridged')
+      await expect(dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos))
+        .to.emit(dataFeedKeeper, 'ForceBridged')
         .withArgs(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
     });
   });
@@ -167,7 +161,7 @@ describe('DataFeedJob.sol', () => {
       });
 
       it('should return a single datapoint array with 0', async () => {
-        const secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos).to.deep.eq([0]);
       });
     });
@@ -184,7 +178,7 @@ describe('DataFeedJob.sol', () => {
       it('should return an array with proper length', async () => {
         periods++; // adds the bridged remainder [periodLength % time]
 
-        const secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos.length).to.eq(periods);
       });
 
@@ -197,12 +191,12 @@ describe('DataFeedJob.sol', () => {
           expectedSecondsAgos[i] = unknownTime - remainder - i * periodLength;
         }
 
-        let secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos).to.deep.eq(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
-        let secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });
@@ -216,7 +210,7 @@ describe('DataFeedJob.sol', () => {
       });
 
       it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos.length).to.eq(periods);
       });
 
@@ -227,12 +221,12 @@ describe('DataFeedJob.sol', () => {
           expectedSecondsAgos[i] = unknownTime - (i + 1) * periodLength;
         }
 
-        let secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos).to.deep.eq(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
-        let secondsAgos = await dataFeedJob.calculateSecondsAgos(periodLength, time);
+        let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, time);
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });
@@ -242,21 +236,21 @@ describe('DataFeedJob.sol', () => {
     let newJobCooldown = toBN(1 * 60 * 60);
 
     onlyGovernor(
-      () => dataFeedJob,
+      () => dataFeedKeeper,
       'setJobCooldown',
       () => governor,
       () => [newJobCooldown]
     );
 
     it('should update the jobCooldown', async () => {
-      await dataFeedJob.connect(governor).setJobCooldown(newJobCooldown);
-      let jobCooldown = await dataFeedJob.jobCooldown();
+      await dataFeedKeeper.connect(governor).setJobCooldown(newJobCooldown);
+      let jobCooldown = await dataFeedKeeper.jobCooldown();
       expect(jobCooldown).to.eq(newJobCooldown);
     });
 
     it('should emit JobCooldownUpdated', async () => {
-      await expect(dataFeedJob.connect(governor).setJobCooldown(newJobCooldown))
-        .to.emit(dataFeedJob, 'JobCooldownUpdated')
+      await expect(dataFeedKeeper.connect(governor).setJobCooldown(newJobCooldown))
+        .to.emit(dataFeedKeeper, 'JobCooldownUpdated')
         .withArgs(newJobCooldown);
     });
   });
@@ -271,20 +265,20 @@ describe('DataFeedJob.sol', () => {
     });
 
     it('should return true if jobCooldown is 0', async () => {
-      await dataFeedJob.setVariable('lastWorkedAt', { [randomChainId]: { [randomSalt]: 0 } });
-      let workable = await dataFeedJob.workable(randomChainId, randomSalt);
+      await dataFeedKeeper.setVariable('lastWorkedAt', { [randomChainId]: { [randomSalt]: 0 } });
+      let workable = await dataFeedKeeper.workable(randomChainId, randomSalt);
       expect(workable).to.eq(true);
     });
 
     it('should return true if jobCooldown has expired', async () => {
-      await dataFeedJob.setVariable('lastWorkedAt', { [randomChainId]: { [randomSalt]: now - jobCooldown } });
-      let workable = await dataFeedJob.workable(randomChainId, randomSalt);
+      await dataFeedKeeper.setVariable('lastWorkedAt', { [randomChainId]: { [randomSalt]: now - jobCooldown } });
+      let workable = await dataFeedKeeper.workable(randomChainId, randomSalt);
       expect(workable).to.eq(true);
     });
 
     it('should return false if jobCooldown has not expired', async () => {
-      await dataFeedJob.setVariable('lastWorkedAt', { [randomChainId]: { [randomSalt]: now - jobCooldown + 1 } });
-      let workable = await dataFeedJob.workable(randomChainId, randomSalt);
+      await dataFeedKeeper.setVariable('lastWorkedAt', { [randomChainId]: { [randomSalt]: now - jobCooldown + 1 } });
+      let workable = await dataFeedKeeper.workable(randomChainId, randomSalt);
       expect(workable).to.eq(false);
     });
   });

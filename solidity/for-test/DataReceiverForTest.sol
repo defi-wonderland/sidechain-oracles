@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {DataReceiver} from '../contracts/DataReceiver.sol';

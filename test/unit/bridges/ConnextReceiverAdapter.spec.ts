@@ -13,7 +13,6 @@ import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wo
 import { evm, wallet } from '@utils';
 import { VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
-import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);

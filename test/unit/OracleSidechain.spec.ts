@@ -18,10 +18,10 @@ describe('OracleSidechain.sol', () => {
   let dataReceiver: FakeContract<DataReceiver>;
   let snapshotId: string;
 
-  const randomToken0 = wallet.generateRandomAddress();
-  const randomToken1 = wallet.generateRandomAddress();
+  const randomTokenA = wallet.generateRandomAddress();
+  const randomTokenB = wallet.generateRandomAddress();
   const randomFee = 3000;
-  const salt = calculateSalt(randomToken0, randomToken1, randomFee);
+  const salt = calculateSalt(randomTokenA, randomTokenB, randomFee);
 
   before(async () => {
     dataReceiver = await smock.fake('DataReceiver');
@@ -87,38 +87,38 @@ describe('OracleSidechain.sol', () => {
 
   describe('initializePoolInfo(...)', async () => {
     it('should revert if pool info is incorrect', async () => {
-      await expect(oracleSidechain.initializePoolInfo(randomToken0, randomToken1, 0)).to.be.revertedWith('InvalidPool()');
-      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, randomToken1, randomFee)).to.be.revertedWith('InvalidPool()');
-      await expect(oracleSidechain.initializePoolInfo(randomToken0, ZERO_ADDRESS, randomFee)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, 0)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, randomTokenB, randomFee)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(randomTokenA, ZERO_ADDRESS, randomFee)).to.be.revertedWith('InvalidPool()');
     });
 
     it('should work with disordered tokens', async () => {
-      await expect(oracleSidechain.callStatic.initializePoolInfo(randomToken0, randomToken1, randomFee)).not.to.be.revertedWith('InvalidPool()');
-      await expect(oracleSidechain.callStatic.initializePoolInfo(randomToken1, randomToken0, randomFee)).not.to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenA, randomTokenB, randomFee)).not.to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenA, randomTokenB, randomFee)).not.to.be.revertedWith('InvalidPool()');
     });
 
     it('should set token0', async () => {
-      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
-      const [token0] = sortTokens([randomToken0, randomToken1]);
+      await oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, randomFee);
+      const [token0] = sortTokens([randomTokenA, randomTokenB]);
 
       expect(await oracleSidechain.token0()).to.eq(token0);
     });
 
     it('should set token1', async () => {
-      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
-      const [, token1] = sortTokens([randomToken0, randomToken1]);
+      await oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, randomFee);
+      const [, token1] = sortTokens([randomTokenA, randomTokenB]);
 
       expect(await oracleSidechain.token1()).to.eq(token1);
     });
 
     it('should set fee', async () => {
-      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
+      await oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, randomFee);
 
       expect(await oracleSidechain.fee()).to.eq(randomFee);
     });
 
     it('should set unlocked to false', async () => {
-      await oracleSidechain.initializePoolInfo(randomToken0, randomToken1, randomFee);
+      await oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, randomFee);
 
       expect((await oracleSidechain.slot0()).unlocked).to.eq(false);
     });

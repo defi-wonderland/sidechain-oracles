@@ -1,5 +1,5 @@
 //TODO: change license
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {OracleSidechain} from './OracleSidechain.sol';
@@ -21,8 +21,7 @@ contract OracleFactory is IOracleFactory, Governable {
     dataReceiver = _dataReceiver;
   }
 
-  function deployOracle(bytes32 _poolSalt) external returns (address _deployedOracle) {
-    if (IDataReceiver(msg.sender) != dataReceiver) revert OnlyDataReceiver();
+  function deployOracle(bytes32 _poolSalt) external onlyDataReceiver returns (address _deployedOracle) {
     oracleParameters = OracleParameters({factory: IOracleFactory(address(this)), poolSalt: _poolSalt, cardinality: initialCardinality});
     _deployedOracle = address(new OracleSidechain{salt: _poolSalt}());
     delete oracleParameters;
@@ -58,5 +57,10 @@ contract OracleFactory is IOracleFactory, Governable {
   ) public pure returns (bytes32 _poolSalt) {
     (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
     _poolSalt = keccak256(abi.encode(_token0, _token1, _fee));
+  }
+
+  modifier onlyDataReceiver() {
+    if (msg.sender != address(dataReceiver)) revert OnlyDataReceiver();
+    _;
   }
 }

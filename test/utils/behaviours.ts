@@ -11,8 +11,7 @@ export type Impersonator = Signer | Provider | string;
 
 export const onlyGovernor = createOnlyCallableCheck(['governor'], 'OnlyGovernor()');
 export const onlyPendingGovernor = createOnlyCallableCheck(['pending governor'], 'OnlyPendingGovernor()');
-export const onlyJobOwner = createOnlyCallableCheck(['job owner'], 'OnlyJobOwner()');
-export const onlyJob = createOnlyCallableCheck(['job'], 'OnlyJob()');
+export const onlyKeeper = createOnlyCallableCheck(['keeper'], 'OnlyKeeper()');
 export const onlyDataFeed = createOnlyCallableCheck(['data feed'], 'OnlyDataFeed()');
 export const onlyWhitelistedAdapter = createOnlyCallableCheck(['whitelisted adapter'], 'UnallowedAdapter()');
 export const onlyDataReceiver = createOnlyCallableCheck(['data receiver'], 'OnlyDataReceiver()');

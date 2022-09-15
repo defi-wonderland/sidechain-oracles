@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './peripherals/Governable.sol';
 import {AdapterManagement} from './peripherals/AdapterManagement.sol';
-import {IDataFeed, IUniswapV3Factory, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
+import {IDataFeed, IDataFeedKeeper, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 import {OracleFork} from '../libraries/OracleFork.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
@@ -12,9 +12,14 @@ contract DataFeed is IDataFeed, AdapterManagement {
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
   /// @inheritdoc IDataFeed
+  IDataFeedKeeper public keeper;
+
+  /// @inheritdoc IDataFeed
   mapping(bytes32 => PoolState) public lastPoolStateBridged;
 
-  constructor(address _governance) Governable(_governance) {}
+  constructor(address _governor, IDataFeedKeeper _keeper) Governable(_governor) {
+    _setKeeper(_keeper);
+  }
 
   /// @inheritdoc IDataFeed
   function sendObservations(
@@ -22,7 +27,7 @@ contract DataFeed is IDataFeed, AdapterManagement {
     uint16 _chainId,
     bytes32 _poolSalt,
     uint32[] calldata _secondsAgos
-  ) external {
+  ) external onlyKeeper {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
 
     IOracleSidechain.ObservationData[] memory _observationsData;
@@ -111,5 +116,20 @@ contract DataFeed is IDataFeed, AdapterManagement {
       _beforeOrAtIndex = OracleFork.getPreviousObservationIndex(_pool, _time, _target, _observationIndex, _observationCardinality);
       _observationsIndices[_i] = _beforeOrAtIndex;
     }
+  }
+
+  /// @inheritdoc IDataFeed
+  function setKeeper(IDataFeedKeeper _keeper) external onlyGovernor {
+    _setKeeper(_keeper);
+  }
+
+  function _setKeeper(IDataFeedKeeper _keeper) private {
+    keeper = _keeper;
+    emit KeeperUpdated(_keeper);
+  }
+
+  modifier onlyKeeper() {
+    if (msg.sender != address(keeper)) revert OnlyKeeper();
+    _;
   }
 }

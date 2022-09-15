@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {OracleSidechain} from './OracleSidechain.sol';
@@ -11,7 +11,7 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xe69bca862eeab819f0666373619d495888a9c537b2ce090e3941cc5cab137385;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xf7160672a81419738afa2193b863b5c5c7e223c3806d420a4e0a6679f3f1865f;
 
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;

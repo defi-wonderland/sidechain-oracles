@@ -11,7 +11,8 @@ import {
 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { KP3R, WETH, FEE, UNI_FACTORY, POOL_INIT_CODE_HASH, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
-import { getInitCodeHash, calculateSalt, getCreate2Address } from '@utils/misc';
+import { onlyDataReceiver } from '@utils/behaviours';
+import { calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle } from './common';
@@ -20,12 +21,10 @@ import { expect } from 'chai';
 describe('@skip-on-coverage OracleSidechain.sol', () => {
   let deployer: SignerWithAddress;
   let governor: SignerWithAddress;
-  let oracleFactory: OracleFactory;
-  let oracleFactoryFactory: OracleFactory__factory;
   let oracleSidechain: OracleSidechain;
+  let oracleFactory: OracleFactory;
   let allowedDataReceiver: DataReceiverForTest;
   let unallowedDataReceiver: DataReceiverForTest;
-  let dataReceiverFactory: DataReceiverForTest__factory;
   let snapshotId: string;
   let tokenA: ERC20;
   let tokenB: ERC20;
@@ -39,6 +38,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     });
 
     ({ tokenA, tokenB, fee } = await getEnvironment());
+
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
     ({ deployer, governor } = await setupContracts());

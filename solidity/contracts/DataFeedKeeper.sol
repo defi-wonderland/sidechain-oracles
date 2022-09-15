@@ -1,32 +1,32 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Keep3rJob, Governable} from './peripherals/Keep3rJob.sol';
-import {IDataFeedJob, IDataFeed, IBridgeSenderAdapter} from '../interfaces/IDataFeedJob.sol';
+import {IDataFeedKeeper, IDataFeed, IBridgeSenderAdapter} from '../interfaces/IDataFeedKeeper.sol';
 
-contract DataFeedJob is IDataFeedJob, Keep3rJob {
-  /// @inheritdoc IDataFeedJob
+contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
+  /// @inheritdoc IDataFeedKeeper
   IDataFeed public immutable dataFeed;
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   uint256 public jobCooldown;
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   uint32 public periodLength = 1 days;
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   mapping(uint16 => mapping(bytes32 => uint32)) public lastWorkedAt;
 
   constructor(
-    IDataFeed _dataFeed,
     address _governor,
+    IDataFeed _dataFeed,
     uint256 _jobCooldown
   ) Governable(_governor) {
     dataFeed = _dataFeed;
     _setJobCooldown(_jobCooldown);
   }
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   function work(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
@@ -39,7 +39,7 @@ contract DataFeedJob is IDataFeedJob, Keep3rJob {
     emit Bridged(msg.sender, _bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
   }
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   function forceWork(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
@@ -50,18 +50,18 @@ contract DataFeedJob is IDataFeedJob, Keep3rJob {
     emit ForceBridged(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
   }
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   function setJobCooldown(uint256 _jobCooldown) external onlyGovernor {
     _setJobCooldown(_jobCooldown);
   }
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   function workable(uint16 _chainId, bytes32 _poolSalt) public view returns (bool _isWorkable) {
     // TODO: require _poolSalt and _chainId to be whitelisted
     return block.timestamp >= lastWorkedAt[_chainId][_poolSalt] + jobCooldown;
   }
 
-  /// @inheritdoc IDataFeedJob
+  /// @inheritdoc IDataFeedKeeper
   function calculateSecondsAgos(uint32 _periodLength, uint32 _lastKnownTimestamp) public view returns (uint32[] memory _secondsAgos) {
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     // TODO: define initialization of _lastKnownTimestamp

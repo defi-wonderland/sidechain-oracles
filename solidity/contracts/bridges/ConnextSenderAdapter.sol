@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {LibConnextStorage, CallParams, XCallArgs} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
@@ -21,9 +21,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] calldata _observationsData,
     bytes32 _poolSalt
-  ) external payable {
-    if (msg.sender != address(dataFeed)) revert OnlyDataFeed();
-
+  ) external payable onlyDataFeed {
     // TODO: asset will be deprecated, we have to have one for now--will delete as soon as it's deprecated. This address is a random placeholder
     address _asset = 0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9;
     bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],bytes32)'));
@@ -51,5 +49,10 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     connext.xcall(_xcallArgs);
 
     emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _poolSalt);
+  }
+
+  modifier onlyDataFeed() {
+    if (msg.sender != address(dataFeed)) revert OnlyDataFeed();
+    _;
   }
 }

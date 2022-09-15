@@ -1,13 +1,12 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IUniswapV3Factory} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from './bridges/IConnextSenderAdapter.sol';
-import {IGovernable} from './peripherals/IGovernable.sol';
 import {IAdapterManagement} from './peripherals/IAdapterManagement.sol';
+import {IDataFeedKeeper} from './IDataFeedKeeper.sol';
+import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from './bridges/IConnextSenderAdapter.sol';
 
-interface IDataFeed is IGovernable, IAdapterManagement {
+interface IDataFeed is IAdapterManagement {
   // STRUCTS
 
   struct PoolState {
@@ -17,6 +16,8 @@ interface IDataFeed is IGovernable, IAdapterManagement {
   }
 
   // STATE VARIABLES
+
+  function keeper() external view returns (IDataFeedKeeper _keeper);
 
   /// @notice Tracks the last bridged pool state by salt
   /// @param _poolSalt The id of both the oracle and the pool
@@ -42,9 +43,12 @@ interface IDataFeed is IGovernable, IAdapterManagement {
     bytes32 _poolSalt
   );
 
+  event KeeperUpdated(IDataFeedKeeper _keeper);
+
   // ERRORS
 
   error InvalidSecondsAgos();
+  error OnlyKeeper();
 
   // FUNCTIONS
 
@@ -65,4 +69,6 @@ interface IDataFeed is IGovernable, IAdapterManagement {
     external
     view
     returns (uint16[] memory _observationsIndices);
+
+  function setKeeper(IDataFeedKeeper _keeper) external;
 }

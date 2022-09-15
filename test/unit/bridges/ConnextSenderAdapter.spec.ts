@@ -7,7 +7,6 @@ import { ZERO_ADDRESS, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyDataFeed } from '@utils/behaviours';
-import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -78,7 +77,7 @@ describe('ConnextSenderAdapter.sol', () => {
       expect(eventOriginDomainId).to.eq(rinkebyOriginId);
       expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
       expect(eventObservationsData).to.eql(observationsData);
-      expect(eventPoolSalt).to.eql(randomSalt);
+      expect(eventPoolSalt).to.eq(randomSalt);
     });
 
     onlyDataFeed(

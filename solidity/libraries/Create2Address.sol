@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
+//SPDX-License-Identifier: BUSL-1.1
 pragma solidity >=0.8.8 <0.9.0;
 
 /// @title Provides functions for deriving a pool address from the factory, tokens, and the fee

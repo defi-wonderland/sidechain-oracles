@@ -1,10 +1,11 @@
-import { ethers, network } from 'hardhat';
+import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, ERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
+import { onlyWhitelistedAdapter } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -12,7 +13,7 @@ import { setupContracts, getEnvironment, getOracle } from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage DataReceiver.sol', () => {
-  let stranger: SignerWithAddress;
+  let deployer: SignerWithAddress;
   let governor: SignerWithAddress;
   let dataReceiver: DataReceiver;
   let connextReceiverAdapter: ConnextReceiverAdapter;
@@ -31,9 +32,10 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
     });
 
     ({ tokenA, tokenB, fee } = await getEnvironment());
+
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ stranger, governor, dataReceiver, connextReceiverAdapter, oracleFactory } = await setupContracts());
+    ({ deployer, governor, dataReceiver, connextReceiverAdapter, oracleFactory } = await setupContracts());
 
     snapshotId = await evm.snapshot.take();
   });
@@ -51,7 +53,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   });
 
   describe('adding observations', () => {
-    let connextReceiverAdapterSigner: SignerWithAddress;
+    let connextReceiverAdapterSigner: JsonRpcSigner;
     let blockTimestamp1 = 1000000;
     let tick1 = 100;
     let observationData1 = [blockTimestamp1, tick1] as IOracleSidechain.ObservationDataStructOutput;
@@ -61,53 +63,53 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
     let observationsData = [observationData1, observationData2];
 
     beforeEach(async () => {
-      await network.provider.request({
-        method: 'hardhat_impersonateAccount',
-        params: [connextReceiverAdapter.address],
-      });
+      connextReceiverAdapterSigner = await wallet.impersonate(connextReceiverAdapter.address);
       await wallet.setBalance(connextReceiverAdapter.address, toUnit(10));
-      connextReceiverAdapterSigner = await ethers.getSigner(connextReceiverAdapter.address);
+      dataReceiver = dataReceiver.connect(connextReceiverAdapterSigner);
     });
 
-    it('should revert if the caller is not a whitelisted adapter', async () => {
-      await expect(dataReceiver.connect(stranger).addObservations(observationsData, salt)).to.be.revertedWith('UnallowedAdapter()');
+    onlyWhitelistedAdapter(
+      () => dataReceiver,
+      'addObservations',
+      () => connextReceiverAdapterSigner,
+      () => [observationsData, salt]
+    );
+
+    context('when the observations are writable', () => {
+      it('should add the observations', async () => {
+        let tx = await dataReceiver.addObservations(observationsData, salt);
+
+        ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+
+        await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
+        await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
+      });
+
+      it('should emit ObservationsAdded', async () => {
+        let tx = await dataReceiver.addObservations(observationsData, salt);
+        let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
+        let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+        expect(eventUser).to.eq(connextReceiverAdapter.address);
+        expect(eventObservationsData).to.eql(observationsData);
+      });
     });
 
-    context('when the caller is a whitelisted adapter', () => {
-      context('when the observations are writable', () => {
-        it('should add the observations', async () => {
-          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, salt);
+    context('when the observations are not writable', () => {
+      let blockTimestamp2Before = blockTimestamp2 - 1;
+      let observationData2Before = [blockTimestamp2Before, tick2] as IOracleSidechain.ObservationDataStructOutput;
+      let oldObservationsData = [observationData2Before, observationData2];
 
-          ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
-
-          await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
-          await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
-        });
-
-        it('should emit ObservationsAdded', async () => {
-          let tx = await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, salt);
-          let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
-          let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
-          expect(eventUser).to.eq(connextReceiverAdapter.address);
-          expect(eventObservationsData).to.eql(observationsData);
-        });
+      beforeEach(async () => {
+        await dataReceiver.addObservations(observationsData, salt);
       });
 
-      context('when the observations are not writable', () => {
-        let blockTimestamp2Before = blockTimestamp2 - 1;
-        let observationData2Before = [blockTimestamp2Before, tick2] as IOracleSidechain.ObservationDataStructOutput;
-        let oldObservationsData = [observationData2Before, observationData2];
-
-        beforeEach(async () => {
-          await dataReceiver.connect(connextReceiverAdapterSigner).addObservations(observationsData, salt);
-        });
-
-        it('should revert the tx', async () => {
-          await expect(dataReceiver.connect(connextReceiverAdapterSigner).addObservations(oldObservationsData, salt)).to.be.revertedWith(
-            'ObservationsNotWritable()'
-          );
-        });
+      it('should revert the tx', async () => {
+        await expect(dataReceiver.addObservations(oldObservationsData, salt)).to.be.revertedWith('ObservationsNotWritable()');
       });
+    });
+
+    after(async () => {
+      dataReceiver = dataReceiver.connect(deployer);
     });
   });
 });

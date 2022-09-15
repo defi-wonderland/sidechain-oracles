@@ -11,6 +11,7 @@ chai.use(smock.matchers);
 
 describe('AdapterManagement.sol', () => {
   let governor: SignerWithAddress;
+  let keeper: SignerWithAddress;
   let dataFeed: MockContract<DataFeed>;
   let dataFeedFactory: MockContractFactory<DataFeed__factory>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
@@ -26,13 +27,13 @@ describe('AdapterManagement.sol', () => {
   const randomChainId2 = 22;
 
   before(async () => {
-    [, governor] = await ethers.getSigners();
+    [, governor, keeper] = await ethers.getSigners();
 
     connextSenderAdapter = await smock.fake('IConnextSenderAdapter');
     fakeAdapter = await smock.fake('IConnextSenderAdapter');
 
     dataFeedFactory = await smock.mock('DataFeed');
-    dataFeed = await dataFeedFactory.deploy(governor.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -81,13 +82,14 @@ describe('AdapterManagement.sol', () => {
     });
   });
 
-  describe('whitelistAdapter', () => {
+  describe('whitelistAdapter(...)', () => {
     onlyGovernor(
       () => dataFeed,
       'whitelistAdapter',
       () => governor,
       () => [connextSenderAdapter.address, true]
     );
+
     it('should whitelist the connext adapter', async () => {
       await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
       expect(await dataFeed.whitelistedAdapters(connextSenderAdapter.address)).to.eq(true);
@@ -113,7 +115,7 @@ describe('AdapterManagement.sol', () => {
     });
   });
 
-  describe('whitelistAdapters', () => {
+  describe('whitelistAdapters(...)', () => {
     onlyGovernor(
       () => dataFeed,
       'whitelistAdapters',
@@ -164,7 +166,7 @@ describe('AdapterManagement.sol', () => {
     });
   });
 
-  describe('setReceiver', () => {
+  describe('setReceiver(...)', () => {
     onlyGovernor(
       () => dataFeed,
       'setReceiver',
@@ -186,7 +188,7 @@ describe('AdapterManagement.sol', () => {
     });
   });
 
-  describe('setReceivers', () => {
+  describe('setReceivers(...)', () => {
     let validArgs: [string[], number[], string[]];
 
     before(() => {
@@ -250,7 +252,7 @@ describe('AdapterManagement.sol', () => {
     });
   });
 
-  describe('setDestinationDomainId', () => {
+  describe('setDestinationDomainId(...)', () => {
     onlyGovernor(
       () => dataFeed,
       'setDestinationDomainId',
@@ -272,7 +274,7 @@ describe('AdapterManagement.sol', () => {
     });
   });
 
-  describe('setDestinationDomainIds', () => {
+  describe('setDestinationDomainIds(...)', () => {
     let validArgs: [string[], number[], number[]];
 
     before(async () => {

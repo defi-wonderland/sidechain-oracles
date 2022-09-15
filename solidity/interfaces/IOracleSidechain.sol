@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleFactory} from './IOracleFactory.sol';
@@ -70,14 +70,22 @@ interface IOracleSidechain {
 
   // EVENTS
 
+  event PoolInfoInitialized(bytes32 _poolSalt, address _token0, address _token1, uint24 _fee);
   event ObservationWritten(address _user, ObservationData _observationData);
 
   // ERRORS
 
-  error OnlyDataReceiver();
   error AI();
+  error InvalidPool();
+  error OnlyDataReceiver();
 
   // FUNCTIONS
+
+  function initializePoolInfo(
+    address _tokenA,
+    address _tokenB,
+    uint24 _fee
+  ) external;
 
   /// @notice Returns the cumulative tick and liquidity as of each timestamp `secondsAgo` from the current block timestamp
   /// @dev To get a time weighted average tick or liquidity-in-range, you must call this with two values, one representing

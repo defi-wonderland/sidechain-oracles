@@ -1,10 +1,9 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';
 import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
-import {IDataReceiver} from '../interfaces/IDataReceiver.sol';
 
 /// @title A sidechain oracle contract
 /// @author 0xJabberwock (from DeFi Wonderland)
@@ -48,14 +47,31 @@ contract OracleSidechain is IOracleSidechain {
   /// @inheritdoc IOracleSidechain
   uint24 public fee;
 
-  // TODO: move to interface
-  error InvalidPool();
-  event PoolInfoInitialized(bytes32 indexed poolSalt, address token0, address token1, uint24 fee);
+  /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
+  function _getBlockTimestamp() internal view virtual returns (uint32) {
+    return uint32(block.timestamp); // truncation is desired
+  }
+
+  constructor() {
+    uint16 _cardinality;
+    (factory, poolSalt, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
+
+    slot0 = Slot0({
+      sqrtPriceX96: 0,
+      tick: 0,
+      observationIndex: _cardinality - 1,
+      observationCardinality: _cardinality,
+      observationCardinalityNext: _cardinality,
+      feeProtocol: 0,
+      unlocked: true
+    });
+  }
 
   /*
    * NOTE: public function that allows signer to register token0, token1 and fee
    *       before someone registers, oracle can be found with poolSalt, but token0 and token1 views will return address(0)
    */
+  /// @inheritdoc IOracleSidechain
   function initializePoolInfo(
     address _tokenA,
     address _tokenB,
@@ -74,26 +90,6 @@ contract OracleSidechain is IOracleSidechain {
     emit PoolInfoInitialized(poolSalt, _token0, _token1, _fee);
   }
 
-  constructor() {
-    uint16 _cardinality;
-    (factory, poolSalt, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
-
-    slot0 = Slot0({
-      sqrtPriceX96: 0,
-      tick: 0,
-      observationIndex: _cardinality - 1,
-      observationCardinality: _cardinality,
-      observationCardinalityNext: _cardinality,
-      feeProtocol: 0,
-      unlocked: true
-    });
-  }
-
-  /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.
-  function _getBlockTimestamp() internal view virtual returns (uint32) {
-    return uint32(block.timestamp); // truncation is desired
-  }
-
   /// @inheritdoc IOracleSidechain
   function observe(uint32[] calldata _secondsAgos)
     external
@@ -104,8 +100,7 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   /// @inheritdoc IOracleSidechain
-  function write(ObservationData[] calldata _observationsData) external returns (bool _written) {
-    if (IDataReceiver(msg.sender) != factory.dataReceiver()) revert OnlyDataReceiver();
+  function write(ObservationData[] calldata _observationsData) external onlyDataReceiver returns (bool _written) {
     Oracle.Observation memory _lastObservation = observations[slot0.observationIndex];
     uint256 _observationsDataLength = _observationsData.length;
     for (uint256 _i; _i < _observationsDataLength; ++_i) {
@@ -128,5 +123,10 @@ contract OracleSidechain is IOracleSidechain {
     (slot0.observationIndex, slot0.observationCardinality) = (_indexUpdated, _cardinalityUpdated);
     slot0.tick = _observationData.tick;
     emit ObservationWritten(msg.sender, _observationData);
+  }
+
+  modifier onlyDataReceiver() {
+    if (msg.sender != address(factory.dataReceiver())) revert OnlyDataReceiver();
+    _;
   }
 }

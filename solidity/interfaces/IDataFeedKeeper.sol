@@ -1,13 +1,14 @@
-// SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IKeep3rJob} from './peripherals/IKeep3rJob.sol';
-import {IDataFeed, IBridgeSenderAdapter} from './IDataFeed.sol';
+import {IDataFeed} from './IDataFeed.sol';
+import {IBridgeSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
 
-/// @title The DataFeedJob interface
+/// @title The DataFeedKeeper interface
 /// @author 0xJabberwock (from DeFi Wonderland)
-/// @notice Contains state variables, events, custom errors and functions used in DataFeedJob
-interface IDataFeedJob is IKeep3rJob {
+/// @notice Contains state variables, events, custom errors and functions used in DataFeedKeeper
+interface IDataFeedKeeper is IKeep3rJob {
   // STATE VARIABLES
 
   /// @notice Gets the address of the DataFeed contract

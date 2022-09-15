@@ -4,7 +4,7 @@ import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   DataFeed,
-  DataFeedJob,
+  DataFeedKeeper,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
   DataReceiver,
@@ -15,9 +15,10 @@ import {
 } from '@typechained';
 import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
-import { KP3R, WETH, FEE, RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
+import { onlyKeeper } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
@@ -25,14 +26,13 @@ import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
 import { expect } from 'chai';
 
-const KP3R_WETH_SALT = calculateSalt(KP3R, WETH, FEE);
-
 describe('@skip-on-coverage Data Bridging Flow', () => {
+  let deployer: SignerWithAddress;
   let governor: SignerWithAddress;
   let keeper: JsonRpcSigner;
   let kp3rProxyGovernor: JsonRpcSigner;
   let dataFeed: DataFeed;
-  let dataFeedJob: DataFeedJob;
+  let dataFeedKeeper: DataFeedKeeper;
   let uniswapV3Factory: UniswapV3Factory;
   let uniV3Pool: UniswapV3Pool;
   let tokenA: ERC20;
@@ -58,7 +58,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ governor, dataFeed, dataFeedJob, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } = await setupContracts());
+    ({ deployer, governor, dataFeed, dataFeedKeeper, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } =
+      await setupContracts());
 
     ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
@@ -77,6 +78,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   });
 
   describe('observation bridging flow', () => {
+    let dataFeedKeeperSigner: JsonRpcSigner;
     let secondsAgos = [30, 10, 0];
     let blockTimestamps: number[];
     let tickCumulatives: BigNumber[];
@@ -86,6 +88,19 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let swapAmount = toUnit(10);
     let now: number;
     const hours = 10_000;
+
+    beforeEach(async () => {
+      dataFeedKeeperSigner = await wallet.impersonate(dataFeedKeeper.address);
+      await wallet.setBalance(dataFeedKeeper.address, toUnit(10));
+      dataFeed = dataFeed.connect(dataFeedKeeperSigner);
+    });
+
+    onlyKeeper(
+      () => dataFeed,
+      'sendObservations',
+      () => dataFeedKeeperSigner,
+      () => [connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos]
+    );
 
     context('when the adapter is not set', () => {
       it('should revert', async () => {
@@ -156,7 +171,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         beforeEach(async () => {
           await evm.advanceTimeAndBlock(10 * hours);
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(KP3R, swapAmount.add(Math.floor(Math.random() * 10e9)), WETH, FEE);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
           now = (await ethers.provider.getBlock('latest')).timestamp;
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
@@ -235,7 +250,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(KP3R, swapAmount.add(Math.floor(Math.random() * 10e9)), WETH, FEE);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
 
@@ -363,6 +378,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         });
       });
     });
+
+    after(async () => {
+      dataFeed = dataFeed.connect(deployer);
+    });
   });
 
   describe('fetching observations indices', () => {
@@ -407,7 +426,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   });
 
   describe('keep3r job', () => {
-    let secondsAgos = [30, 10, 0];
     let bondTime: BigNumber;
 
     beforeEach(async () => {
@@ -415,8 +433,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       await keep3rV2.connect(keeper).bond(tokenB.address, 0);
       await evm.advanceTimeAndBlock(bondTime.toNumber());
       await keep3rV2.connect(keeper).activate(tokenB.address);
-      await keep3rV2.addJob(dataFeedJob.address);
-      await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedJob.address, toUnit(10));
+      await keep3rV2.addJob(dataFeedKeeper.address);
+      await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
     });
 
     context('when the adapter, destination domain and receiver are set and whitelisted', () => {
@@ -432,23 +450,17 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(dataFeedJob.connect(governor).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R_WETH_SALT)).to.be.revertedWith(
+        await expect(dataFeedKeeper.connect(governor).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt)).to.be.revertedWith(
           'KeeperNotValid()'
         );
       });
 
       it('should work the job', async () => {
-        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R_WETH_SALT)).to.emit(
-          dataFeed,
-          'DataSent'
-        );
+        await expect(dataFeedKeeper.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt)).to.emit(dataFeed, 'DataSent');
       });
 
       it('should pay the keeper', async () => {
-        await expect(dataFeedJob.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, KP3R_WETH_SALT)).to.emit(
-          keep3rV2,
-          'KeeperWork'
-        );
+        await expect(dataFeedKeeper.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt)).to.emit(keep3rV2, 'KeeperWork');
       });
     });
   });

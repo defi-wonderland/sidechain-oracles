@@ -1,28 +1,27 @@
 import { ethers } from 'hardhat';
-import { ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataFeed, DataFeed__factory, IUniswapV3Factory, IUniswapV3Pool, IConnextSenderAdapter, IOracleSidechain } from '@typechained';
+import { DataFeed, DataFeed__factory, IUniswapV3Pool, IConnextSenderAdapter, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
-import { getCreate2Address, getRandomBytes32 } from '@utils/misc';
+import { onlyGovernor, onlyKeeper } from '@utils/behaviours';
+import { getCreate2Address } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
 describe('DataFeed.sol', () => {
   let governor: SignerWithAddress;
-  let randomUser: SignerWithAddress;
+  let keeper: SignerWithAddress;
   let dataFeed: MockContract<DataFeed>;
   let dataFeedFactory: MockContractFactory<DataFeed__factory>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
-  let uniswapV3Factory: FakeContract<IUniswapV3Factory>;
   let uniswapV3Pool: FakeContract<IUniswapV3Pool>;
-  let tx: ContractTransaction;
   let snapshotId: string;
 
+  const randomAddress = wallet.generateRandomAddress();
   const randomDataReceiverAddress = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
   const randomChainId = 32;
@@ -30,12 +29,9 @@ describe('DataFeed.sol', () => {
   const randomSalt = VALID_POOL_SALT;
 
   before(async () => {
-    [, governor] = await ethers.getSigners();
+    [, governor, keeper] = await ethers.getSigners();
 
     connextSenderAdapter = await smock.fake('IConnextSenderAdapter');
-    uniswapV3Factory = await smock.fake('IUniswapV3Factory', {
-      address: UNI_FACTORY,
-    });
 
     uniswapV3Pool = await smock.fake('IUniswapV3Pool', {
       address: getCreate2Address(UNI_FACTORY, randomSalt, POOL_INIT_CODE_HASH),
@@ -48,12 +44,16 @@ describe('DataFeed.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    dataFeed = await dataFeedFactory.deploy(governor.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address);
   });
 
   describe('constructor(...)', () => {
-    it('should initialize governor to the address passed to the constructor', async () => {
+    it('should set the governor', async () => {
       expect(await dataFeed.governor()).to.eq(governor.address);
+    });
+
+    it('should set the keeper', async () => {
+      expect(await dataFeed.keeper()).to.eq(keeper.address);
     });
   });
 
@@ -79,11 +79,20 @@ describe('DataFeed.sol', () => {
       connextSenderAdapter.bridgeObservations.reset();
     });
 
+    onlyKeeper(
+      () => dataFeed,
+      'sendObservations',
+      () => keeper,
+      () => [connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos]
+    );
+
     it('should revert if secondsAgos is unsorted', async () => {
       let secondsAgos = [secondsAgo - (delta1 + delta2), secondsAgo - delta1, secondsAgo];
       let tickCumulatives = [0, 0, 0];
       uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-      await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)).to.be.revertedWith(
+      await expect(
+        dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)
+      ).to.be.revertedWith(
         'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
       );
     });
@@ -92,9 +101,9 @@ describe('DataFeed.sol', () => {
       let secondsAgos = [secondsAgo, secondsAgo];
       let tickCumulatives = [0, 0];
       uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-      await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)).to.be.revertedWith(
-        'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
-      );
+      await expect(
+        dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)
+      ).to.be.revertedWith('VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)');
     });
 
     context('when the oracle has no data', () => {
@@ -108,18 +117,18 @@ describe('DataFeed.sol', () => {
         let secondsAgos = [secondsAgo];
         let tickCumulatives = [0];
         uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)).to.be.revertedWith(
-          'InvalidSecondsAgos()'
-        );
+        await expect(
+          dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)
+        ).to.be.revertedWith('InvalidSecondsAgos()');
       });
 
       it('should revert if secondsAgos has a repeated input', async () => {
         let secondsAgos = [secondsAgo, secondsAgo];
         let tickCumulatives = [0, 0];
         uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)).to.be.revertedWith(
-          'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
-        );
+        await expect(
+          dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)
+        ).to.be.revertedWith('VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)');
       });
     });
 
@@ -155,7 +164,9 @@ describe('DataFeed.sol', () => {
         });
 
         it('should revert', async () => {
-          await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)).to.be.revertedWith(
+          await expect(
+            dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)
+          ).to.be.revertedWith(
             'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
           );
         });
@@ -170,9 +181,9 @@ describe('DataFeed.sol', () => {
         });
 
         it('should revert', async () => {
-          await expect(dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)).to.be.revertedWith(
-            'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
-          );
+          await expect(
+            dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos)
+          ).to.be.revertedWith('VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)');
         });
       });
 
@@ -186,7 +197,7 @@ describe('DataFeed.sol', () => {
           let secondsAgos = [secondsAgo];
           let tickCumulatives = [tickCumulative];
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-          let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+          let tx = await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
           let eventObservationsData = (await readArgFromEvent(
             tx,
             'DataSent',
@@ -215,7 +226,7 @@ describe('DataFeed.sol', () => {
           it('should update lastPoolStateBridged', async () => {
             let lastBlockTimestampBridged = secondsNow - secondsAgos[2];
             let expectedLastPoolStateBridged = [lastBlockTimestampBridged, toBN(tickCumulatives[2]), arithmeticMeanTick2];
-            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+            await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
             let lastPoolStateBridged = await dataFeed.lastPoolStateBridged(randomSalt);
             expect(lastPoolStateBridged).to.eql(expectedLastPoolStateBridged);
           });
@@ -225,7 +236,7 @@ describe('DataFeed.sol', () => {
             let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
             let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
             let observationsData = [observationData0, observationData1, observationData2];
-            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+            await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
             expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
               randomDataReceiverAddress,
               randomDestinationDomainId,
@@ -239,7 +250,7 @@ describe('DataFeed.sol', () => {
             let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
             let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
             let observationsData = [observationData0, observationData1, observationData2];
-            let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+            let tx = await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
             let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
             let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
             let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
@@ -250,7 +261,7 @@ describe('DataFeed.sol', () => {
             expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
             expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
             expect(eventObservationsData).to.eql(observationsData);
-            expect(eventPoolSalt).to.eql(randomSalt);
+            expect(eventPoolSalt).to.eq(randomSalt);
           });
         });
 
@@ -274,7 +285,7 @@ describe('DataFeed.sol', () => {
           it('should update lastPoolStateBridged', async () => {
             let lastBlockTimestampBridged = secondsNow - secondsAgos[2];
             let expectedLastPoolStateBridged = [lastBlockTimestampBridged, toBN(tickCumulatives[2]), arithmeticMeanTick2];
-            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+            await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
             let lastPoolStateBridged = await dataFeed.lastPoolStateBridged(randomSalt);
             expect(lastPoolStateBridged).to.eql(expectedLastPoolStateBridged);
           });
@@ -284,7 +295,7 @@ describe('DataFeed.sol', () => {
             let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
             let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
             let observationsData = [observationData0, observationData1, observationData2];
-            await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+            await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
             expect(connextSenderAdapter.bridgeObservations).to.have.been.calledOnceWith(
               randomDataReceiverAddress,
               randomDestinationDomainId,
@@ -298,7 +309,7 @@ describe('DataFeed.sol', () => {
             let observationData1 = [blockTimestamp1, arithmeticMeanTick1];
             let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
             let observationsData = [observationData0, observationData1, observationData2];
-            let tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
+            let tx = await dataFeed.connect(keeper).sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, secondsAgos);
             let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
             let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
             let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
@@ -308,7 +319,7 @@ describe('DataFeed.sol', () => {
             expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
             expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
             expect(eventObservationsData).to.eql(observationsData);
-            expect(eventPoolSalt).to.eql(randomSalt);
+            expect(eventPoolSalt).to.eq(randomSalt);
           });
         });
       });
@@ -626,6 +637,25 @@ describe('DataFeed.sol', () => {
           expect(observationsIndices).to.eql(expectedObservationsIndices);
         });
       });
+    });
+  });
+
+  describe('setKeeper(...)', () => {
+    onlyGovernor(
+      () => dataFeed,
+      'setKeeper',
+      () => governor,
+      () => [randomAddress]
+    );
+
+    it('should update the keeper', async () => {
+      await dataFeed.connect(governor).setKeeper(randomAddress);
+      let keeper = await dataFeed.keeper();
+      expect(keeper).to.eq(randomAddress);
+    });
+
+    it('should emit KeeperUpdated', async () => {
+      await expect(dataFeed.connect(governor).setKeeper(randomAddress)).to.emit(dataFeed, 'KeeperUpdated').withArgs(randomAddress);
     });
   });
 });

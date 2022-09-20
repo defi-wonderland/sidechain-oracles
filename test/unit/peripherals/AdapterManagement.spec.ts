@@ -42,46 +42,6 @@ describe('AdapterManagement.sol', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('validateSenderAdapter(...)', () => {
-    context('when the adapter is not whitelisted', () => {
-      it('should revert', async () => {
-        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith('UnallowedAdapter');
-      });
-    });
-
-    context('when the adapter is whitelisted but the domain id is not set', () => {
-      it('should revert', async () => {
-        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith(
-          'DestinationDomainIdNotSet'
-        );
-      });
-    });
-
-    context('when the adapter is whitelisted, the domain id is set, but the receiver is not set', () => {
-      it('should revert', async () => {
-        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
-        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith('ReceiverNotSet');
-      });
-    });
-
-    context('when the adapter is whitelisted and the domain id and receiver are set', () => {
-      beforeEach(async () => {
-        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
-        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
-      });
-
-      it('should return the queried values', async () => {
-        expect(await dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.eql([
-          randomDestinationDomainId,
-          randomDataReceiverAddress,
-        ]);
-      });
-    });
-  });
-
   describe('whitelistAdapter(...)', () => {
     onlyGovernor(
       () => dataFeed,
@@ -126,7 +86,7 @@ describe('AdapterManagement.sol', () => {
       ]
     );
 
-    it('should revert if the lengths of the arguments dont match', async () => {
+    it('should revert if the lengths of the arguments do not match', async () => {
       await expect(dataFeed.connect(governor).whitelistAdapters([connextSenderAdapter.address, fakeAdapter.address], [true])).to.be.revertedWith(
         'LengthMismatch()'
       );
@@ -163,92 +123,6 @@ describe('AdapterManagement.sol', () => {
       await expect(tx).to.emit(dataFeed, 'AdapterWhitelisted').withArgs(connextSenderAdapter.address, false);
 
       await expect(tx).to.emit(dataFeed, 'AdapterWhitelisted').withArgs(fakeAdapter.address, false);
-    });
-  });
-
-  describe('setReceiver(...)', () => {
-    onlyGovernor(
-      () => dataFeed,
-      'setReceiver',
-      () => governor,
-      () => [connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress]
-    );
-
-    it('should set a receiver', async () => {
-      await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
-      expect(await dataFeed.receivers(connextSenderAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress);
-    });
-
-    it('should emit an event when a receiver is set', async () => {
-      await expect(
-        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress)
-      )
-        .to.emit(dataFeed, 'ReceiverSet')
-        .withArgs(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
-    });
-  });
-
-  describe('setReceivers(...)', () => {
-    let validArgs: [string[], number[], string[]];
-
-    before(() => {
-      validArgs = [
-        [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
-        [randomDataReceiverAddress, randomDataReceiverAddress2],
-      ];
-    });
-
-    onlyGovernor(
-      () => dataFeed,
-      'setReceivers',
-      () => governor,
-      () => [
-        [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
-        [randomDataReceiverAddress, randomDataReceiverAddress2],
-      ]
-    );
-
-    it('should revert if the lengths of the arguments dont match', async () => {
-      const mismatchedArgs = [
-        [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
-        [randomDataReceiverAddress],
-      ];
-
-      const mismatchedArgs2 = [
-        [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId],
-        [randomDataReceiverAddress, randomDataReceiverAddress2],
-      ];
-
-      const mismatchedArgs3 = [
-        [connextSenderAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
-        [randomDataReceiverAddress, randomDataReceiverAddress2],
-      ];
-
-      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
-
-      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
-
-      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
-    });
-
-    it('should set the receivers', async () => {
-      await dataFeed.connect(governor).setReceivers(...validArgs);
-      expect(await dataFeed.receivers(connextSenderAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress);
-      expect(await dataFeed.receivers(fakeAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress2);
-    });
-
-    it('should emit n events when n receivers are set', async () => {
-      tx = await dataFeed.connect(governor).setReceivers(...validArgs);
-      await expect(tx)
-        .to.emit(dataFeed, 'ReceiverSet')
-        .withArgs(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
-
-      await expect(tx).to.emit(dataFeed, 'ReceiverSet').withArgs(fakeAdapter.address, randomDestinationDomainId, randomDataReceiverAddress2);
     });
   });
 
@@ -296,7 +170,7 @@ describe('AdapterManagement.sol', () => {
       ]
     );
 
-    it('should revert if the lengths of the arguments dont match', async () => {
+    it('should revert if the lengths of the arguments do not match', async () => {
       const mismatchedArgs = [[connextSenderAdapter.address, fakeAdapter.address], [randomChainId, randomChainId2], [randomDestinationDomainId]];
 
       const mismatchedArgs2 = [
@@ -331,6 +205,132 @@ describe('AdapterManagement.sol', () => {
         .withArgs(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
 
       await expect(tx).to.emit(dataFeed, 'DestinationDomainIdSet').withArgs(fakeAdapter.address, randomChainId2, randomDestinationDomainId2);
+    });
+  });
+
+  describe('setReceiver(...)', () => {
+    onlyGovernor(
+      () => dataFeed,
+      'setReceiver',
+      () => governor,
+      () => [connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress]
+    );
+
+    it('should set a receiver', async () => {
+      await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
+      expect(await dataFeed.receivers(connextSenderAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress);
+    });
+
+    it('should emit an event when a receiver is set', async () => {
+      await expect(
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress)
+      )
+        .to.emit(dataFeed, 'ReceiverSet')
+        .withArgs(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
+    });
+  });
+
+  describe('setReceivers(...)', () => {
+    let validArgs: [string[], number[], string[]];
+
+    before(() => {
+      validArgs = [
+        [connextSenderAdapter.address, fakeAdapter.address],
+        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDataReceiverAddress, randomDataReceiverAddress2],
+      ];
+    });
+
+    onlyGovernor(
+      () => dataFeed,
+      'setReceivers',
+      () => governor,
+      () => [
+        [connextSenderAdapter.address, fakeAdapter.address],
+        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDataReceiverAddress, randomDataReceiverAddress2],
+      ]
+    );
+
+    it('should revert if the lengths of the arguments do not match', async () => {
+      const mismatchedArgs = [
+        [connextSenderAdapter.address, fakeAdapter.address],
+        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDataReceiverAddress],
+      ];
+
+      const mismatchedArgs2 = [
+        [connextSenderAdapter.address, fakeAdapter.address],
+        [randomDestinationDomainId],
+        [randomDataReceiverAddress, randomDataReceiverAddress2],
+      ];
+
+      const mismatchedArgs3 = [
+        [connextSenderAdapter.address],
+        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDataReceiverAddress, randomDataReceiverAddress2],
+      ];
+
+      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
+
+      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
+
+      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
+    });
+
+    it('should set the receivers', async () => {
+      await dataFeed.connect(governor).setReceivers(...validArgs);
+      expect(await dataFeed.receivers(connextSenderAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress);
+      expect(await dataFeed.receivers(fakeAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress2);
+    });
+
+    it('should emit n events when n receivers are set', async () => {
+      tx = await dataFeed.connect(governor).setReceivers(...validArgs);
+      await expect(tx)
+        .to.emit(dataFeed, 'ReceiverSet')
+        .withArgs(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
+
+      await expect(tx).to.emit(dataFeed, 'ReceiverSet').withArgs(fakeAdapter.address, randomDestinationDomainId, randomDataReceiverAddress2);
+    });
+  });
+
+  describe('validateSenderAdapter(...)', () => {
+    context('when the adapter is not whitelisted', () => {
+      it('should revert', async () => {
+        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith('UnallowedAdapter');
+      });
+    });
+
+    context('when the adapter is whitelisted but the domain id is not set', () => {
+      it('should revert', async () => {
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith(
+          'DestinationDomainIdNotSet'
+        );
+      });
+    });
+
+    context('when the adapter is whitelisted, the domain id is set, but the receiver is not set', () => {
+      it('should revert', async () => {
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
+        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith('ReceiverNotSet');
+      });
+    });
+
+    context('when the adapter is whitelisted and the domain id and receiver are set', () => {
+      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
+      });
+
+      it('should return the queried values', async () => {
+        expect(await dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.eql([
+          randomDestinationDomainId,
+          randomDataReceiverAddress,
+        ]);
+      });
     });
   });
 });

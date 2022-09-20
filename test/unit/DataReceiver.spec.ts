@@ -196,7 +196,7 @@ describe('DataReceiver.sol', () => {
       ]
     );
 
-    it('should revert if the lengths of the arguments dont match', async () => {
+    it('should revert if the lengths of the arguments do not match', async () => {
       await expect(dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true])).to.be.revertedWith(
         'LengthMismatch()'
       );

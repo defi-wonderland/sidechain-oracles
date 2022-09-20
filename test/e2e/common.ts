@@ -42,8 +42,8 @@ export async function setupContracts(): Promise<{
   dataFeedKeeper: DataFeedKeeper;
   connextHandler: ConnextHandlerForTest;
   executor: ExecutorForTest;
-  connextSenderAdapter: ConnextSenderAdapter;
   connextReceiverAdapter: ConnextReceiverAdapter;
+  connextSenderAdapter: ConnextSenderAdapter;
 }> {
   let currentNonce;
   const [, stranger, deployer, governor] = await ethers.getSigners();
@@ -53,39 +53,38 @@ export async function setupContracts(): Promise<{
   const dataFeedKeeperFactory = await ethers.getContractFactory('DataFeedKeeper');
   const connextHandlerFactory = await ethers.getContractFactory('ConnextHandlerForTest');
   const executorFactory = await ethers.getContractFactory('ExecutorForTest');
-  const connextSenderAdapterFactory = await ethers.getContractFactory('ConnextSenderAdapter');
   const connextReceiverAdapterFactory = await ethers.getContractFactory('ConnextReceiverAdapter');
+  const connextSenderAdapterFactory = await ethers.getContractFactory('ConnextSenderAdapter');
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);
   const precalculatedDataReceiverAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
+  const precalculatedDataFeedKeeperAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 3 });
+  const precalculatedExecutorAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 5 });
+  const precalculatedConnextSenderAdapterAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 7 });
 
   const oracleFactory = (await oracleFactoryFactory
     .connect(deployer)
     .deploy(governor.address, precalculatedDataReceiverAddress)) as OracleFactory;
   const dataReceiver = (await dataReceiverFactory.connect(deployer).deploy(governor.address, oracleFactory.address)) as DataReceiver;
 
-  currentNonce = await ethers.provider.getTransactionCount(deployer.address);
-  const precalculatedDataFeedKeeperAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
-
   const dataFeed = (await dataFeedFactory.connect(deployer).deploy(governor.address, precalculatedDataFeedKeeperAddress)) as DataFeed;
-  const dataFeedKeeper = (await dataFeedKeeperFactory.connect(deployer).deploy(governor.address, dataFeed.address, 0)) as DataFeedKeeper;
-
-  currentNonce = await ethers.provider.getTransactionCount(deployer.address);
-  const precalculatedExecutorAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
+  const dataFeedKeeper = (await dataFeedKeeperFactory
+    .connect(deployer)
+    .deploy(governor.address, dataFeed.address, precalculatedConnextSenderAdapterAddress, 0)) as DataFeedKeeper;
 
   const connextHandler = (await connextHandlerFactory.connect(deployer).deploy(precalculatedExecutorAddress)) as ConnextHandlerForTest;
   const executor = (await executorFactory.connect(deployer).deploy(connextHandler.address)) as ExecutorForTest;
-  const connextSenderAdapter = (await connextSenderAdapterFactory
-    .connect(deployer)
-    .deploy(connextHandler.address, dataFeed.address)) as ConnextSenderAdapter;
   const connextReceiverAdapter = (await connextReceiverAdapterFactory
     .connect(deployer)
     .deploy(
       dataReceiver.address,
-      connextSenderAdapter.address,
+      precalculatedConnextSenderAdapterAddress,
       RINKEBY_ORIGIN_DOMAIN_CONNEXT,
       connextHandler.address
     )) as ConnextReceiverAdapter;
+  const connextSenderAdapter = (await connextSenderAdapterFactory
+    .connect(deployer)
+    .deploy(connextHandler.address, dataFeed.address)) as ConnextSenderAdapter;
 
   return {
     stranger,
@@ -97,8 +96,8 @@ export async function setupContracts(): Promise<{
     dataFeedKeeper,
     connextHandler,
     executor,
-    connextSenderAdapter,
     connextReceiverAdapter,
+    connextSenderAdapter,
   };
 }
 

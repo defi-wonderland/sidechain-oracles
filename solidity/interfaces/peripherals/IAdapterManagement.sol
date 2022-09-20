@@ -5,23 +5,30 @@ import {IBridgeSenderAdapter} from '../bridges/IBridgeSenderAdapter.sol';
 import {IGovernable} from './IGovernable.sol';
 
 interface IAdapterManagement is IGovernable {
-  function whitelistedAdapters(IBridgeSenderAdapter _bridgeSenderAdapter) external view returns (bool _isWhitelisted);
+  // STATE VARIABLES
 
-  function receivers(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId) external view returns (address _dataReceiver);
+  function whitelistedAdapters(IBridgeSenderAdapter _bridgeSenderAdapter) external view returns (bool _isWhitelisted);
 
   function destinationDomainIds(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId) external view returns (uint32 _destinationDomainId);
 
+  function receivers(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId) external view returns (address _dataReceiver);
+
+  // EVENTS
+
   event AdapterWhitelisted(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted);
 
-  event ReceiverSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId, address _dataReceiver);
-
   event DestinationDomainIdSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId, uint32 _destinationDomainId);
+
+  event ReceiverSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId, address _dataReceiver);
 
   // ERRORS
 
   error UnallowedAdapter();
+
   error DestinationDomainIdNotSet();
+
   error ReceiverNotSet();
+
   error LengthMismatch();
 
   // FUNCTIONS
@@ -29,6 +36,18 @@ interface IAdapterManagement is IGovernable {
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
 
   function whitelistAdapters(IBridgeSenderAdapter[] calldata _bridgeSenderAdapters, bool[] calldata _isWhitelisted) external;
+
+  function setDestinationDomainId(
+    IBridgeSenderAdapter _bridgeSenderAdapter,
+    uint16 _chainId,
+    uint32 _destinationDomainId
+  ) external;
+
+  function setDestinationDomainIds(
+    IBridgeSenderAdapter[] calldata _bridgeSenderAdapter,
+    uint16[] calldata _chainId,
+    uint32[] calldata _destinationDomainId
+  ) external;
 
   function setReceiver(
     IBridgeSenderAdapter _bridgeSenderAdapter,
@@ -42,15 +61,8 @@ interface IAdapterManagement is IGovernable {
     address[] calldata _dataReceivers
   ) external;
 
-  function setDestinationDomainId(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
-    uint32 _destinationDomainId
-  ) external;
-
-  function setDestinationDomainIds(
-    IBridgeSenderAdapter[] calldata _bridgeSenderAdapter,
-    uint16[] calldata _chainId,
-    uint32[] calldata _destinationDomainId
-  ) external;
+  function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId)
+    external
+    view
+    returns (uint32 _destinationDomainId, address _dataReceiver);
 }

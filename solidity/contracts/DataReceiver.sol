@@ -48,9 +48,8 @@ contract DataReceiver is IDataReceiver, Governable {
   function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {
     uint256 _receiverAdapterLength = _receiverAdapters.length;
     if (_receiverAdapterLength != _isWhitelisted.length) revert LengthMismatch();
-    uint256 _i;
     unchecked {
-      for (_i; _i < _receiverAdapterLength; ++_i) {
+      for (uint256 _i; _i < _receiverAdapterLength; ++_i) {
         _whitelistAdapter(_receiverAdapters[_i], _isWhitelisted[_i]);
       }
     }

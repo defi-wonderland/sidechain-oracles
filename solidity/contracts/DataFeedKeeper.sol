@@ -9,6 +9,9 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   IDataFeed public immutable dataFeed;
 
   /// @inheritdoc IDataFeedKeeper
+  IBridgeSenderAdapter public defaultBridgeSenderAdapter;
+
+  /// @inheritdoc IDataFeedKeeper
   uint256 public jobCooldown;
 
   /// @inheritdoc IDataFeedKeeper
@@ -17,26 +20,27 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   /// @inheritdoc IDataFeedKeeper
   mapping(uint16 => mapping(bytes32 => uint32)) public lastWorkedAt;
 
+  /// @inheritdoc IDataFeedKeeper
+  mapping(uint16 => mapping(bytes32 => bool)) public whitelistedPools;
+
   constructor(
     address _governor,
     IDataFeed _dataFeed,
+    IBridgeSenderAdapter _defaultBridgeSenderAdapter,
     uint256 _jobCooldown
   ) Governable(_governor) {
     dataFeed = _dataFeed;
+    _setDefaultBridgeSenderAdapter(_defaultBridgeSenderAdapter);
     _setJobCooldown(_jobCooldown);
   }
 
   /// @inheritdoc IDataFeedKeeper
-  function work(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
-    bytes32 _poolSalt
-  ) external upkeep {
+  function work(uint16 _chainId, bytes32 _poolSalt) external upkeep {
     if (!workable(_chainId, _poolSalt)) revert NotWorkable();
     uint32 _lastWorkTimestamp = lastWorkedAt[_chainId][_poolSalt];
     uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastWorkTimestamp);
-    _work(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
-    emit Bridged(msg.sender, _bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+    _work(defaultBridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+    emit Bridged(msg.sender, _chainId, _poolSalt, _secondsAgos);
   }
 
   /// @inheritdoc IDataFeedKeeper
@@ -51,14 +55,42 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   }
 
   /// @inheritdoc IDataFeedKeeper
+  function setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) external onlyGovernor {
+    _setDefaultBridgeSenderAdapter(_defaultBridgeSenderAdapter);
+  }
+
+  /// @inheritdoc IDataFeedKeeper
   function setJobCooldown(uint256 _jobCooldown) external onlyGovernor {
     _setJobCooldown(_jobCooldown);
   }
 
   /// @inheritdoc IDataFeedKeeper
+  function whitelistPool(
+    uint16 _chainId,
+    bytes32 _poolSalt,
+    bool _isWhitelisted
+  ) external onlyGovernor {
+    _whitelistPool(_chainId, _poolSalt, _isWhitelisted);
+  }
+
+  /// @inheritdoc IDataFeedKeeper
+  function whitelistPools(
+    uint16[] calldata _chainIds,
+    bytes32[] calldata _poolSalts,
+    bool[] calldata _isWhitelisted
+  ) external onlyGovernor {
+    uint256 _chainIdsLength = _chainIds.length;
+    if (_chainIdsLength != _poolSalts.length || _chainIdsLength != _isWhitelisted.length) revert LengthMismatch();
+    unchecked {
+      for (uint256 _i; _i < _chainIdsLength; ++_i) {
+        _whitelistPool(_chainIds[_i], _poolSalts[_i], _isWhitelisted[_i]);
+      }
+    }
+  }
+
+  /// @inheritdoc IDataFeedKeeper
   function workable(uint16 _chainId, bytes32 _poolSalt) public view returns (bool _isWorkable) {
-    // TODO: require _poolSalt and _chainId to be whitelisted
-    return block.timestamp >= lastWorkedAt[_chainId][_poolSalt] + jobCooldown;
+    if (whitelistedPools[_chainId][_poolSalt]) return block.timestamp >= lastWorkedAt[_chainId][_poolSalt] + jobCooldown;
   }
 
   /// @inheritdoc IDataFeedKeeper
@@ -85,6 +117,15 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     }
   }
 
+  function _whitelistPool(
+    uint16 _chainId,
+    bytes32 _poolSalt,
+    bool _isWhitelisted
+  ) internal {
+    whitelistedPools[_chainId][_poolSalt] = _isWhitelisted;
+    emit PoolWhitelisted(_chainId, _poolSalt, _isWhitelisted);
+  }
+
   function _work(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
@@ -93,6 +134,11 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   ) private {
     lastWorkedAt[_chainId][_poolSalt] = uint32(block.timestamp);
     dataFeed.sendObservations(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+  }
+
+  function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {
+    defaultBridgeSenderAdapter = _defaultBridgeSenderAdapter;
+    emit DefaultBridgeSenderAdapterUpdated(_defaultBridgeSenderAdapter);
   }
 
   function _setJobCooldown(uint256 _jobCooldown) private {

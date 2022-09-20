@@ -437,8 +437,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
     });
 
-    context('when the adapter, destination domain and receiver are set and whitelisted', () => {
+    context('when the pool, adapter, destination domain and receiver are set and whitelisted', () => {
       beforeEach(async () => {
+        await dataFeedKeeper.connect(governor).whitelistPool(RANDOM_CHAIN_ID, salt, true);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed
           .connect(governor)
@@ -450,17 +451,15 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(dataFeedKeeper.connect(governor).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt)).to.be.revertedWith(
-          'KeeperNotValid()'
-        );
+        await expect(dataFeedKeeper.connect(governor).work(RANDOM_CHAIN_ID, salt)).to.be.revertedWith('KeeperNotValid()');
       });
 
       it('should work the job', async () => {
-        await expect(dataFeedKeeper.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt)).to.emit(dataFeed, 'DataSent');
+        await expect(dataFeedKeeper.connect(keeper).work(RANDOM_CHAIN_ID, salt)).to.emit(dataFeed, 'DataSent');
       });
 
       it('should pay the keeper', async () => {
-        await expect(dataFeedKeeper.connect(keeper).work(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt)).to.emit(keep3rV2, 'KeeperWork');
+        await expect(dataFeedKeeper.connect(keeper).work(RANDOM_CHAIN_ID, salt)).to.emit(keep3rV2, 'KeeperWork');
       });
     });
   });

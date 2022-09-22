@@ -84,8 +84,8 @@
   "dependencies": {
     "@connext/nxtp-contracts": "0.2.0-beta.14",
     "@defi-wonderland/keep3r-v2": "0.0.7",
-    "@openzeppelin/contracts": "4.6.0",
-    "@openzeppelin/contracts-upgradeable": "4.5.2",
+    "@openzeppelin/contracts": "4.7.3",
+    "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@uniswap/v3-core": "1.0.2-solc-0.8-simulate",
     "@uniswap/v3-periphery": "1.4.1"
   },

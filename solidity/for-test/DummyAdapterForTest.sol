@@ -10,6 +10,8 @@ contract DummyAdapterForTest {
   event SentData(IDataReceiver, IOracleSidechain.ObservationData[]);
   event Create2Hash(bytes32);
 
+  bool public ignoreTxs;
+
   constructor() {
     /// @dev Emitted to validate correct calculation of ORACLE_INIT_CODE_HASH
     emit Create2Hash(keccak256(type(OracleSidechain).creationCode));
@@ -21,7 +23,13 @@ contract DummyAdapterForTest {
     IOracleSidechain.ObservationData[] calldata _observationsData,
     bytes32 _poolSalt
   ) external payable {
-    _to.addObservations(_observationsData, _poolSalt);
+    if (!ignoreTxs) {
+      _to.addObservations(_observationsData, _poolSalt);
+    }
     emit SentData(_to, _observationsData);
+  }
+
+  function setIgnoreTxs(bool _ignoreTxs) external {
+    ignoreTxs = _ignoreTxs;
   }
 }

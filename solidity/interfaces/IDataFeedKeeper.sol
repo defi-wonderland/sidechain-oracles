@@ -80,7 +80,8 @@ interface IDataFeedKeeper is IKeep3rJob {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] memory _secondsAgos
+    uint32[] memory _secondsAgos,
+    bool _stitch
   ) external;
 
   function setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) external;

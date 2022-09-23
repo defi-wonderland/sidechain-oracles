@@ -56,7 +56,8 @@ interface IDataFeed is IAdapterManagement {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] calldata _secondsAgos
+    uint32[] calldata _secondsAgos,
+    bool _stitch
   ) external;
 
   function fetchObservations(

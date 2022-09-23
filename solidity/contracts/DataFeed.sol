@@ -26,13 +26,14 @@ contract DataFeed is IDataFeed, AdapterManagement {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] calldata _secondsAgos
+    uint32[] calldata _secondsAgos,
+    bool _stitch
   ) external onlyKeeper {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
 
     IOracleSidechain.ObservationData[] memory _observationsData;
     // TODO: make lastPoolStateBridged a mapping[bytes?]
-    (_observationsData, lastPoolStateBridged[_poolSalt]) = fetchObservations(_poolSalt, _secondsAgos, true);
+    (_observationsData, lastPoolStateBridged[_poolSalt]) = fetchObservations(_poolSalt, _secondsAgos, _stitch);
 
     _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
     emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _poolSalt);

@@ -7,6 +7,7 @@ import {
   DataFeedKeeper,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
+  DummyAdapterForTest,
   DataReceiver,
   OracleFactory,
   OracleSidechain,
@@ -47,6 +48,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let oracleSidechain: OracleSidechain;
   let tx: ContractTransaction;
   let snapshotId: string;
+
+  const stitch = true;
 
   before(async () => {
     await evm.reset({
@@ -99,12 +102,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       () => dataFeed,
       'sendObservations',
       () => dataFeedKeeperSigner,
-      () => [connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos]
+      () => [connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch]
     );
 
     context('when the adapter is not set', () => {
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch)).to.be.revertedWith(
           'UnallowedAdapter()'
         );
       });
@@ -116,7 +119,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch)).to.be.revertedWith(
           'DestinationDomainIdNotSet()'
         );
       });
@@ -131,7 +134,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch)).to.be.revertedWith(
           'ReceiverNotSet()'
         );
       });
@@ -149,7 +152,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch)).to.be.revertedWith(
           'UnallowedAdapter()'
         );
       });
@@ -172,7 +175,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           await evm.advanceTimeAndBlock(10 * hours);
           /// @notice: creates a random swap to avoid cache
           await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
-          now = (await ethers.provider.getBlock('latest')).timestamp;
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
 
@@ -183,7 +185,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos);
+          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch);
         });
 
         it('should bridge an amount of observations 1 lesser than amount of secondsAgos', async () => {
@@ -280,7 +282,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos);
+          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch);
 
           await evm.advanceTimeAndBlock(4 * hours);
         });
@@ -293,7 +295,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           });
 
           it('should revert', async () => {
-            await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+            await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch)).to.be.revertedWith(
               'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
             );
           });
@@ -307,7 +309,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           });
 
           it('should revert', async () => {
-            await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos)).to.be.revertedWith(
+            await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch)).to.be.revertedWith(
               'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
             );
           });
@@ -321,7 +323,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-            tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos);
+            tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, stitch);
           });
 
           it('should bridge an amount of observations equal to the amount of secondsAgos', async () => {
@@ -460,6 +462,188 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
       it('should pay the keeper', async () => {
         await expect(dataFeedKeeper.connect(keeper).work(RANDOM_CHAIN_ID, salt)).to.emit(keep3rV2, 'KeeperWork');
+      });
+    });
+  });
+
+  describe('censorship-resistant behaviour', () => {
+    let dummyAdapter: DummyAdapterForTest;
+    let secondsAgos: number[];
+    let blockTimestamps: number[];
+    let swapAmount = toUnit(10);
+    let now: number;
+    const hours = 10_000;
+
+    beforeEach(async () => {
+      const dummyAdapterFactory = await ethers.getContractFactory('DummyAdapterForTest');
+      dummyAdapter = (await dummyAdapterFactory.connect(deployer).deploy()) as DummyAdapterForTest;
+    });
+
+    context('when the settings are valid and the job has credits', () => {
+      let bondTime: BigNumber;
+
+      beforeEach(async () => {
+        // add credit to the job
+        bondTime = await keep3rV2.bondTime();
+        await keep3rV2.connect(keeper).bond(tokenB.address, 0);
+        await evm.advanceTimeAndBlock(bondTime.toNumber());
+        await keep3rV2.connect(keeper).activate(tokenB.address);
+        await keep3rV2.addJob(dataFeedKeeper.address);
+        await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
+
+        // setup dummy adapter
+        await dataFeedKeeper.connect(governor).whitelistPool(RANDOM_CHAIN_ID, salt, true);
+        await dataFeedKeeper.connect(governor).setDefaultBridgeSenderAdapter(dummyAdapter.address);
+        await dataFeed.connect(governor).whitelistAdapter(dummyAdapter.address, true);
+        await dataFeed.connect(governor).setDestinationDomainId(dummyAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
+        await dataFeed.connect(governor).setReceiver(dummyAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, dataReceiver.address);
+        await dataReceiver.connect(governor).whitelistAdapter(dummyAdapter.address, true);
+      });
+
+      context('when the oracle has no data', () => {
+        beforeEach(async () => {
+          await evm.advanceTimeAndBlock(10 * hours);
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+        });
+
+        context('when the bridge ignores a message', () => {
+          beforeEach(async () => {
+            await dummyAdapter.setIgnoreTxs(true);
+            tx = await dataFeedKeeper.connect(keeper).work(RANDOM_CHAIN_ID, salt);
+            await dummyAdapter.setIgnoreTxs(false);
+            await evm.advanceTimeAndBlock(10 * hours);
+          });
+
+          it('should have ignored a tx', async () => {
+            await expect(tx).to.emit(dataFeed, 'DataSent');
+
+            await expect(tx).not.to.emit(oracleSidechain, 'ObservationWritten');
+          });
+
+          context('when the data is sent', () => {
+            beforeEach(async () => {
+              /// @notice: swap happens at now - 1.5 hours                         / here
+              blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
+
+              ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+              await dataFeedKeeper.connect(governor).forceWork(dummyAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, false);
+            });
+
+            it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
+              const sampleTimestamps = [now - 3 * hours, now - 2 * hours, now - hours, now];
+
+              ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
+
+              let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
+              let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+
+              const range = secondsAgos.length - 1;
+              const sampleDelta = sampleTimestamps[range] - sampleTimestamps[0];
+              let poolTickCumulativesDelta = poolTickCumulatives[range].sub(poolTickCumulatives[0]);
+              let oracleTickCumulativesDelta = oracleTickCumulatives[range].sub(oracleTickCumulatives[0]);
+
+              await observePool(uniV3Pool, sampleTimestamps, 0, toBN(0));
+              await observePool(oracleSidechain, sampleTimestamps, 0, toBN(0));
+              // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
+              expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
+            });
+          });
+        });
+      });
+
+      context('when the oracle has data', () => {
+        beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+
+          /// @notice: swap happens at now - 1.5 hours                         / here
+          blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
+
+          ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+          await dataFeedKeeper.connect(governor).forceWork(dummyAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, true);
+
+          await evm.advanceTimeAndBlock(4 * hours);
+        });
+
+        context('when the bridge ignores a message', () => {
+          beforeEach(async () => {
+            await dummyAdapter.setIgnoreTxs(true);
+            tx = await dataFeedKeeper.connect(keeper).work(RANDOM_CHAIN_ID, salt);
+            await dummyAdapter.setIgnoreTxs(false);
+            await evm.advanceTimeAndBlock(10 * hours);
+          });
+
+          it('should have ignored a tx', async () => {
+            await expect(tx).to.emit(dataFeed, 'DataSent');
+
+            await expect(tx).not.to.emit(oracleSidechain, 'ObservationWritten');
+          });
+
+          context('when the data to be sent is old compared with that of the oracle', () => {
+            beforeEach(async () => {
+              blockTimestamps = [now - hours, now + hours, now + 2 * hours, now + 4 * hours];
+
+              ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+            });
+
+            it.skip('should revert', async () => {
+              await expect(
+                dataFeedKeeper.connect(governor).forceWork(dummyAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, false)
+              ).to.be.revertedWith(
+                'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
+              );
+            });
+          });
+
+          context('when the data to be sent is continuous with that of the oracle', () => {
+            beforeEach(async () => {
+              blockTimestamps = [now, now + hours, now + 2 * hours, now + 4 * hours];
+
+              ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+            });
+
+            it.skip('should revert', async () => {
+              await expect(
+                dataFeedKeeper.connect(governor).forceWork(dummyAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, false)
+              ).to.be.revertedWith(
+                'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
+              );
+            });
+          });
+
+          context('when the data to be sent is discontinuous with that of the oracle', () => {
+            beforeEach(async () => {
+              blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
+
+              ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
+
+              await dataFeedKeeper.connect(governor).forceWork(dummyAdapter.address, RANDOM_CHAIN_ID, salt, secondsAgos, false);
+            });
+
+            it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
+              const sampleTimestamps = [now - 3 * hours, now + 4 * hours];
+              const sampleDelta = sampleTimestamps[1] - sampleTimestamps[0];
+
+              ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
+
+              let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+              let [poolTickCumulatives] = await uniV3Pool.callStatic.observe([secondsAgos[0], secondsAgos[1]]);
+
+              let oracleTickCumulativesDelta = oracleTickCumulatives[1].sub(oracleTickCumulatives[0]);
+              let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
+
+              // to have a max difference of 1 tick (as inconvenient rounding may apply): 1 tick * sampleDelta = sampleDelta
+              expect(oracleTickCumulativesDelta).to.be.closeTo(poolTickCumulativesDelta, sampleDelta);
+            });
+          });
+        });
       });
     });
   });

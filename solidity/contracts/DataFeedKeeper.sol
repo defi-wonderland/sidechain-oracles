@@ -39,7 +39,7 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     if (!workable(_chainId, _poolSalt)) revert NotWorkable();
     uint32 _lastWorkTimestamp = lastWorkedAt[_chainId][_poolSalt];
     uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastWorkTimestamp);
-    _work(defaultBridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+    _work(defaultBridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos, true);
     emit Bridged(msg.sender, _chainId, _poolSalt, _secondsAgos);
   }
 
@@ -48,9 +48,10 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] memory _secondsAgos
+    uint32[] memory _secondsAgos,
+    bool _stitch
   ) external onlyGovernor {
-    _work(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+    _work(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos, _stitch);
     emit ForceBridged(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
   }
 
@@ -130,10 +131,11 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] memory _secondsAgos
+    uint32[] memory _secondsAgos,
+    bool _stitch
   ) private {
     lastWorkedAt[_chainId][_poolSalt] = uint32(block.timestamp);
-    dataFeed.sendObservations(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+    dataFeed.sendObservations(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos, _stitch);
   }
 
   function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {

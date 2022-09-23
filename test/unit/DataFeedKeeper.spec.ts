@@ -24,7 +24,7 @@ describe('DataFeedKeeper.sol', () => {
 
   const defaultSenderAdapterAddress = wallet.generateRandomAddress();
   const initialJobCooldown = toBN(4 * 60 * 60);
-  const secondsAgos = [14400, 10800, 7200, 3600, 0];
+  const stitch = true;
 
   const randomSenderAdapterAddress = wallet.generateRandomAddress();
   const randomChainId = 32;
@@ -113,11 +113,17 @@ describe('DataFeedKeeper.sol', () => {
         dataFeed.sendObservations.reset();
         await dataFeedKeeper.connect(keeper).work(randomChainId, randomSalt);
         const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastWorkedAt);
-        expect(dataFeed.sendObservations).to.have.been.calledOnceWith(defaultSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
+        expect(dataFeed.sendObservations).to.have.been.calledOnceWith(
+          defaultSenderAdapterAddress,
+          randomChainId,
+          randomSalt,
+          secondsAgos,
+          stitch
+        );
       });
 
       it('should emit Bridged', async () => {
-        const tx = await dataFeedKeeper.connect(keeper).work(randomChainId, randomSalt);
+        tx = await dataFeedKeeper.connect(keeper).work(randomChainId, randomSalt);
         const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastWorkedAt);
 
         await expect(tx).to.emit(dataFeedKeeper, 'Bridged').withArgs(keeper.address, randomChainId, randomSalt, secondsAgos);
@@ -132,15 +138,17 @@ describe('DataFeedKeeper.sol', () => {
   });
 
   describe('forceWork(...)', () => {
+    const secondsAgos = [14400, 10800, 7200, 3600, 0];
+
     onlyGovernor(
       () => dataFeedKeeper,
       'forceWork',
       () => governor,
-      () => [randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos]
+      () => [randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos, stitch]
     );
 
     it('should update the last work timestamp', async () => {
-      await dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
+      await dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos, stitch);
       let forceWorkTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
       let lastWorkTimestamp = await dataFeedKeeper.lastWorkedAt(randomChainId, randomSalt);
       expect(lastWorkTimestamp).to.eq(forceWorkTimestamp);
@@ -148,12 +156,12 @@ describe('DataFeedKeeper.sol', () => {
 
     it('should call to send observations', async () => {
       dataFeed.sendObservations.reset();
-      await dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
-      expect(dataFeed.sendObservations).to.have.been.calledOnceWith(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
+      await dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos, stitch);
+      expect(dataFeed.sendObservations).to.have.been.calledOnceWith(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos, stitch);
     });
 
     it('should emit ForceBridged', async () => {
-      await expect(dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos))
+      await expect(dataFeedKeeper.connect(governor).forceWork(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos, stitch))
         .to.emit(dataFeedKeeper, 'ForceBridged')
         .withArgs(randomSenderAdapterAddress, randomChainId, randomSalt, secondsAgos);
     });

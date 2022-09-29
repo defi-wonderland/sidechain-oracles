@@ -93,7 +93,7 @@
     "@codechecks/client": "0.1.12",
     "@commitlint/cli": "16.2.4",
     "@commitlint/config-conventional": "16.2.4",
-    "@defi-wonderland/smock": "2.3.0",
+    "@defi-wonderland/smock": "0.0.0-108bf124",
     "@dethcrypto/eth-sdk": "0.3.1",
     "@dethcrypto/eth-sdk-client": "0.1.6",
     "@nomiclabs/hardhat-ethers": "2.1.0",

@@ -4,6 +4,7 @@ pragma solidity >=0.8.8 <0.9.0;
 import {IKeep3rJob} from './peripherals/IKeep3rJob.sol';
 import {IDataFeed} from './IDataFeed.sol';
 import {IBridgeSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
+import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 
 /// @title The DataFeedKeeper interface
 /// @author 0xJabberwock (from DeFi Wonderland)
@@ -25,29 +26,9 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @return _periodLength The resolution of the bridged datapoints
   function periodLength() external view returns (uint32 _periodLength);
 
-  /// @notice Gets the last work time given the chain ID and pool salt
-  /// @param _chainId The destination chain ID
-  /// @param _poolSalt The pool salt defined by token0 token1
-  /// @return _lastWorkTimestamp The timestamp of the block in which the last work was done
-  function lastWorkedAt(uint16 _chainId, bytes32 _poolSalt) external view returns (uint32 _lastWorkTimestamp);
-
   function whitelistedPools(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted);
 
   // EVENTS
-
-  /// @notice Emitted when the keeper does the job
-  /// @param _keeper The address of the keeper
-  /// @param _chainId The Ethereum chain identification
-  /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @param _secondsAgos Each amount of time to look back, in seconds, at which point an observation was sent
-  event Bridged(address indexed _keeper, uint16 _chainId, bytes32 _poolSalt, uint32[] _secondsAgos);
-
-  /// @notice Emitted when the governor does the job
-  /// @param _bridgeSenderAdapter The contract address of the bridge sender adapter
-  /// @param _chainId The Ethereum chain identification
-  /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @param _secondsAgos Each amount of time to look back, in seconds, at which point an observation was sent
-  event ForceBridged(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId, bytes32 _poolSalt, uint32[] _secondsAgos);
 
   event DefaultBridgeSenderAdapterUpdated(IBridgeSenderAdapter _defaultBridgeSenderAdapter);
 
@@ -69,20 +50,17 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @notice Calls to send observations in the DataFeed contract
   /// @param _chainId The Ethereum chain identification
   /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  function work(uint16 _chainId, bytes32 _poolSalt) external;
-
-  /// @notice Calls to send observations in the DataFeed contract, bypassing the job cooldown
-  /// @param _bridgeSenderAdapter The contract address of the bridge sender adapter
-  /// @param _chainId The Ethereum chain identification
-  /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @param _secondsAgos Each amount of time to look back, in seconds, at which point to send an observation
-  function forceWork(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
+  /// @param _poolNonce The nonce of the observations fetched by pool
+  function work(
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] memory _secondsAgos,
-    bool _stitch
+    uint24 _poolNonce,
+    IOracleSidechain.ObservationData[] calldata _observationsData
   ) external;
+
+  function work(bytes32 _poolSalt) external;
+
+  function forceWork(bytes32 _poolSalt, uint32 _fromTimestamp) external;
 
   function setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) external;
 
@@ -105,11 +83,21 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @notice Returns if the job can be worked
   /// @param _chainId The destination chain ID
   /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _poolNonce The nonce of the observations fetched by pool
   /// @return _isWorkable Whether the job is workable or not
-  function workable(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWorkable);
+  function workable(
+    uint16 _chainId,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) external view returns (bool _isWorkable);
+
+  /// @notice Returns if the job can be worked
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @return _isWorkable Whether the job is workable or not
+  function workable(bytes32 _poolSalt) external view returns (bool _isWorkable);
 
   /// @notice Builds the secondsAgos array with periodLength between each datapoint
   /// @param _periodLength The resolution of the bridged datapoints
-  /// @param _lastKnownTimestamp Last bridged timestamp
-  function calculateSecondsAgos(uint32 _periodLength, uint32 _lastKnownTimestamp) external view returns (uint32[] memory _secondsAgos);
+  /// @param _fromTimestamp Last observed timestamp
+  function calculateSecondsAgos(uint32 _periodLength, uint32 _fromTimestamp) external view returns (uint32[] memory _secondsAgos);
 }

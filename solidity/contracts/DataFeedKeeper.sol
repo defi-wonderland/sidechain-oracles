@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Keep3rJob, Governable} from './peripherals/Keep3rJob.sol';
-import {IDataFeedKeeper, IDataFeed, IBridgeSenderAdapter} from '../interfaces/IDataFeedKeeper.sol';
+import {IDataFeedKeeper, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeedKeeper.sol';
 
 contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   /// @inheritdoc IDataFeedKeeper
@@ -16,9 +16,6 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
 
   /// @inheritdoc IDataFeedKeeper
   uint32 public periodLength = 1 days;
-
-  /// @inheritdoc IDataFeedKeeper
-  mapping(uint16 => mapping(bytes32 => uint32)) public lastWorkedAt;
 
   /// @inheritdoc IDataFeedKeeper
   mapping(uint16 => mapping(bytes32 => bool)) public whitelistedPools;
@@ -35,24 +32,31 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   }
 
   /// @inheritdoc IDataFeedKeeper
-  function work(uint16 _chainId, bytes32 _poolSalt) external upkeep {
-    if (!workable(_chainId, _poolSalt)) revert NotWorkable();
-    uint32 _lastWorkTimestamp = lastWorkedAt[_chainId][_poolSalt];
-    uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastWorkTimestamp);
-    _work(defaultBridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos, true);
-    emit Bridged(msg.sender, _chainId, _poolSalt, _secondsAgos);
+  function work(
+    uint16 _chainId,
+    bytes32 _poolSalt,
+    uint24 _poolNonce,
+    IOracleSidechain.ObservationData[] calldata _observationsData
+  ) external upkeep {
+    // TODO: change criteria for workable (if there's a new nonce, bridge)
+    if (!workable(_chainId, _poolSalt, _poolNonce)) revert NotWorkable();
+    dataFeed.sendObservations(defaultBridgeSenderAdapter, _chainId, _poolSalt, _poolNonce, _observationsData);
   }
 
   /// @inheritdoc IDataFeedKeeper
-  function forceWork(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
-    bytes32 _poolSalt,
-    uint32[] memory _secondsAgos,
-    bool _stitch
-  ) external onlyGovernor {
-    _work(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos, _stitch);
-    emit ForceBridged(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos);
+  function work(bytes32 _poolSalt) external upkeep {
+    if (!workable(_poolSalt)) revert NotWorkable();
+    // TODO: review if the external call can be avoided
+    (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
+    uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastBlockTimestampObserved);
+    dataFeed.fetchObservations(_poolSalt, _secondsAgos);
+  }
+
+  /// @inheritdoc IDataFeedKeeper
+  /// @dev Allows governor to choose a timestamp from which to send data (overcome !OLD error)
+  function forceWork(bytes32 _poolSalt, uint32 _fromTimestamp) external onlyGovernor {
+    uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _fromTimestamp);
+    dataFeed.fetchObservations(_poolSalt, _secondsAgos);
   }
 
   /// @inheritdoc IDataFeedKeeper
@@ -90,16 +94,27 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   }
 
   /// @inheritdoc IDataFeedKeeper
-  function workable(uint16 _chainId, bytes32 _poolSalt) public view returns (bool _isWorkable) {
-    if (whitelistedPools[_chainId][_poolSalt]) return block.timestamp >= lastWorkedAt[_chainId][_poolSalt] + jobCooldown;
+  function workable(
+    uint16 _chainId,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) public view returns (bool _isWorkable) {
+    return true;
   }
 
   /// @inheritdoc IDataFeedKeeper
-  function calculateSecondsAgos(uint32 _periodLength, uint32 _lastKnownTimestamp) public view returns (uint32[] memory _secondsAgos) {
+  function workable(bytes32 _poolSalt) public view returns (bool _isWorkable) {
+    // TODO: if (whitelistedPools[_chainId][_poolSalt])?
+    (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
+    return block.timestamp >= _lastBlockTimestampObserved + jobCooldown;
+  }
+
+  /// @inheritdoc IDataFeedKeeper
+  function calculateSecondsAgos(uint32 _periodLength, uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
-    // TODO: define initialization of _lastKnownTimestamp
-    _lastKnownTimestamp = _lastKnownTimestamp == 0 ? _secondsNow - 5 * periodLength : _lastKnownTimestamp;
-    uint32 _unknownTime = _secondsNow - _lastKnownTimestamp;
+    // TODO: define initialization of _fromTimestamp
+    _fromTimestamp = _fromTimestamp == 0 ? _secondsNow - 5 * periodLength : _fromTimestamp;
+    uint32 _unknownTime = _secondsNow - _fromTimestamp;
     uint32 _periods = _unknownTime / _periodLength;
     uint32 _remainder = _unknownTime % _periodLength;
     uint32 _i;
@@ -125,17 +140,6 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   ) internal {
     whitelistedPools[_chainId][_poolSalt] = _isWhitelisted;
     emit PoolWhitelisted(_chainId, _poolSalt, _isWhitelisted);
-  }
-
-  function _work(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
-    bytes32 _poolSalt,
-    uint32[] memory _secondsAgos,
-    bool _stitch
-  ) private {
-    lastWorkedAt[_chainId][_poolSalt] = uint32(block.timestamp);
-    dataFeed.sendObservations(_bridgeSenderAdapter, _chainId, _poolSalt, _secondsAgos, _stitch);
   }
 
   function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {

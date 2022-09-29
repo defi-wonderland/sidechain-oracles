@@ -10,6 +10,7 @@ interface IDataFeed is IAdapterManagement {
   // STRUCTS
 
   struct PoolState {
+    uint24 poolNonce;
     uint32 blockTimestamp;
     int56 tickCumulative;
     int24 arithmeticMeanTick;
@@ -19,18 +20,20 @@ interface IDataFeed is IAdapterManagement {
 
   function keeper() external view returns (IDataFeedKeeper _keeper);
 
-  /// @notice Tracks the last bridged pool state by salt
+  /// @notice Tracks the last observed pool state by salt
   /// @param _poolSalt The id of both the oracle and the pool
-  /// @return _lastBlockTimestampBridged Last bridged timestamp
-  /// @return _lastTickCumulativeBridged Pool's tickCumulative at last bridged timestamp
-  /// @return _lastArithmeticMeanTickBridged Last bridged arithmeticMeanTick
-  function lastPoolStateBridged(bytes32 _poolSalt)
+  /// @return _lastPoolNonceObserved Nonce of the last observation
+  /// @return _lastBlockTimestampObserved Last observed timestamp
+  /// @return _lastTickCumulativeObserved Pool's tickCumulative at last observed timestamp
+  /// @return _lastArithmeticMeanTickObserved Last observed arithmeticMeanTick
+  function lastPoolStateObserved(bytes32 _poolSalt)
     external
     view
     returns (
-      uint32 _lastBlockTimestampBridged,
-      int56 _lastTickCumulativeBridged,
-      int24 _lastArithmeticMeanTickBridged
+      uint24 _lastPoolNonceObserved,
+      uint32 _lastBlockTimestampObserved,
+      int56 _lastTickCumulativeObserved,
+      int24 _lastArithmeticMeanTickObserved
     );
 
   // EVENTS
@@ -43,11 +46,16 @@ interface IDataFeed is IAdapterManagement {
     bytes32 _poolSalt
   );
 
+  event PoolObserved(bytes32 _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
+
   event KeeperUpdated(IDataFeedKeeper _keeper);
 
   // ERRORS
 
   error InvalidSecondsAgos();
+
+  error UnknownHash();
+
   error OnlyKeeper();
 
   // FUNCTIONS
@@ -56,15 +64,11 @@ interface IDataFeed is IAdapterManagement {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] calldata _secondsAgos,
-    bool _stitch
+    uint24 _poolNonce,
+    IOracleSidechain.ObservationData[] calldata _observationsData
   ) external;
 
-  function fetchObservations(
-    bytes32 _poolSalt,
-    uint32[] calldata _secondsAgos,
-    bool _stitch
-  ) external view returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState);
+  function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external;
 
   function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
     external

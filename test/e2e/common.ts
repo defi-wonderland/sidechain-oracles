@@ -158,12 +158,12 @@ export async function getSecondsAgos(blockTimestamps: number[]): Promise<{ secon
   return { secondsAgos };
 }
 
-// TODO: refactor to be able to use fn w/o lastBridged functionality
+// TODO: refactor to be able to use fn w/o lastObserved functionality
 export async function observePool(
   pool: UniswapV3Pool | OracleSidechain,
   blockTimestamps: number[],
-  lastBlockTimestampBridged: number,
-  lastTickCumulativeBridged: BigNumber
+  lastBlockTimestampObserved: number,
+  lastTickCumulativeObserved: BigNumber
 ): Promise<{
   secondsAgosDeltas: number[];
   tickCumulatives: BigNumber[];
@@ -172,12 +172,12 @@ export async function observePool(
 }> {
   let { secondsAgos } = await getSecondsAgos(blockTimestamps);
 
-  let isDiscontinuous = lastBlockTimestampBridged != 0;
+  let isDiscontinuous = lastBlockTimestampObserved != 0;
 
   let secondsAgosDeltas: number[] = [];
   let secondsAgosDelta = 0;
   if (isDiscontinuous) {
-    secondsAgosDelta = blockTimestamps[0] - lastBlockTimestampBridged;
+    secondsAgosDelta = blockTimestamps[0] - lastBlockTimestampObserved;
   }
   secondsAgosDeltas.push(secondsAgosDelta);
   for (let i = 0; i < secondsAgos.length - 1; ++i) {
@@ -190,7 +190,7 @@ export async function observePool(
   let tickCumulativesDeltas: BigNumber[] = [];
   let tickCumulativesDelta = toBN(0);
   if (isDiscontinuous) {
-    tickCumulativesDelta = tickCumulatives[0].sub(lastTickCumulativeBridged);
+    tickCumulativesDelta = tickCumulatives[0].sub(lastTickCumulativeObserved);
   }
   tickCumulativesDeltas.push(tickCumulativesDelta);
   for (let i = 0; i < tickCumulatives.length - 1; ++i) {
@@ -226,20 +226,20 @@ export async function observePool(
 export function calculateOracleObservations(
   blockTimestamps: number[],
   arithmeticMeanTicks: BigNumber[],
-  lastBlockTimestampBridged: number,
-  lastArithmeticMeanTickBridged: BigNumber,
+  lastBlockTimestampObserved: number,
+  lastArithmeticMeanTickObserved: BigNumber,
   lastBlockTimestamp: number,
   lastTickCumulative: BigNumber,
   lastSecondsPerLiquidityCumulativeX128: BigNumber
 ): { observationsDeltas: number[]; tickCumulatives: BigNumber[]; secondsPerLiquidityCumulativeX128s: BigNumber[] } {
-  let isDiscontinuous = lastBlockTimestampBridged != 0;
+  let isDiscontinuous = lastBlockTimestampObserved != 0;
 
   let observationsDeltas: number[] = [];
   let observationsDelta = 0;
   if (isDiscontinuous) {
-    observationsDelta = lastBlockTimestampBridged - lastBlockTimestamp;
+    observationsDelta = lastBlockTimestampObserved - lastBlockTimestamp;
     observationsDeltas.push(observationsDelta);
-    observationsDelta = blockTimestamps[0] - lastBlockTimestampBridged;
+    observationsDelta = blockTimestamps[0] - lastBlockTimestampObserved;
     observationsDeltas.push(observationsDelta);
   } else {
     observationsDeltas.push(observationsDelta);
@@ -255,11 +255,11 @@ export function calculateOracleObservations(
   let tickCumulatives: BigNumber[] = [];
   let tickCumulative = toBN(0);
   if (isDiscontinuous) {
-    tickCumulative = lastTickCumulative.add(lastArithmeticMeanTickBridged.mul(observationsDeltas[0]));
+    tickCumulative = lastTickCumulative.add(lastArithmeticMeanTickObserved.mul(observationsDeltas[0]));
     tickCumulatives.push(tickCumulative);
   } else {
     tickCumulatives.push(tickCumulative);
-    tickCumulative = lastTickCumulative.add(lastArithmeticMeanTickBridged.mul(observationsDeltas[1]));
+    tickCumulative = lastTickCumulative.add(lastArithmeticMeanTickObserved.mul(observationsDeltas[1]));
     tickCumulatives.push(tickCumulative);
   }
   for (let i = tickCumulatives.length; i < blockTimestamps.length; ++i) {

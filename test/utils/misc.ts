@@ -19,6 +19,10 @@ export const getInitCodeHash = (creationCode: string): string => {
 
 export { getCreate2Address };
 
+export const getObservedHash = (salt: string, nonce: number, observationsData: number[][]): string => {
+  return keccak256(defaultAbiCoder.encode(['bytes32', 'uint24', '(uint32,int24)[]'], [salt, nonce, observationsData]));
+};
+
 export const getRandomBytes32 = (): string => {
   return hexlify(randomBytes(32));
 };

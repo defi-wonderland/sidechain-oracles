@@ -15,7 +15,9 @@ contract DataFeed is IDataFeed, AdapterManagement {
   IDataFeedKeeper public keeper;
 
   /// @inheritdoc IDataFeed
-  mapping(bytes32 => PoolState) public lastPoolStateBridged;
+  mapping(bytes32 => PoolState) public lastPoolStateObserved;
+
+  mapping(bytes32 => bool) internal _observedKeccak;
 
   constructor(address _governor, IDataFeedKeeper _keeper) Governable(_governor) {
     _setKeeper(_keeper);
@@ -26,76 +28,88 @@ contract DataFeed is IDataFeed, AdapterManagement {
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
     bytes32 _poolSalt,
-    uint32[] calldata _secondsAgos,
-    bool _stitch
-  ) external onlyKeeper {
+    uint24 _poolNonce,
+    IOracleSidechain.ObservationData[] calldata _observationsData
+  ) external {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
+    bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _poolNonce, _observationsData));
+    if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
 
-    IOracleSidechain.ObservationData[] memory _observationsData;
-    // TODO: make lastPoolStateBridged a mapping[bytes?]
-    (_observationsData, lastPoolStateBridged[_poolSalt]) = fetchObservations(_poolSalt, _secondsAgos, _stitch);
-
+    // TODO: bridge poolNonce
     _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
     emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
   }
 
   /// @inheritdoc IDataFeed
-  function fetchObservations(
-    bytes32 _poolSalt,
-    uint32[] calldata _secondsAgos,
-    bool _stitch
-  ) public view returns (IOracleSidechain.ObservationData[] memory _observationsData, PoolState memory _lastPoolState) {
-    IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
-    _lastPoolState = lastPoolStateBridged[_poolSalt];
+  function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external onlyKeeper {
+    IOracleSidechain.ObservationData[] memory _observationsData;
+    PoolState memory _lastPoolStateObserved = lastPoolStateObserved[_poolSalt];
 
-    (int56[] memory _tickCumulatives, ) = _pool.observe(_secondsAgos);
+    {
+      IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
 
-    uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
-    uint32 _secondsAgo;
-    uint32 _delta;
-    int56 _tickCumulative;
-    int56 _tickCumulativesDelta;
-    int24 _arithmeticMeanTick;
-    uint256 _secondsAgosLength = _secondsAgos.length;
-    uint256 _observationsDataIndex;
-    uint256 _i;
+      (int56[] memory _tickCumulatives, ) = _pool.observe(_secondsAgos);
 
-    if ((_lastPoolState.blockTimestamp == 0) || !_stitch) {
-      if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
-      // initializes timestamp and cumulative with first item (and skips it)
-      _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
-      _secondsAgo = _secondsAgos[0];
-      _tickCumulative = _tickCumulatives[0];
-      ++_i;
-    } else {
-      // initializes timestamp and cumulative with cache
-      _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength);
-      _secondsAgo = _secondsNow - _lastPoolState.blockTimestamp;
-      _tickCumulative = _lastPoolState.tickCumulative;
-    }
+      uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
+      uint32 _secondsAgo;
+      int56 _tickCumulative;
+      int24 _arithmeticMeanTick;
+      uint256 _secondsAgosLength = _secondsAgos.length;
+      uint256 _i;
 
-    for (_i; _i < _secondsAgosLength; ++_i) {
-      _tickCumulativesDelta = _tickCumulatives[_i] - _tickCumulative;
-      _delta = _secondsAgo - _secondsAgos[_i];
-      _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
+      {
+        if ((_lastPoolStateObserved.blockTimestamp == 0)) {
+          if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
+          // initializes timestamp and cumulative with first item (and skips it)
+          _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
+          _secondsAgo = _secondsAgos[0];
+          _tickCumulative = _tickCumulatives[0];
+          ++_i;
+        } else {
+          // initializes timestamp and cumulative with cache
+          _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength);
+          _secondsAgo = _secondsNow - _lastPoolStateObserved.blockTimestamp;
+          _tickCumulative = _lastPoolStateObserved.tickCumulative;
+        }
+      }
 
-      // Always round to negative infinity
-      if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
+      {
+        uint32 _delta;
+        int56 _tickCumulativesDelta;
+        uint256 _observationsDataIndex;
 
-      _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
+        for (_i; _i < _secondsAgosLength; ++_i) {
+          _tickCumulativesDelta = _tickCumulatives[_i] - _tickCumulative;
+          _delta = _secondsAgo - _secondsAgos[_i];
+          _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
+
+          // Always round to negative infinity
+          if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
+
+          _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
+            blockTimestamp: _secondsNow - _secondsAgo,
+            tick: _arithmeticMeanTick
+          });
+
+          _secondsAgo = _secondsAgos[_i];
+          _tickCumulative = _tickCumulatives[_i];
+        }
+      }
+
+      _lastPoolStateObserved = PoolState({
+        poolNonce: _lastPoolStateObserved.poolNonce + 1,
         blockTimestamp: _secondsNow - _secondsAgo,
-        tick: _arithmeticMeanTick
+        tickCumulative: _tickCumulative,
+        arithmeticMeanTick: _arithmeticMeanTick
       });
 
-      _secondsAgo = _secondsAgos[_i];
-      _tickCumulative = _tickCumulatives[_i];
+      lastPoolStateObserved[_poolSalt] = _lastPoolStateObserved;
     }
 
-    _lastPoolState = PoolState({
-      blockTimestamp: _secondsNow - _secondsAgo,
-      tickCumulative: _tickCumulative,
-      arithmeticMeanTick: _arithmeticMeanTick
-    });
+    bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _lastPoolStateObserved.poolNonce, _observationsData));
+    _observedKeccak[_resultingKeccak] = true;
+
+    emit PoolObserved(_poolSalt, _lastPoolStateObserved.poolNonce, _observationsData);
   }
 
   /// @inheritdoc IDataFeed

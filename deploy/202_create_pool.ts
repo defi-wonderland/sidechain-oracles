@@ -20,21 +20,25 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     address: uniswapV3FactoryAddress,
   });
 
+  /* DEPLOY POOL */
+
   const tokenA = await hre.deployments.get('TokenA');
   const tokenB = await hre.deployments.get('TokenB');
 
-  let uniV3PoolAddress = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
-  const poolExists = uniV3PoolAddress != addressZero;
+  let UNI_V3_POOL_ADDRESS = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
+  const poolExists = UNI_V3_POOL_ADDRESS != addressZero;
 
   if (!poolExists) {
     await hre.deployments.execute('UniV3Factory', txSettings, 'createPool', tokenA.address, tokenB.address, TEST_FEE);
-    uniV3PoolAddress = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
+    UNI_V3_POOL_ADDRESS = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
   }
 
   await hre.deployments.save('UniV3Pool', {
     abi: IUniswapV3Pool.abi,
-    address: uniV3PoolAddress,
+    address: UNI_V3_POOL_ADDRESS,
   });
+
+  /* INITIALIZE POOL */
 
   let poolSlot0 = await hre.deployments.read('UniV3Pool', 'slot0');
 
@@ -43,9 +47,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('UniV3Pool', txSettings, 'initialize', sqrtPriceX96);
     await hre.deployments.execute('UniV3Pool', txSettings, 'increaseObservationCardinalityNext', 64);
   }
-
-  console.log('Pool deployed at ', uniV3PoolAddress);
 };
 deployFunction.dependencies = ['test-tokens'];
-deployFunction.tags = ['execute', 'create-pool', 'token-actions'];
+deployFunction.tags = ['create-pool', 'token-actions'];
 export default deployFunction;

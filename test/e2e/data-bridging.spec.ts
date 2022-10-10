@@ -21,7 +21,6 @@ import { toBN, toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyKeeper } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
-import { GOERLI_DESTINATION_DOMAIN_CONNEXT } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
@@ -50,6 +49,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let snapshotId: string;
 
   const nonce = 1;
+  const destinationDomain = 420;
 
   before(async () => {
     await evm.reset({
@@ -131,9 +131,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     context('when only the adapter and the destination domain are set', () => {
       beforeEach(async () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed
-          .connect(governor)
-          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
       });
 
       it('should revert', async () => {
@@ -146,12 +144,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     context('when the adapter, destination domain and receiver are set, but the adapter is not whitelisted in the data receiver', () => {
       beforeEach(async () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed
-          .connect(governor)
-          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
-        await dataFeed
-          .connect(governor)
-          .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
 
         tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
       });
@@ -172,12 +166,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     context('when the adapter, destination domain and receiver are set and whitelisted', () => {
       beforeEach(async () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed
-          .connect(governor)
-          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
-        await dataFeed
-          .connect(governor)
-          .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
         await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 
@@ -239,7 +229,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           for (let i = 1; i < blockTimestamps.length; ++i) {
             let expectedObservation = [blockTimestamps[i - 1], tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i], true];
             let observation = await oracleSidechain.observations(observationsIndex++);
-            expect(observation).to.eql(expectedObservation);
+
+            // TODO: expect(observation).to.eq(expectedObservation);
+            expect(observation.blockTimestamp).to.eq(expectedObservation[0]);
+            expect(observation.tickCumulative).to.eq(expectedObservation[1]);
           }
 
           let tick = (await oracleSidechain.slot0()).tick;
@@ -394,12 +387,18 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             const expectedStitchedObservation = [lastBlockTimestampObserved, tickCumulatives[0], secondsPerLiquidityCumulativeX128s[0], true];
             const stitchedObservation = await oracleSidechain.observations(observationsIndex++);
-            expect(stitchedObservation).to.eql(expectedStitchedObservation);
+
+            // TODO: expect(stitchedObservation).to.eql(expectedStitchedObservation);
+            expect(stitchedObservation.blockTimestamp).to.eq(expectedStitchedObservation[0]);
+            expect(stitchedObservation.tickCumulative).to.eq(expectedStitchedObservation[1]);
 
             for (let i = 1; i < blockTimestamps.length; ++i) {
               let expectedObservation = [blockTimestamps[i - 1], tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i], true];
               let observation = await oracleSidechain.observations(observationsIndex++);
-              expect(observation).to.eql(expectedObservation);
+
+              // TODO: expect(observation).to.eq(expectedObservation);
+              expect(observation.blockTimestamp).to.eq(expectedObservation[0]);
+              expect(observation.tickCumulative).to.eq(expectedObservation[1]);
             }
 
             let tick = (await oracleSidechain.slot0()).tick;
@@ -491,12 +490,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       beforeEach(async () => {
         await dataFeedKeeper.connect(governor).whitelistPool(RANDOM_CHAIN_ID, salt, true);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed
-          .connect(governor)
-          .setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
-        await dataFeed
-          .connect(governor)
-          .setReceiver(connextSenderAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, connextReceiverAdapter.address);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
         await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 
@@ -564,8 +559,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await dataFeedKeeper.connect(governor).whitelistPool(RANDOM_CHAIN_ID, salt, true);
         await dataFeedKeeper.connect(governor).setDefaultBridgeSenderAdapter(dummyAdapter.address);
         await dataFeed.connect(governor).whitelistAdapter(dummyAdapter.address, true);
-        await dataFeed.connect(governor).setDestinationDomainId(dummyAdapter.address, RANDOM_CHAIN_ID, GOERLI_DESTINATION_DOMAIN_CONNEXT);
-        await dataFeed.connect(governor).setReceiver(dummyAdapter.address, GOERLI_DESTINATION_DOMAIN_CONNEXT, dataReceiver.address);
+        await dataFeed.connect(governor).setDestinationDomainId(dummyAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(dummyAdapter.address, destinationDomain, dataReceiver.address);
         await dataReceiver.connect(governor).whitelistAdapter(dummyAdapter.address, true);
       });
 

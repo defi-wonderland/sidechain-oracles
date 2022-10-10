@@ -1,17 +1,16 @@
 import { ethers } from 'hardhat';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { verifyContractIfNeeded, getAddressFromAbi } from 'utils/deploy';
+import { verifyContractIfNeeded } from 'utils/deploy';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
-  const DATA_RECEIVER = await getAddressFromAbi('deployments', 'receiver', 'DataReceiver.json');
+  const dataReceiver = await hre.deployments.getOrNull('DataReceiver');
   let dataReceiverAddress: string;
 
-  if (DATA_RECEIVER.exists) {
-    // TODO: should verify that bytecodeHash corresponds with local artifact (last compilation)
-    dataReceiverAddress = DATA_RECEIVER.address!;
+  if (dataReceiver) {
+    dataReceiverAddress = dataReceiver.address!;
   } else {
     const currentNonce = await ethers.provider.getTransactionCount(deployer);
     dataReceiverAddress = ethers.utils.getContractAddress({

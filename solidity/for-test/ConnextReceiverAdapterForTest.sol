@@ -11,9 +11,11 @@ contract ConnextReceiverAdapterForTest is ConnextReceiverAdapter {
     IConnextHandler _connext
   ) ConnextReceiverAdapter(_dataReceiver, _originContract, _originDomain, _connext) {}
 
-  // TODO: reuse adapter logic (don't rewrite code)
-  function addPermissionlessObservations(IOracleSidechain.ObservationData[] calldata _observationsData, bytes32 _poolSalt) external {
-    dataReceiver.addObservations(_observationsData, _poolSalt);
-    emit DataSent(_observationsData, _poolSalt);
+  function addPermissionlessObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) external {
+    _addObservations(_observationsData, _poolSalt, _poolNonce);
   }
 }

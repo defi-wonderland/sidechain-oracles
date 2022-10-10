@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { getAddressFromAbi, getChainId, getDataFromChainId, getReceiverChainId } from 'utils/deploy';
+import { domainId } from '../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -10,41 +10,38 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     gasLimit: 10e6,
     log: true,
   };
-  const CHAIN_ID = await getChainId(hre);
-  const RECEIVER_CHAIN_ID = await getReceiverChainId('deployments', 'receiver', '.chainId');
-  const CONNEXT_SENDER = await getAddressFromAbi('deployments', 'sender', 'ConnextSenderAdapter.json');
-  const CONNEXT_RECEIVER = await getAddressFromAbi('deployments', 'receiver', 'ConnextReceiverAdapter.json');
-  const { domainIdDestination } = await getDataFromChainId(CHAIN_ID);
 
-  // check to make sure we skip this deployment script if the chain is wrong, or if the contracts have not been yet deploy in both chains
-  if (!CONNEXT_SENDER.exists || !CONNEXT_RECEIVER.exists || !RECEIVER_CHAIN_ID.exists) {
-    throw new Error(
-      'Make sure you have run the deployments in the correct order and that all of them have been deployed correctly. Instructions in the README'
-    );
+  const senderAdapter = await hre.deployments.get('ConnextSenderAdapter');
+  const receiverAdapter = await hre.companionNetworks['receiver'].deployments.get('ConnextReceiverAdapter');
+
+  const DESTINATION_CHAIN_ID = await hre.companionNetworks['receiver'].getChainId();
+  const DESTINATION_DOMAIN_ID = domainId[Number(DESTINATION_CHAIN_ID)];
+
+  const IS_WHITELISTED_SENDER_ADAPTER = await hre.deployments.read('DataFeed', txSettings, 'whitelistedAdapters', senderAdapter.address);
+  if (!IS_WHITELISTED_SENDER_ADAPTER) {
+    const WHITELIST_ADAPTER_ARGS = [senderAdapter.address, true];
+    await hre.deployments.execute('DataFeed', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);
   }
 
-  const CONNEXT_SENDER_ADDRESS = CONNEXT_SENDER.address;
-  const WHITELIST_ADAPTER_ARGS = [CONNEXT_SENDER_ADDRESS, true];
-  const SET_RECEIVER_ARGS = [CONNEXT_SENDER_ADDRESS, domainIdDestination, CONNEXT_RECEIVER.address];
-  const SET_DESTINATION_DOMAIN_ID_ARGS = [CONNEXT_SENDER_ADDRESS, RECEIVER_CHAIN_ID.chainId, domainIdDestination];
+  const RECEIVER_ADAPTER = await hre.deployments.read('DataFeed', txSettings, 'receivers', senderAdapter.address, DESTINATION_DOMAIN_ID);
+  if (RECEIVER_ADAPTER !== receiverAdapter.address) {
+    const SET_RECEIVER_ARGS = [senderAdapter.address, DESTINATION_DOMAIN_ID, receiverAdapter.address];
+    await hre.deployments.execute('DataFeed', txSettings, 'setReceiver', ...SET_RECEIVER_ARGS);
+  }
 
-  const isAdapterWhitelisted = await hre.deployments.read('DataFeed', txSettings, 'whitelistedAdapters', CONNEXT_SENDER_ADDRESS);
-  const receiverAdapterSet = await hre.deployments.read('DataFeed', txSettings, 'receivers', CONNEXT_SENDER_ADDRESS, domainIdDestination);
-  const destinationDomainSet = await hre.deployments.read(
+  const SET_DESTINATION_DOMAIN_ID = await hre.deployments.read(
     'DataFeed',
     txSettings,
     'destinationDomainIds',
-    CONNEXT_SENDER_ADDRESS,
-    RECEIVER_CHAIN_ID.chainId
+    senderAdapter.address,
+    DESTINATION_CHAIN_ID
   );
-
-  if (!isAdapterWhitelisted) await hre.deployments.execute('DataFeed', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);
-  if (receiverAdapterSet !== CONNEXT_RECEIVER.address)
-    await hre.deployments.execute('DataFeed', txSettings, 'setReceiver', ...SET_RECEIVER_ARGS);
-  if (destinationDomainSet !== domainIdDestination)
+  if (SET_DESTINATION_DOMAIN_ID !== DESTINATION_DOMAIN_ID) {
+    const SET_DESTINATION_DOMAIN_ID_ARGS = [senderAdapter.address, DESTINATION_CHAIN_ID, DESTINATION_DOMAIN_ID];
     await hre.deployments.execute('DataFeed', txSettings, 'setDestinationDomainId', ...SET_DESTINATION_DOMAIN_ID_ARGS);
+  }
 };
 
 deployFunction.dependencies = ['connext-sender-adapter'];
-deployFunction.tags = ['execute', 'setup-data-feed', 'mainnet', 'actions', 'sender-stage-2'];
+deployFunction.tags = ['setup-data-feed', 'sender-stage-2'];
 export default deployFunction;

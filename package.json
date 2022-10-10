@@ -1,33 +1,24 @@
 {
-  "name": "hardhat-boilerplate",
+  "name": "sidechain-oracle",
   "version": "0.0.0",
-  "description": "Hardhat boilerplate",
-  "keywords": [
-    "ethereum",
-    "smart",
-    "contracts",
-    "test",
-    "solidity",
-    "hardhat",
-    "boilerplate"
-  ],
+  "description": "Sidechain Oracle",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/defi-wonderland/hardhat-boilerplate-ts.git"
+    "url": "git+https://github.com/defi-wonderland/sidechain-oracle-dev.git"
   },
   "license": "AGPL-3.0-only",
   "contributors": [
     {
-      "name": "404skillz",
-      "url": "https://github.com/404skillz"
-    },
-    {
-      "name": "0xGorilla",
-      "url": "https://github.com/0xGorilla"
+      "name": "0xJabberwock",
+      "url": "https://github.com/0xJabberwock"
     },
     {
       "name": "wei3erHase",
       "url": "https://github.com/wei3erHase"
+    },
+    {
+      "name": "0xng",
+      "url": "https://github.com/0xng"
     }
   ],
   "files": [
@@ -49,7 +40,7 @@
     "deploy": "npx hardhat deploy",
     "deploy:all": "yarn deploy --network receiver --tags receiver-stage-1 && yarn deploy --network sender --tags sender-stage-1 && yarn deploy --network receiver --tags receiver-stage-2 && yarn deploy --network sender --tags sender-stage-2,send-observation",
     "deploy:send": "yarn deploy --network sender --tags send-observation",
-    "deploy:test": "yarn deploy --network receiver --tags test",
+    "deploy:test": "yarn deploy --network singleton --tags dummy-test-setup",
     "docs": "solidity-docgen --solc-module solc-0.8",
     "fork:node": "cross-env FORK=true hardhat node",
     "fork:script": "cross-env FORK=true hardhat run",
@@ -83,7 +74,7 @@
   },
   "dependencies": {
     "@connext/nxtp-contracts": "0.2.0-beta.14",
-    "@defi-wonderland/keep3r-v2": "0.0.7",
+    "@defi-wonderland/keep3r-v2": "0.0.0-ba0f8872",
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@uniswap/v3-core": "1.0.2-solc-0.8-simulate",
@@ -116,7 +107,7 @@
     "ethers": "5.6.4",
     "hardhat": "2.11.1",
     "hardhat-contract-sizer": "2.6.1",
-    "hardhat-deploy": "0.11.4",
+    "hardhat-deploy": "0.11.15",
     "hardhat-gas-reporter": "1.0.8",
     "hardhat-preprocessor": "0.1.4",
     "husky": "7.0.4",

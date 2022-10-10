@@ -72,3 +72,4 @@ jobs:
         run: yarn test:e2e
         env:
           NODE_URI_ETHEREUM: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMYKEY }}
+          NODE_URI_GOERLI: https://eth-goerli.alchemyapi.io/v2/${{ secrets.ALCHEMYKEY }}

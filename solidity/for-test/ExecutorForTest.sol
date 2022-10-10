@@ -20,11 +20,12 @@ contract ExecutorForTest {
     address _receiverAdapter,
     uint32 _origin,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt
+    bytes32 _poolSalt,
+    uint24 _poolNonce
   ) external onlyConnext {
     originSender = _originalContract;
     origin = _origin;
-    IBridgeReceiverAdapter(_receiverAdapter).addObservations(_observationsData, _poolSalt);
+    IBridgeReceiverAdapter(_receiverAdapter).addObservations(_observationsData, _poolSalt, _poolNonce);
   }
 
   // Removed the onlyConnext modifier to avoid unnecessary deployments for ConnextReceiverAdapter's unit tests
@@ -33,11 +34,12 @@ contract ExecutorForTest {
     address _receiverAdapter,
     uint32 _origin,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt
+    bytes32 _poolSalt,
+    uint24 _poolNonce
   ) external {
     originSender = _originalContract;
     origin = _origin;
-    IBridgeReceiverAdapter(_receiverAdapter).addObservations(_observationsData, _poolSalt);
+    IBridgeReceiverAdapter(_receiverAdapter).addObservations(_observationsData, _poolSalt, _poolNonce);
   }
 
   modifier onlyConnext() {

@@ -83,11 +83,19 @@ describe('ConnextReceiverAdapter.sol', () => {
     let tick2 = 300;
     let observationData2 = [blockTimestamp2, tick2];
     let observationsData = [observationData1, observationData2];
+    let randomNonce = 420;
 
     context('when the origin sender is not allowed', async () => {
       it('should revert', async () => {
         await expect(
-          executor.permissionlessExecute(randomOriginSender, connextReceiverAdapter.address, rinkebyOriginId, observationsData, randomSalt)
+          executor.permissionlessExecute(
+            randomOriginSender,
+            connextReceiverAdapter.address,
+            rinkebyOriginId,
+            observationsData,
+            randomSalt,
+            randomNonce
+          )
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
@@ -100,7 +108,8 @@ describe('ConnextReceiverAdapter.sol', () => {
             connextReceiverAdapter.address,
             randomOriginId,
             observationsData,
-            randomSalt
+            randomSalt,
+            randomNonce
           )
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
@@ -108,7 +117,7 @@ describe('ConnextReceiverAdapter.sol', () => {
 
     context('when the caller is not the executor contract', async () => {
       it('should revert', async () => {
-        await expect(connextReceiverAdapter.connect(randomUser).addObservations(observationsData, randomSalt)).to.be.revertedWith(
+        await expect(connextReceiverAdapter.connect(randomUser).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
           'UnauthorizedCaller()'
         );
       });
@@ -122,19 +131,20 @@ describe('ConnextReceiverAdapter.sol', () => {
             connextReceiverAdapter.address,
             rinkebyOriginId,
             observationsData,
-            randomSalt
+            randomSalt,
+            randomNonce
           )
         ).not.to.be.reverted;
       });
 
       it('should call data receiver with the correct arguments', async () => {
         dataReceiver.addObservations.reset();
-        await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt);
-        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomSalt);
+        await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt, randomNonce);
+        expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomSalt, randomNonce);
       });
 
       it('should emit an event', async () => {
-        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt);
+        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt, randomNonce);
         let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
         let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
         expect(eventObservationsData).to.eql(observationsData);

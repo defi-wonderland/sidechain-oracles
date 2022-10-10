@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { getAddressFromAbi } from 'utils/deploy';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -11,19 +10,15 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  const CONNEXT_SENDER = await getAddressFromAbi('deployments', 'sender', 'ConnextSenderAdapter.json');
-  const CONNEXT_RECEIVER = await getAddressFromAbi('deployments', 'receiver', 'ConnextReceiverAdapter.json');
+  const receiverAdapter = await hre.companionNetworks['receiver'].deployments.get('ConnextReceiverAdapter');
 
-  // check to make sure we skip this deployment script if the chain is wrong, or if the contracts have not been yet deploy in both chains
-  if (!CONNEXT_SENDER.exists || !CONNEXT_RECEIVER.exists) return;
-
-  const WHITELISTED_ADAPTER = await hre.deployments.read('DataReceiver', txSettings, 'whitelistedAdapters', CONNEXT_RECEIVER.address);
-
-  const WHITELIST_ADAPTER_ARGS = [CONNEXT_RECEIVER.address, true];
-
-  if (!WHITELISTED_ADAPTER) await hre.deployments.execute('DataReceiver', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);
+  const IS_WHITELISTED_ADAPTER = await hre.deployments.read('DataReceiver', txSettings, 'whitelistedAdapters', receiverAdapter.address);
+  if (!IS_WHITELISTED_ADAPTER) {
+    const WHITELIST_ADAPTER_ARGS = [receiverAdapter.address, true];
+    await hre.deployments.execute('DataReceiver', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);
+  }
 };
 
 deployFunction.dependencies = ['deploy-connext-receiver-adapter'];
-deployFunction.tags = ['execute', 'whitelist-receiver-adapter', 'connext-receiver-adapter', 'receiver-stage-2'];
+deployFunction.tags = ['whitelist-receiver-adapter', 'receiver-stage-2'];
 export default deployFunction;

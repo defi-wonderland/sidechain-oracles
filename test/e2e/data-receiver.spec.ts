@@ -25,6 +25,8 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   let fee: number;
   let salt: string;
 
+  let nonce = 1;
+
   before(async () => {
     await evm.reset({
       jsonRpcUrl: getNodeUrl('ethereum'),
@@ -72,12 +74,12 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       () => dataReceiver,
       'addObservations',
       () => connextReceiverAdapterSigner,
-      () => [observationsData, salt]
+      () => [observationsData, salt, nonce]
     );
 
     context('when the observations are writable', () => {
       it('should add the observations', async () => {
-        let tx = await dataReceiver.addObservations(observationsData, salt);
+        let tx = await dataReceiver.addObservations(observationsData, salt, nonce);
 
         ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
@@ -86,7 +88,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       });
 
       it('should emit ObservationsAdded', async () => {
-        let tx = await dataReceiver.addObservations(observationsData, salt);
+        let tx = await dataReceiver.addObservations(observationsData, salt, nonce);
         let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
         let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
         expect(eventUser).to.eq(connextReceiverAdapter.address);
@@ -100,11 +102,12 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       let oldObservationsData = [observationData2Before, observationData2];
 
       beforeEach(async () => {
-        await dataReceiver.addObservations(observationsData, salt);
+        await dataReceiver.addObservations(observationsData, salt, nonce);
       });
 
+      // reverts with WrongNonce()
       it('should revert the tx', async () => {
-        await expect(dataReceiver.addObservations(oldObservationsData, salt)).to.be.revertedWith('ObservationsNotWritable()');
+        await expect(dataReceiver.addObservations(oldObservationsData, salt, nonce)).to.be.revertedWith('ObservationsNotWritable()');
       });
     });
 

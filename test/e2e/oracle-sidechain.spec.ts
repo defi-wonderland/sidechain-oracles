@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { JsonRpcSigner } from '@ethersproject/providers';
 import {
   OracleSidechain,
   IOracleSidechain,
@@ -11,6 +12,7 @@ import {
 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { KP3R, WETH, FEE, UNI_FACTORY, POOL_INIT_CODE_HASH, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { bn } from '@utils';
 import { onlyDataReceiver } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
@@ -25,11 +27,15 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   let oracleFactory: OracleFactory;
   let allowedDataReceiver: DataReceiverForTest;
   let unallowedDataReceiver: DataReceiverForTest;
+  let allowedDataReceiverWallet: JsonRpcSigner;
+  let unallowedDataReceiverWallet: JsonRpcSigner;
   let snapshotId: string;
   let tokenA: ERC20;
   let tokenB: ERC20;
   let fee: number;
   let salt: string;
+
+  let nonce = 10;
 
   before(async () => {
     await evm.reset({
@@ -53,6 +59,11 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     allowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governor.address, oracleFactory.address);
     unallowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governor.address, oracleFactory.address);
 
+    allowedDataReceiverWallet = await wallet.impersonate(allowedDataReceiver.address);
+    unallowedDataReceiverWallet = await wallet.impersonate(unallowedDataReceiver.address);
+    await wallet.setBalance(allowedDataReceiver.address, bn.toUnit(1));
+    await wallet.setBalance(unallowedDataReceiver.address, bn.toUnit(1));
+
     snapshotId = await evm.snapshot.take();
   });
 
@@ -68,7 +79,9 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   });
 
   describe('observing an observation', () => {
-    it('should observe an observation', async () => {});
+    it('should observe an observation', async () => {
+      // NOTE: WTF
+    });
   });
 
   describe('writing observations', () => {
@@ -81,13 +94,13 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     let observationsData = [observationData1, observationData2];
 
     it('should revert if the caller is not an allowed data receiver', async () => {
-      await allowedDataReceiver.addPermissionlessObservations(observationsData, salt);
+      await oracleFactory.connect(allowedDataReceiverWallet).deployOracle(salt, nonce);
 
-      await expect(unallowedDataReceiver.addPermissionlessObservations(observationsData, salt)).to.be.revertedWith('OnlyDataReceiver');
+      await expect(unallowedDataReceiver.addPermissionlessObservations(observationsData, salt, nonce)).to.be.revertedWith('OnlyDataReceiver');
     });
 
     it('should deploy a oracleSidechain and write an observation', async () => {
-      await allowedDataReceiver.addPermissionlessObservations(observationsData, salt);
+      await allowedDataReceiver.addPermissionlessObservations(observationsData, salt, nonce);
 
       ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 

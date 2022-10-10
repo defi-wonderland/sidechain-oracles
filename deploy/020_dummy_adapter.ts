@@ -6,7 +6,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer } = await hre.getNamedAccounts();
 
   const deploy = await hre.deployments.deploy('DummyAdapterForTest', {
-    contract: 'solidity/contracts/for-test/DummyAdapterForTest.sol:DummyAdapterForTest',
+    contract: 'solidity/for-test/DummyAdapterForTest.sol:DummyAdapterForTest',
     from: deployer,
     log: true,
   });

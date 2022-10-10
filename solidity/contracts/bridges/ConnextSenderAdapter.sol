@@ -20,13 +20,14 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     address _to,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt
+    bytes32 _poolSalt,
+    uint24 _poolNonce // TODO: review input parameters packing KMC-
   ) external payable onlyDataFeed {
     // TODO: asset will be deprecated, we have to have one for now--will delete as soon as it's deprecated. This address is a random placeholder
     address _asset = 0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9;
-    bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],bytes32)'));
+    bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],bytes32,uint24)'));
 
-    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _poolSalt);
+    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _poolSalt, _poolNonce);
     uint32 _originDomainId = 1111; // TODO: in theory if we are only going to bridge from mainnet, this could be hardcoded--1111 is rinkeby
 
     CallParams memory _callParams = CallParams({

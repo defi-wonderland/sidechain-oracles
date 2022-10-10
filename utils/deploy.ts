@@ -1,10 +1,6 @@
 import { ethers } from 'hardhat';
 import { DeployResult } from 'hardhat-deploy/dist/types';
 import { HardhatNetworkUserConfig, HardhatRuntimeEnvironment } from 'hardhat/types';
-import { chainIdData } from './constants';
-import { IChainIdData } from './types';
-import path from 'path';
-import fs from 'fs';
 
 let testChainId: number;
 
@@ -72,45 +68,4 @@ export const verifyContractByAddress = async (hre: HardhatRuntimeEnvironment, ad
 export const waitDeployment = async (deploy: DeployResult, blocks: number) => {
   const txReceipt = await ethers.provider.getTransaction(deploy.receipt!.transactionHash);
   await txReceipt.wait(blocks);
-};
-
-export const getAddressFromAbi = async (
-  ...pathsFromRoot: string[]
-): Promise<{ exists: boolean; address: string | undefined; bytecodeHash: string | undefined }> => {
-  const filePath = path.join(__dirname, '..', ...pathsFromRoot);
-  if (fs.existsSync(filePath)) {
-    const abi = fs.readFileSync(filePath, 'utf-8');
-    const parsedAbi = JSON.parse(abi);
-    return {
-      exists: true,
-      address: parsedAbi.address,
-      bytecodeHash: parsedAbi.bytecodeHash,
-    };
-  }
-  return {
-    exists: false,
-    address: undefined,
-    bytecodeHash: undefined,
-  };
-};
-
-export const getReceiverChainId = async (...pathsFromRoot: string[]): Promise<{ exists: boolean; chainId: number | undefined }> => {
-  const filePath = path.join(__dirname, '..', ...pathsFromRoot);
-  if (fs.existsSync(filePath)) {
-    const chainId = Number(fs.readFileSync(filePath, 'utf-8'));
-    return {
-      exists: true,
-      chainId,
-    };
-  }
-  return {
-    exists: false,
-    chainId: undefined,
-  };
-};
-
-export const getDataFromChainId = async (chainId: number): Promise<IChainIdData> => {
-  const data = chainIdData[chainId];
-  if (data !== undefined) return data;
-  throw new Error('Unexistent data, please complete information on utils/constants.ts');
 };

@@ -393,5 +393,35 @@ describe('DataFeedKeeper.sol', () => {
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });
+
+    context('when fromTimestamp is 0', () => {
+      beforeEach(async () => {
+        await evm.advanceToTimeAndBlock(fromTimestamp + periodLength * 3);
+        now = (await ethers.provider.getBlock('latest')).timestamp;
+        unknownTime = now - fromTimestamp;
+        periods = Math.trunc(unknownTime / periodLength);
+      });
+
+      it('should return an array with proper length', async () => {
+        const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
+        expect(secondsAgos.length).to.eq(periods);
+      });
+
+      it('should build the array of secondsAgos', async () => {
+        let expectedSecondsAgos: number[] = [];
+
+        for (let i = 0; i < periods; i++) {
+          expectedSecondsAgos[i] = unknownTime - (i + 1) * periodLength;
+        }
+
+        let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
+        expect(secondsAgos).to.deep.eq(expectedSecondsAgos);
+      });
+
+      it('should have 0 as last item', async () => {
+        let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
+        expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+      });
+    });
   });
 });

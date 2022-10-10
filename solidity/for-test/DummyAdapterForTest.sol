@@ -21,10 +21,11 @@ contract DummyAdapterForTest {
     IDataReceiver _to,
     uint32,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt
+    bytes32 _poolSalt,
+    uint24 _poolNonce
   ) external payable {
     if (!ignoreTxs) {
-      _to.addObservations(_observationsData, _poolSalt);
+      _to.addObservations(_observationsData, _poolSalt, _poolNonce);
     }
     emit SentData(_to, _observationsData);
   }

@@ -25,6 +25,7 @@ describe('OracleFactory.sol', () => {
   const randomTokenB = wallet.generateRandomAddress();
   const randomFee = 3000;
   const randomCardinality = 2000;
+  const randomNonce = 420;
 
   const [token0, token1] = sortTokens([randomTokenA, randomTokenB]);
   const salt = calculateSalt(randomTokenA, randomTokenB, randomFee);
@@ -66,17 +67,17 @@ describe('OracleFactory.sol', () => {
       () => oracleFactory,
       'deployOracle',
       () => dataReceiver.wallet,
-      () => [salt]
+      () => [salt, randomNonce]
     );
 
     it('should deploy a new Oracle', async () => {
       expect(await ethers.provider.getCode(precalculatedOracleAddress)).to.eq('0x');
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
       expect((await ethers.provider.getCode(precalculatedOracleAddress)).length).to.be.gt(100);
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
+      tx = await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
       await expect(tx).to.emit(oracleFactory, 'OracleDeployed').withArgs(precalculatedOracleAddress, salt, CARDINALITY);
     });
   });
@@ -93,12 +94,12 @@ describe('OracleFactory.sol', () => {
     });
 
     it('should return oracle address when tokens are sorted', async () => {
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
       expect(await oracleFactory.getPool(token0, token1, randomFee)).to.eq(precalculatedOracleAddress);
     });
 
     it('should return oracle address when tokens are unsorted', async () => {
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt);
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
       expect(await oracleFactory.getPool(token1, token0, randomFee)).to.eq(precalculatedOracleAddress);
     });
   });

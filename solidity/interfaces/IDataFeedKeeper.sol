@@ -3,7 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IKeep3rJob} from './peripherals/IKeep3rJob.sol';
 import {IDataFeed} from './IDataFeed.sol';
-import {IBridgeSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
+import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
 import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 
 /// @title The DataFeedKeeper interface

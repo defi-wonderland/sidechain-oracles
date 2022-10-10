@@ -30,7 +30,8 @@ import {
 } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
-import { RINKEBY_ORIGIN_DOMAIN_CONNEXT } from 'utils/constants';
+
+const destinationDomain = 1111;
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
@@ -79,7 +80,7 @@ export async function setupContracts(): Promise<{
     .deploy(
       dataReceiver.address,
       precalculatedConnextSenderAdapterAddress,
-      RINKEBY_ORIGIN_DOMAIN_CONNEXT,
+      destinationDomain,
       connextHandler.address
     )) as ConnextReceiverAdapter;
   const connextSenderAdapter = (await connextSenderAdapterFactory

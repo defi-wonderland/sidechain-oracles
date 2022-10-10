@@ -28,6 +28,8 @@ interface IOracleSidechain {
 
   function poolSalt() external view returns (bytes32 _poolSalt);
 
+  function poolNonce() external view returns (uint24 _poolNonce);
+
   /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
   /// when accessed externally.
   /// @return _sqrtPriceX96 Used to maintain compatibility with Uniswap V3
@@ -102,5 +104,5 @@ interface IOracleSidechain {
     view
     returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);
 
-  function write(ObservationData[] calldata _observationsData) external returns (bool _written);
+  function write(ObservationData[] calldata _observationsData, uint24 _poolNonce) external returns (bool _written);
 }

@@ -11,7 +11,7 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xf7160672a81419738afa2193b863b5c5c7e223c3806d420a4e0a6679f3f1865f;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x0fe972a6017390d56e73ca70df8e3865b17f00bc279fe9826cd6e44d3e9daa2c;
 
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
@@ -20,24 +20,40 @@ contract DataReceiver is IDataReceiver, Governable {
     oracleFactory = _oracleFactory;
   }
 
-  function _addObservations(IOracleSidechain _oracle, IOracleSidechain.ObservationData[] calldata _observationsData) internal {
-    if (_oracle.write(_observationsData)) {
+  function _writeObservations(
+    IOracleSidechain _oracle,
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    uint24 _poolNonce
+  ) internal {
+    if (_oracle.write(_observationsData, _poolNonce)) {
       emit ObservationsAdded(msg.sender, _observationsData);
     } else {
       revert ObservationsNotWritable();
     }
   }
 
-  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData, bytes32 _poolSalt) external onlyWhitelistedAdapters {
+  function addObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) external onlyWhitelistedAdapters {
+    _addObservations(_observationsData, _poolSalt, _poolNonce);
+  }
+
+  function _addObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) internal {
     IOracleSidechain _resultingAddress = IOracleSidechain(
       Create2Address.computeAddress(address(oracleFactory), _poolSalt, ORACLE_INIT_CODE_HASH)
     );
     bool _isDeployed = address(_resultingAddress).code.length > 0;
     if (_isDeployed) {
-      return _addObservations(_resultingAddress, _observationsData);
+      return _writeObservations(_resultingAddress, _observationsData, _poolNonce);
     }
-    address _deployedOracle = oracleFactory.deployOracle(_poolSalt);
-    _addObservations(IOracleSidechain(_deployedOracle), _observationsData);
+    address _deployedOracle = oracleFactory.deployOracle(_poolSalt, _poolNonce);
+    _writeObservations(IOracleSidechain(_deployedOracle), _observationsData, _poolNonce);
   }
 
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {

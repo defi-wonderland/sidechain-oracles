@@ -35,7 +35,11 @@ interface IDataReceiver is IGovernable {
 
   // FUNCTIONS
 
-  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData, bytes32 _poolSalt) external;
+  function addObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) external;
 
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external;
 

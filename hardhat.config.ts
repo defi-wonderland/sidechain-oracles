@@ -11,6 +11,7 @@ import 'solidity-coverage';
 import { HardhatUserConfig, NetworksUserConfig } from 'hardhat/types';
 import * as env from './utils/env';
 import 'tsconfig-paths/register';
+import { addressRegistry } from 'utils/constants';
 
 const networks: NetworksUserConfig =
   env.isHardhatCompile() || env.isHardhatClean() || env.isTestingLocal()
@@ -19,26 +20,46 @@ const networks: NetworksUserConfig =
         hardhat: {
           forking: {
             enabled: process.env.FORK ? true : false,
-            url: env.getNodeUrl('ethereum'),
+            url: env.getNodeUrl('goerli'),
           },
-        },
-        kovan: {
-          url: env.getNodeUrl('kovan'),
-          accounts: env.getAccounts('kovan'),
-        },
-        sender: {
-          url: env.getNodeUrl('rinkeby'),
-          accounts: env.getAccounts('rinkeby'),
-          chainId: 4,
-        },
-        receiver: {
-          url: env.getNodeUrl('goerli'),
-          accounts: env.getAccounts('goerli'),
           chainId: 5,
+          companionNetworks: {
+            sender: 'hardhat',
+            receiver: 'hardhat',
+          },
         },
         ethereum: {
           url: env.getNodeUrl('ethereum'),
           accounts: env.getAccounts('ethereum'),
+          chainId: 1,
+          companionNetworks: {
+            receiver: 'goerli',
+          },
+        },
+        singleton: {
+          url: env.getNodeUrl('goerli'),
+          accounts: env.getAccounts('goerli'),
+          chainId: 5,
+          companionNetworks: {
+            sender: 'singleton',
+            receiver: 'singleton',
+          },
+        },
+        sender: {
+          url: env.getNodeUrl('goerli'),
+          accounts: env.getAccounts('goerli'),
+          chainId: 5,
+          companionNetworks: {
+            receiver: 'receiver',
+          },
+        },
+        receiver: {
+          url: env.getNodeUrl('op_goerli'),
+          accounts: env.getAccounts('goerli'),
+          chainId: 420,
+          companionNetworks: {
+            sender: 'sender',
+          },
         },
       };
 
@@ -48,6 +69,7 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
+    ...addressRegistry,
   },
   mocha: {
     timeout: process.env.MOCHA_TIMEOUT || 300000,

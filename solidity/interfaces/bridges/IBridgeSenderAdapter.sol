@@ -10,6 +10,7 @@ interface IBridgeSenderAdapter {
     address _to,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt
+    bytes32 _poolSalt,
+    uint24 _poolNonce
   ) external payable;
 }

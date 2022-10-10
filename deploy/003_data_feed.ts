@@ -9,7 +9,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     contract: 'solidity/contracts/DataFeed.sol:DataFeed',
     from: deployer,
     log: true,
-    args: [deployer],
+    args: [deployer, deployer],
   });
 
   await verifyContractIfNeeded(hre, deploy);

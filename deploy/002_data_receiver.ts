@@ -17,9 +17,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   });
 
   // if redeploys, should set the correct dataReceiver in the factory
-  const dataReceiverAddress = (await hre.deployments.get('DataReceiver')).address;
-  if (dataReceiverAddress != (await hre.deployments.read('OracleFactory', 'dataReceiver'))) {
-    await hre.deployments.execute('OracleFactory', { from: deployer, log: true }, 'setDataReceiver', dataReceiverAddress);
+  const SET_DATA_RECEIVER = await hre.deployments.read('OracleFactory', 'dataReceiver');
+  if (SET_DATA_RECEIVER != deploy.address) {
+    await hre.deployments.execute('OracleFactory', { from: deployer, log: true }, 'setDataReceiver', deploy.address);
   }
 
   await verifyContractIfNeeded(hre, deploy);

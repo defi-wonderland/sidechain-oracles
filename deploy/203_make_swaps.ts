@@ -1,4 +1,3 @@
-// TODO: import from uniswap
 import ISwapRouter from '../artifacts/@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol/ISwapRouter.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
@@ -26,30 +25,30 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const tokenB = await hre.deployments.get('TokenB');
   const swapRouter = await hre.deployments.get('SwapRouter');
 
-  const allowanceA: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, swapRouter.address);
-  const allowanceB: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, swapRouter.address);
+  const TOKEN_A_ALLOWANCE: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, swapRouter.address);
+  const TOKEN_B_ALLOWANCE: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, swapRouter.address);
 
-  if (allowanceA.lt(maxUint256.shr(1))) {
+  if (TOKEN_A_ALLOWANCE.lt(maxUint256.shr(1))) {
     await hre.deployments.execute('TokenA', txSettings, 'approve', swapRouter.address, maxUint256);
   }
-  if (allowanceB.lt(maxUint256.shr(1))) {
+  if (TOKEN_B_ALLOWANCE.lt(maxUint256.shr(1))) {
     await hre.deployments.execute('TokenB', txSettings, 'approve', swapRouter.address, maxUint256);
   }
 
-  const balanceA = await hre.deployments.read('TokenA', 'balanceOf', deployer);
-  const balanceB = await hre.deployments.read('TokenB', 'balanceOf', deployer);
+  const TOKEN_A_BALANCE = await hre.deployments.read('TokenA', 'balanceOf', deployer);
+  const TOKEB_B_BALANCE = await hre.deployments.read('TokenB', 'balanceOf', deployer);
   let tokenIn: string;
   let tokenOut: string;
-  if (balanceA >= balanceB) {
+  if (TOKEN_A_BALANCE >= TOKEB_B_BALANCE) {
     (tokenIn = tokenA.address), (tokenOut = tokenB.address);
   } else {
     (tokenIn = tokenB.address), (tokenOut = tokenA.address);
   }
 
-  const swapSettings = [tokenIn, tokenOut, TEST_FEE, deployer, Date.now() + 3600, bn.toUnit(1), 0, 0];
+  const SWAP_ARGS = [tokenIn, tokenOut, TEST_FEE, deployer, Date.now() + 3600, bn.toUnit(1), 0, 0];
 
-  await hre.deployments.execute('SwapRouter', txSettings, 'exactInputSingle', swapSettings);
+  await hre.deployments.execute('SwapRouter', txSettings, 'exactInputSingle', SWAP_ARGS);
 };
 deployFunction.dependencies = ['add-liquidity'];
-deployFunction.tags = ['execute', 'make-swaps', 'mainnet', 'sender-actions', 'token-actions'];
+deployFunction.tags = ['make-swaps', 'sender-actions', 'token-actions'];
 export default deployFunction;

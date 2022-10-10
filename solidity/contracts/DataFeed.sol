@@ -35,8 +35,8 @@ contract DataFeed is IDataFeed, AdapterManagement {
     bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _poolNonce, _observationsData));
     if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
 
-    // TODO: bridge poolNonce
-    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
+    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
+    // TODO: review event emissions KMC-86
     emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
   }
 

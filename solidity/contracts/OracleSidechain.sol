@@ -40,6 +40,8 @@ contract OracleSidechain is IOracleSidechain {
 
   /// @inheritdoc IOracleSidechain
   bytes32 public immutable poolSalt;
+
+  uint24 public poolNonce;
   /// @inheritdoc IOracleSidechain
   address public token0;
   /// @inheritdoc IOracleSidechain
@@ -54,7 +56,8 @@ contract OracleSidechain is IOracleSidechain {
 
   constructor() {
     uint16 _cardinality;
-    (factory, poolSalt, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
+    // TODO: remove factory from parameters (use msg.sender)
+    (factory, poolSalt, poolNonce, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
 
     slot0 = Slot0({
       sqrtPriceX96: 0,
@@ -100,15 +103,14 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   /// @inheritdoc IOracleSidechain
-  function write(ObservationData[] calldata _observationsData) external onlyDataReceiver returns (bool _written) {
-    Oracle.Observation memory _lastObservation = observations[slot0.observationIndex];
+  function write(ObservationData[] calldata _observationsData, uint24 _poolNonce) external onlyDataReceiver returns (bool _written) {
+    if (_poolNonce != poolNonce++) return false;
+
     uint256 _observationsDataLength = _observationsData.length;
     for (uint256 _i; _i < _observationsDataLength; ++_i) {
-      if (_lastObservation.blockTimestamp < _observationsData[_i].blockTimestamp) {
-        _write(_observationsData[_i]);
-        _written = true;
-      }
+      _write(_observationsData[_i]);
     }
+    return true;
   }
 
   function _write(ObservationData calldata _observationData) private {

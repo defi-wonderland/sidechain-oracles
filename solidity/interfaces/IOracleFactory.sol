@@ -11,6 +11,7 @@ interface IOracleFactory is IGovernable {
   struct OracleParameters {
     IOracleFactory factory;
     bytes32 poolSalt;
+    uint24 poolNonce;
     uint16 cardinality;
   }
 
@@ -20,6 +21,7 @@ interface IOracleFactory is IGovernable {
 
   /// @return _factory The address of the deployer factory
   /// @return _poolSalt The id of both the oracle and the pool
+  /// @return _poolNonce The initial nonce of the pool data
   /// @return _cardinality The size of the observations memory storage
   function oracleParameters()
     external
@@ -27,6 +29,7 @@ interface IOracleFactory is IGovernable {
     returns (
       IOracleFactory _factory,
       bytes32 _poolSalt,
+      uint24 _poolNonce,
       uint16 _cardinality
     );
 
@@ -73,7 +76,7 @@ interface IOracleFactory is IGovernable {
   /// @dev Requires that the salt has not been deployed before
   /// @param _poolSalt Pool salt that deterministically binds an oracle with a pool
   /// @return _deployedOracle The address of the newly deployed oracle
-  function deployOracle(bytes32 _poolSalt) external returns (address _deployedOracle);
+  function deployOracle(bytes32 _poolSalt, uint24 _poolNonce) external returns (address _deployedOracle);
 
   /// @notice Allows governor to set a new allowed dataReceiver
   /// @dev Will disallow the previous dataReceiver

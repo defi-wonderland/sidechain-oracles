@@ -1,25 +1,31 @@
-import { IChainIdDataRecord } from './types';
+import { IDomainIDRecord } from './types';
 
 export const TEST_FEE = 10_000;
 
-// CONNEXT DEPLOYMENTS
-export const RINKEBY_ORIGIN_DOMAIN_CONNEXT = 1111;
-export const GOERLI_DESTINATION_DOMAIN_CONNEXT = 3331;
-export const RECEIVER_DESTINATION_DOMAIN_CONNEXT = 3331;
-export const SENDER_DESTINATION_DOMAIN_CONNEXT = 1111;
-
-export const CONNEXT_RINKEBY_ADDRESS = '0x2307Ed9f152FA9b3DcDfe2385d279D8C2A9DF2b0';
-export const CONNEXT_GOERLI_ADDRESS = '0xEC3A723DE47a644b901DC269829bf8718F175EBF';
-
-export const chainIdData: IChainIdDataRecord = {
-  4: {
-    domainIdDestination: 3331, // If rinkeby is sender, this field would be the domain Id of the receiver
-    chainName: 'rinkeby',
-    connextHandler: '0x4cAA6358a3d9d1906B5DABDE60A626AAfD80186F',
+export const addressRegistry = {
+  // KEEP3R DEPLOYMENTS
+  keep3r: {
+    1: '0xeb02addCfD8B773A5FFA6B9d1FE99c566f8c44CC',
+    5: '0x145d364e193204f8ff0a87b718938406595678dd',
   },
-  5: {
-    domainIdOrigin: 1111, // If goerli is receiver, this field would be the domain Id of the sender
-    chainName: 'goerli',
-    connextHandler: '0x6c9a905Ab3f4495E2b47f5cA131ab71281E0546e',
+  keep3rGovernance: {
+    1: '0x0D5Dc686d0a2ABBfDaFDFb4D0533E886517d4E83',
+    5: '0xbc86642a7678A5e0E4Dd0d0617cbe234CEb048Fb',
   },
+  kp3rV1: {
+    1: '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44',
+    5: '0x16F63C5036d3F48A239358656a8f123eCE85789C',
+  },
+  // CONNEXT DEPLOYMENTS
+  connext: {
+    5: '0xEC3A723DE47a644b901DC269829bf8718F175EBF',
+  },
+  connextHandler: {
+    5: '0x6c9a905Ab3f4495E2b47f5cA131ab71281E0546e',
+  },
+};
+
+export const domainId: IDomainIDRecord = {
+  4: 1111,
+  5: 3331,
 };

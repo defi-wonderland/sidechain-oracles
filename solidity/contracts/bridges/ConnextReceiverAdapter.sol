@@ -26,9 +26,21 @@ contract ConnextReceiverAdapter is IConnextReceiverAdapter {
     executor = _connext.executor();
   }
 
-  function addObservations(IOracleSidechain.ObservationData[] calldata _observationsData, bytes32 _poolSalt) external onlyExecutor {
-    dataReceiver.addObservations(_observationsData, _poolSalt);
-    emit DataSent(_observationsData, _poolSalt);
+  function addObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) external onlyExecutor {
+    _addObservations(_observationsData, _poolSalt, _poolNonce);
+  }
+
+  function _addObservations(
+    IOracleSidechain.ObservationData[] calldata _observationsData,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) internal {
+    dataReceiver.addObservations(_observationsData, _poolSalt, _poolNonce);
+    emit DataSent(_observationsData, _poolSalt); // TODO: review event emission
   }
 
   modifier onlyExecutor() {

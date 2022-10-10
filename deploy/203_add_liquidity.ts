@@ -1,5 +1,4 @@
-// TODO: import from uniswap
-import INFTPositionManager from '../artifacts/solidity/contracts/for-test/UniswapV3Importer.sol/INFTPositionManager.json';
+import INFTPositionManager from '../artifacts/solidity/for-test/UniswapV3Importer.sol/INFTPositionManager.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { bn } from '@utils';
@@ -23,24 +22,22 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   });
   const positionManager = await hre.deployments.get('PositionManager');
 
-  const poolLiquidity = await hre.deployments.read('UniV3Pool', 'liquidity');
-  if (poolLiquidity > 0) {
-    console.log('Pool already has liquidity: ', poolLiquidity.toString());
-    console.log('Skipping add-liquidity.');
+  const LIQUIDITY_IN_POOL = await hre.deployments.read('UniV3Pool', 'liquidity');
+  if (LIQUIDITY_IN_POOL > 0) {
     return;
   }
 
   const tokenA = await hre.deployments.get('TokenA');
   const tokenB = await hre.deployments.get('TokenB');
 
-  const allowanceA: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, positionManager.address);
-  const allowanceB: BigNumber = await hre.deployments.read('TokenB', 'allowance', deployer, positionManager.address);
+  const TOKEN_A_ALLOWANCE: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, positionManager.address);
+  const TOKEN_B_ALLOWANCE: BigNumber = await hre.deployments.read('TokenB', 'allowance', deployer, positionManager.address);
 
   // TODO: move to utils.approveIfNeeded('TokenA', spender)
-  if (allowanceA.lt(maxUint256.shr(1))) {
+  if (TOKEN_A_ALLOWANCE.lt(maxUint256.shr(1))) {
     await hre.deployments.execute('TokenA', txSettings, 'approve', positionManager.address, maxUint256);
   }
-  if (allowanceB.lt(maxUint256.shr(1))) {
+  if (TOKEN_B_ALLOWANCE.lt(maxUint256.shr(1))) {
     await hre.deployments.execute('TokenB', txSettings, 'approve', positionManager.address, maxUint256);
   }
 
@@ -57,10 +54,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     token1 = tokenA.address;
   }
 
-  const mintSettings = [token0, token1, TEST_FEE, lowerTick, upperTick, bn.toUnit(10), bn.toUnit(10), 0, 0, deployer, Date.now() + 3600];
+  const MINT_ARGS = [token0, token1, TEST_FEE, lowerTick, upperTick, bn.toUnit(10), bn.toUnit(10), 0, 0, deployer, Date.now() + 3600];
 
-  await hre.deployments.execute('PositionManager', txSettings, 'mint', mintSettings);
+  await hre.deployments.execute('PositionManager', txSettings, 'mint', MINT_ARGS);
 };
+
 deployFunction.dependencies = ['create-pool'];
-deployFunction.tags = ['execute', 'add-liquidity', 'token-actions'];
+deployFunction.tags = ['add-liquidity', 'token-actions'];
 export default deployFunction;

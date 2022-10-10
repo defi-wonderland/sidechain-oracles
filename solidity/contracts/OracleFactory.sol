@@ -21,8 +21,13 @@ contract OracleFactory is IOracleFactory, Governable {
     dataReceiver = _dataReceiver;
   }
 
-  function deployOracle(bytes32 _poolSalt) external onlyDataReceiver returns (address _deployedOracle) {
-    oracleParameters = OracleParameters({factory: IOracleFactory(address(this)), poolSalt: _poolSalt, cardinality: initialCardinality});
+  function deployOracle(bytes32 _poolSalt, uint24 _initialNonce) external onlyDataReceiver returns (address _deployedOracle) {
+    oracleParameters = OracleParameters({
+      factory: IOracleFactory(address(this)),
+      poolSalt: _poolSalt,
+      poolNonce: _initialNonce,
+      cardinality: initialCardinality
+    });
     _deployedOracle = address(new OracleSidechain{salt: _poolSalt}());
     delete oracleParameters;
     emit OracleDeployed(_deployedOracle, _poolSalt, initialCardinality);

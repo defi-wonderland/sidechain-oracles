@@ -4,12 +4,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, DataFeed__factory, IConnextSenderAdapter } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
+import { VALID_POOL_SALT } from '@utils/constants';
 import { onlyGovernor } from '@utils/behaviours';
+import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
-describe('AdapterManagement.sol', () => {
+describe('PipelineManagement.sol', () => {
   let governor: SignerWithAddress;
   let keeper: SignerWithAddress;
   let dataFeed: MockContract<DataFeed>;
@@ -25,6 +27,8 @@ describe('AdapterManagement.sol', () => {
   const randomDestinationDomainId2 = 34;
   const randomChainId = 32;
   const randomChainId2 = 22;
+  const randomSalt = VALID_POOL_SALT;
+  const randomSalt2 = getRandomBytes32();
 
   before(async () => {
     [, governor, keeper] = await ethers.getSigners();
@@ -40,6 +44,109 @@ describe('AdapterManagement.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
+  });
+
+  describe('isWhitelistedPool(...)', () => {
+    beforeEach(async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+    });
+
+    it('should return true if the pool is whitelisted', async () => {
+      expect(await dataFeed.isWhitelistedPool(randomSalt)).to.eq(true);
+    });
+
+    it('should return false if the pool is not whitelisted', async () => {
+      expect(await dataFeed.isWhitelistedPool(randomSalt2)).to.eq(false);
+    });
+  });
+
+  describe('whitelistPipeline(...)', () => {
+    const lastPoolNonceObserved = 2;
+
+    beforeEach(async () => {
+      await dataFeed.setVariable('lastPoolStateObserved', { [randomSalt]: { poolNonce: lastPoolNonceObserved } });
+    });
+
+    onlyGovernor(
+      () => dataFeed,
+      'whitelistPipeline',
+      () => governor,
+      () => [randomChainId, randomSalt]
+    );
+
+    it('should whitelist the next pool nonce to be observed', async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      expect(await dataFeed.whitelistedNonces(randomChainId, randomSalt)).to.eq(lastPoolNonceObserved + 1);
+    });
+
+    it.skip('should whitelist the pool', async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      console.log(await dataFeed.getVariable('_whitelistedPools'));
+    });
+
+    it('should emit an event when a pipeline is whitelisted', async () => {
+      await expect(await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt))
+        .to.emit(dataFeed, 'PipelineWhitelisted')
+        .withArgs(randomChainId, randomSalt, lastPoolNonceObserved + 1);
+    });
+  });
+
+  describe('whitelistPipelines(...)', () => {
+    let validArgs: [number[], string[]];
+    const lastPoolNonceObserved = 2;
+    const lastPoolNonceObserved2 = 4;
+
+    before(() => {
+      validArgs = [
+        [randomChainId, randomChainId2],
+        [randomSalt, randomSalt2],
+      ];
+    });
+
+    beforeEach(async () => {
+      await dataFeed.setVariable('lastPoolStateObserved', { [randomSalt]: { poolNonce: lastPoolNonceObserved } });
+      await dataFeed.setVariable('lastPoolStateObserved', { [randomSalt2]: { poolNonce: lastPoolNonceObserved2 } });
+    });
+
+    onlyGovernor(
+      () => dataFeed,
+      'whitelistPipelines',
+      () => governor,
+      () => [
+        [randomChainId, randomChainId2],
+        [randomSalt, randomSalt2],
+      ]
+    );
+
+    it('should revert if the lengths of the arguments do not match', async () => {
+      const mismatchedArgs = [[randomChainId, randomChainId2], [randomSalt]];
+      const mismatchedArgs2 = [[randomChainId], [randomSalt, randomSalt2]];
+
+      await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
+      await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
+    });
+
+    it('should whitelist the next pool nonces to be observed', async () => {
+      await dataFeed.connect(governor).whitelistPipelines(...validArgs);
+      expect(await dataFeed.whitelistedNonces(randomChainId, randomSalt)).to.eq(lastPoolNonceObserved + 1);
+      expect(await dataFeed.whitelistedNonces(randomChainId2, randomSalt2)).to.eq(lastPoolNonceObserved2 + 1);
+    });
+
+    it.skip('should whitelist the pools', async () => {
+      await dataFeed.connect(governor).whitelistPipelines(...validArgs);
+      console.log(await dataFeed.getVariable('_whitelistedPools'));
+    });
+
+    it('should emit n events when n pipelines are whitelisted', async () => {
+      tx = await dataFeed.connect(governor).whitelistPipelines(...validArgs);
+      await expect(tx)
+        .to.emit(dataFeed, 'PipelineWhitelisted')
+        .withArgs(randomChainId, randomSalt, lastPoolNonceObserved + 1);
+
+      await expect(tx)
+        .to.emit(dataFeed, 'PipelineWhitelisted')
+        .withArgs(randomChainId2, randomSalt2, lastPoolNonceObserved2 + 1);
+    });
   });
 
   describe('whitelistAdapter(...)', () => {
@@ -172,13 +279,11 @@ describe('AdapterManagement.sol', () => {
 
     it('should revert if the lengths of the arguments do not match', async () => {
       const mismatchedArgs = [[connextSenderAdapter.address, fakeAdapter.address], [randomChainId, randomChainId2], [randomDestinationDomainId]];
-
       const mismatchedArgs2 = [
         [connextSenderAdapter.address, fakeAdapter.address],
         [randomChainId],
         [randomDestinationDomainId, randomDestinationDomainId2],
       ];
-
       const mismatchedArgs3 = [
         [connextSenderAdapter.address],
         [randomChainId, randomChainId2],
@@ -186,9 +291,7 @@ describe('AdapterManagement.sol', () => {
       ];
 
       await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
-
       await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
-
       await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
     });
 
@@ -236,7 +339,7 @@ describe('AdapterManagement.sol', () => {
     before(() => {
       validArgs = [
         [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDestinationDomainId, randomDestinationDomainId2],
         [randomDataReceiverAddress, randomDataReceiverAddress2],
       ];
     });
@@ -247,7 +350,7 @@ describe('AdapterManagement.sol', () => {
       () => governor,
       () => [
         [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDestinationDomainId, randomDestinationDomainId2],
         [randomDataReceiverAddress, randomDataReceiverAddress2],
       ]
     );
@@ -255,33 +358,29 @@ describe('AdapterManagement.sol', () => {
     it('should revert if the lengths of the arguments do not match', async () => {
       const mismatchedArgs = [
         [connextSenderAdapter.address, fakeAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDestinationDomainId, randomDestinationDomainId2],
         [randomDataReceiverAddress],
       ];
-
       const mismatchedArgs2 = [
         [connextSenderAdapter.address, fakeAdapter.address],
         [randomDestinationDomainId],
         [randomDataReceiverAddress, randomDataReceiverAddress2],
       ];
-
       const mismatchedArgs3 = [
         [connextSenderAdapter.address],
-        [randomDestinationDomainId, randomDestinationDomainId],
+        [randomDestinationDomainId, randomDestinationDomainId2],
         [randomDataReceiverAddress, randomDataReceiverAddress2],
       ];
 
       await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
-
       await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
-
       await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
     });
 
     it('should set the receivers', async () => {
       await dataFeed.connect(governor).setReceivers(...validArgs);
       expect(await dataFeed.receivers(connextSenderAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress);
-      expect(await dataFeed.receivers(fakeAdapter.address, randomDestinationDomainId)).to.eq(randomDataReceiverAddress2);
+      expect(await dataFeed.receivers(fakeAdapter.address, randomDestinationDomainId2)).to.eq(randomDataReceiverAddress2);
     });
 
     it('should emit n events when n receivers are set', async () => {
@@ -290,7 +389,7 @@ describe('AdapterManagement.sol', () => {
         .to.emit(dataFeed, 'ReceiverSet')
         .withArgs(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
 
-      await expect(tx).to.emit(dataFeed, 'ReceiverSet').withArgs(fakeAdapter.address, randomDestinationDomainId, randomDataReceiverAddress2);
+      await expect(tx).to.emit(dataFeed, 'ReceiverSet').withArgs(fakeAdapter.address, randomDestinationDomainId2, randomDataReceiverAddress2);
     });
   });
 

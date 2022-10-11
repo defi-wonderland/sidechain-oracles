@@ -108,7 +108,25 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       () => [salt, secondsAgos]
     );
 
-    context('when the adapter is not set', () => {
+    context('when the pool is not whitelisted', () => {
+      it('should revert', async () => {
+        await expect(dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos)).to.be.revertedWith('UnallowedPool()');
+      });
+    });
+
+    context('when the pipeline is not whitelisted', () => {
+      it('should revert', async () => {
+        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
+          'UnallowedPipeline()'
+        );
+      });
+    });
+
+    context('when only the pool and pipeline are whitelisted', () => {
+      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
+      });
+
       it('should revert', async () => {
         await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
           'UnallowedAdapter()'
@@ -116,8 +134,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
     });
 
-    context('when only the adapter is set', () => {
+    context('when only the pool, pipeline and adapter are whitelisted', () => {
       beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
       });
 
@@ -128,8 +147,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
     });
 
-    context('when only the adapter and the destination domain are set', () => {
+    context('when only the pool, pipeline, adapter and destination domain are set', () => {
       beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
       });
@@ -141,34 +161,45 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
     });
 
-    context('when the adapter, destination domain and receiver are set, but the adapter is not whitelisted in the data receiver', () => {
+    context(
+      'when the pool, pipeline, adapter, destination domain and receiver are set, but the adapter is not whitelisted in the data receiver',
+      () => {
+        beforeEach(async () => {
+          await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
+          await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+          await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+          await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
+
+          tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
+        });
+
+        it('should revert', async () => {
+          const observationsFetched = (await readArgFromEvent(
+            tx,
+            'PoolObserved',
+            '_observationsData'
+          )) as IOracleSidechain.ObservationDataStructOutput[];
+
+          await expect(
+            dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
+          ).to.be.revertedWith('UnallowedAdapter()');
+        });
+      }
+    );
+
+    context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
       beforeEach(async () => {
-        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
-        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
-
-        tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
-      });
-
-      it('should revert', async () => {
-        const observationsFetched = (await readArgFromEvent(
-          tx,
-          'PoolObserved',
-          '_observationsData'
-        )) as IOracleSidechain.ObservationDataStructOutput[];
-
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
-        ).to.be.revertedWith('UnallowedAdapter()');
-      });
-    });
-
-    context('when the adapter, destination domain and receiver are set and whitelisted', () => {
-      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
         await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
         await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
+      });
+
+      it('should revert if the nonce is lower than the whitelisted nonce', async () => {
+        await expect(
+          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce - 1, observationsData)
+        ).to.be.revertedWith('WrongNonce()');
       });
 
       it('should revert if the hash is unknown', async () => {
@@ -486,9 +517,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
     });
 
-    context('when the pool, adapter, destination domain and receiver are set and whitelisted', () => {
+    context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
       beforeEach(async () => {
-        await dataFeedKeeper.connect(governor).whitelistPool(RANDOM_CHAIN_ID, salt, true);
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
         await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
@@ -556,7 +587,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
 
         // setup dummy adapter
-        await dataFeedKeeper.connect(governor).whitelistPool(RANDOM_CHAIN_ID, salt, true);
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeedKeeper.connect(governor).setDefaultBridgeSenderAdapter(dummyAdapter.address);
         await dataFeed.connect(governor).whitelistAdapter(dummyAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(dummyAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
@@ -596,9 +627,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           context('when the data is sent', () => {
             beforeEach(async () => {
-              await dataFeedKeeper
-                .connect(keeper)
-                ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+              await dataFeed.sendObservations(dummyAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
             });
 
             it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {
@@ -662,9 +691,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           context('when the data is sent', () => {
             beforeEach(async () => {
-              await dataFeedKeeper
-                .connect(keeper)
-                ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce + 1, observationsFetched);
+              await dataFeed.sendObservations(dummyAdapter.address, RANDOM_CHAIN_ID, salt, nonce + 1, observationsFetched);
             });
 
             it('should keep consistency of tickCumulativesDelta between bridged observations', async () => {

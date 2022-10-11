@@ -18,6 +18,8 @@ interface IDataFeedKeeper is IKeep3rJob {
 
   function defaultBridgeSenderAdapter() external view returns (IBridgeSenderAdapter _defaultBridgeSenderAdapter);
 
+  function lastPoolNonceBridged(uint16 _chainId, bytes32 _poolSalt) external view returns (uint24 _lastPoolNonceBridged);
+
   /// @notice Gets the job cooldown
   /// @return _jobCooldown The cooldown of the job, in seconds
   function jobCooldown() external view returns (uint256 _jobCooldown);
@@ -25,8 +27,6 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @notice Gets the length of the bridged periods
   /// @return _periodLength The resolution of the bridged datapoints
   function periodLength() external view returns (uint32 _periodLength);
-
-  function whitelistedPools(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted);
 
   // EVENTS
 
@@ -36,14 +36,10 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @param _jobCooldown The new job cooldown
   event JobCooldownUpdated(uint256 _jobCooldown);
 
-  event PoolWhitelisted(uint16 _chainId, bytes32 _poolSalt, bool _isWhitelisted);
-
   // ERRORS
 
   /// @notice Thrown if the job is not workable
   error NotWorkable();
-
-  error LengthMismatch();
 
   // FUNCTIONS
 
@@ -67,18 +63,6 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @notice Sets the job cooldown
   /// @param _jobCooldown The job cooldown to be set
   function setJobCooldown(uint256 _jobCooldown) external;
-
-  function whitelistPool(
-    uint16 _chainId,
-    bytes32 _poolSalt,
-    bool _isWhitelisted
-  ) external;
-
-  function whitelistPools(
-    uint16[] calldata _chainIds,
-    bytes32[] calldata _poolSalts,
-    bool[] calldata _isWhitelisted
-  ) external;
 
   /// @notice Returns if the job can be worked
   /// @param _chainId The destination chain ID

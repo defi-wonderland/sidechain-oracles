@@ -2,28 +2,56 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './Governable.sol';
-import {IAdapterManagement} from '../../interfaces/peripherals/IAdapterManagement.sol';
-import {IBridgeSenderAdapter} from '../../interfaces/bridges/IBridgeSenderAdapter.sol';
+import {IPipelineManagement, IBridgeSenderAdapter} from '../../interfaces/peripherals/IPipelineManagement.sol';
+import {IDataFeed} from '../../interfaces/IDataFeed.sol';
+import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
-abstract contract AdapterManagement is IAdapterManagement, Governable {
-  // TODO: write full natspec when logic is approved
-  /// @inheritdoc IAdapterManagement
+abstract contract PipelineManagement is IPipelineManagement, Governable {
+  using EnumerableSet for EnumerableSet.Bytes32Set;
+
+  EnumerableSet.Bytes32Set private _whitelistedPools;
+
+  /// @inheritdoc IPipelineManagement
+  mapping(uint16 => mapping(bytes32 => uint24)) public whitelistedNonces;
+
+  /// @inheritdoc IPipelineManagement
   mapping(IBridgeSenderAdapter => bool) public whitelistedAdapters;
 
   // adapter => chainId => destinationDomain
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   mapping(IBridgeSenderAdapter => mapping(uint16 => uint32)) public destinationDomainIds;
 
   // adapter => destinationDomainId => dataReceiver
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   mapping(IBridgeSenderAdapter => mapping(uint32 => address)) public receivers;
 
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
+  function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
+    return _whitelistedPools.contains(_poolSalt);
+  }
+
+  /// @inheritdoc IPipelineManagement
+  function whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) external onlyGovernor {
+    _whitelistPipeline(_chainId, _poolSalt);
+  }
+
+  /// @inheritdoc IPipelineManagement
+  function whitelistPipelines(uint16[] calldata _chainIds, bytes32[] calldata _poolSalts) external onlyGovernor {
+    uint256 _chainIdsLength = _chainIds.length;
+    if (_chainIdsLength != _poolSalts.length) revert LengthMismatch();
+    unchecked {
+      for (uint256 _i; _i < _chainIdsLength; ++_i) {
+        _whitelistPipeline(_chainIds[_i], _poolSalts[_i]);
+      }
+    }
+  }
+
+  /// @inheritdoc IPipelineManagement
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external onlyGovernor {
     _whitelistAdapter(_bridgeSenderAdapter, _isWhitelisted);
   }
 
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   function whitelistAdapters(IBridgeSenderAdapter[] calldata _bridgeSenderAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
     if (_bridgeSenderAdapterLength != _isWhitelisted.length) revert LengthMismatch();
@@ -34,7 +62,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     }
   }
 
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   function setDestinationDomainId(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint16 _chainId,
@@ -43,14 +71,14 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     _setDestinationDomainId(_bridgeSenderAdapter, _chainId, _destinationDomainId);
   }
 
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   function setDestinationDomainIds(
     IBridgeSenderAdapter[] calldata _bridgeSenderAdapters,
     uint16[] calldata _chainIds,
     uint32[] calldata _destinationDomainIds
   ) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
-    if (_bridgeSenderAdapterLength != _destinationDomainIds.length || _bridgeSenderAdapterLength != _chainIds.length) revert LengthMismatch();
+    if (_bridgeSenderAdapterLength != _chainIds.length || _bridgeSenderAdapterLength != _destinationDomainIds.length) revert LengthMismatch();
     unchecked {
       for (uint256 _i; _i < _bridgeSenderAdapterLength; ++_i) {
         _setDestinationDomainId(_bridgeSenderAdapters[_i], _chainIds[_i], _destinationDomainIds[_i]);
@@ -58,7 +86,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     }
   }
 
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   function setReceiver(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint32 _destinationDomainId,
@@ -67,7 +95,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     _setReceiver(_bridgeSenderAdapter, _destinationDomainId, _dataReceiver);
   }
 
-  /// @inheritdoc IAdapterManagement
+  /// @inheritdoc IPipelineManagement
   function setReceivers(
     IBridgeSenderAdapter[] calldata _bridgeSenderAdapters,
     uint32[] calldata _destinationDomainIds,
@@ -83,6 +111,7 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
     }
   }
 
+  /// @inheritdoc IPipelineManagement
   function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId)
     public
     view
@@ -95,6 +124,13 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
 
     _dataReceiver = receivers[_bridgeSenderAdapter][_destinationDomainId];
     if (_dataReceiver == address(0)) revert ReceiverNotSet();
+  }
+
+  function _whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) internal {
+    (uint24 _lastPoolNonceObserved, , , ) = IDataFeed(address(this)).lastPoolStateObserved(_poolSalt);
+    whitelistedNonces[_chainId][_poolSalt] = _lastPoolNonceObserved + 1;
+    _whitelistedPools.add(_poolSalt);
+    emit PipelineWhitelisted(_chainId, _poolSalt, _lastPoolNonceObserved + 1);
   }
 
   function _whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) internal {
@@ -118,5 +154,21 @@ abstract contract AdapterManagement is IAdapterManagement, Governable {
   ) internal {
     receivers[_bridgeSenderAdapter][_destinationDomainId] = _dataReceiver;
     emit ReceiverSet(_bridgeSenderAdapter, _destinationDomainId, _dataReceiver);
+  }
+
+  modifier validatePool(bytes32 _poolSalt) {
+    if (!_whitelistedPools.contains(_poolSalt)) revert UnallowedPool();
+    _;
+  }
+
+  modifier validatePipeline(
+    uint16 _chainId,
+    bytes32 _poolSalt,
+    uint24 _poolNonce
+  ) {
+    uint24 _whitelistedNonce = whitelistedNonces[_chainId][_poolSalt];
+    if (_whitelistedNonce == 0) revert UnallowedPipeline();
+    if (_whitelistedNonce > _poolNonce) revert WrongNonce();
+    _;
   }
 }

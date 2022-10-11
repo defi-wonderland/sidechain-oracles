@@ -1,11 +1,13 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IBridgeSenderAdapter} from '../bridges/IBridgeSenderAdapter.sol';
 import {IGovernable} from './IGovernable.sol';
+import {IBridgeSenderAdapter} from '../bridges/IBridgeSenderAdapter.sol';
 
-interface IAdapterManagement is IGovernable {
+interface IPipelineManagement is IGovernable {
   // STATE VARIABLES
+
+  function whitelistedNonces(uint16 _chainId, bytes32 _poolSalt) external view returns (uint24 _whitelistedNonce);
 
   function whitelistedAdapters(IBridgeSenderAdapter _bridgeSenderAdapter) external view returns (bool _isWhitelisted);
 
@@ -15,6 +17,8 @@ interface IAdapterManagement is IGovernable {
 
   // EVENTS
 
+  event PipelineWhitelisted(uint16 _chainId, bytes32 indexed _poolSalt, uint24 _whitelistedNonce);
+
   event AdapterWhitelisted(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted);
 
   event DestinationDomainIdSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId, uint32 _destinationDomainId);
@@ -22,6 +26,12 @@ interface IAdapterManagement is IGovernable {
   event ReceiverSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId, address _dataReceiver);
 
   // ERRORS
+
+  error UnallowedPool();
+
+  error UnallowedPipeline();
+
+  error WrongNonce();
 
   error UnallowedAdapter();
 
@@ -32,6 +42,12 @@ interface IAdapterManagement is IGovernable {
   error LengthMismatch();
 
   // FUNCTIONS
+
+  function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted);
+
+  function whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) external;
+
+  function whitelistPipelines(uint16[] calldata _chainIds, bytes32[] calldata _poolSalts) external;
 
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
 

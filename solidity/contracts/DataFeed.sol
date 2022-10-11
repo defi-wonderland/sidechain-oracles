@@ -1,13 +1,12 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './peripherals/Governable.sol';
-import {AdapterManagement} from './peripherals/AdapterManagement.sol';
+import {PipelineManagement, Governable} from './peripherals/PipelineManagement.sol';
 import {IDataFeed, IDataFeedKeeper, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 import {OracleFork} from '../libraries/OracleFork.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
-contract DataFeed is IDataFeed, AdapterManagement {
+contract DataFeed is IDataFeed, PipelineManagement {
   address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
@@ -30,10 +29,13 @@ contract DataFeed is IDataFeed, AdapterManagement {
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] calldata _observationsData
-  ) external {
+  ) external validatePipeline(_chainId, _poolSalt, _poolNonce) {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
-    bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _poolNonce, _observationsData));
-    if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
+
+    {
+      bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _poolNonce, _observationsData));
+      if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
+    }
 
     _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
     // TODO: review event emissions KMC-86
@@ -41,13 +43,12 @@ contract DataFeed is IDataFeed, AdapterManagement {
   }
 
   /// @inheritdoc IDataFeed
-  function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external onlyKeeper {
+  function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external onlyKeeper validatePool(_poolSalt) {
     IOracleSidechain.ObservationData[] memory _observationsData;
     PoolState memory _lastPoolStateObserved = lastPoolStateObserved[_poolSalt];
 
     {
       IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
-
       (int56[] memory _tickCumulatives, ) = _pool.observe(_secondsAgos);
 
       uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
@@ -57,43 +58,39 @@ contract DataFeed is IDataFeed, AdapterManagement {
       uint256 _secondsAgosLength = _secondsAgos.length;
       uint256 _i;
 
-      {
-        if ((_lastPoolStateObserved.blockTimestamp == 0)) {
-          if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
-          // initializes timestamp and cumulative with first item (and skips it)
-          _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
-          _secondsAgo = _secondsAgos[0];
-          _tickCumulative = _tickCumulatives[0];
-          ++_i;
-        } else {
-          // initializes timestamp and cumulative with cache
-          _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength);
-          _secondsAgo = _secondsNow - _lastPoolStateObserved.blockTimestamp;
-          _tickCumulative = _lastPoolStateObserved.tickCumulative;
-        }
+      if ((_lastPoolStateObserved.blockTimestamp == 0)) {
+        if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
+        // initializes timestamp and cumulative with first item (and skips it)
+        _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
+        _secondsAgo = _secondsAgos[0];
+        _tickCumulative = _tickCumulatives[0];
+        ++_i;
+      } else {
+        // initializes timestamp and cumulative with cache
+        _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength);
+        _secondsAgo = _secondsNow - _lastPoolStateObserved.blockTimestamp;
+        _tickCumulative = _lastPoolStateObserved.tickCumulative;
       }
 
-      {
-        uint32 _delta;
-        int56 _tickCumulativesDelta;
-        uint256 _observationsDataIndex;
+      uint32 _delta;
+      int56 _tickCumulativesDelta;
+      uint256 _observationsDataIndex;
 
-        for (_i; _i < _secondsAgosLength; ++_i) {
-          _tickCumulativesDelta = _tickCumulatives[_i] - _tickCumulative;
-          _delta = _secondsAgo - _secondsAgos[_i];
-          _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
+      for (_i; _i < _secondsAgosLength; ++_i) {
+        _tickCumulativesDelta = _tickCumulatives[_i] - _tickCumulative;
+        _delta = _secondsAgo - _secondsAgos[_i];
+        _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
 
-          // Always round to negative infinity
-          if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
+        // Always round to negative infinity
+        if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
 
-          _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
-            blockTimestamp: _secondsNow - _secondsAgo,
-            tick: _arithmeticMeanTick
-          });
+        _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
+          blockTimestamp: _secondsNow - _secondsAgo,
+          tick: _arithmeticMeanTick
+        });
 
-          _secondsAgo = _secondsAgos[_i];
-          _tickCumulative = _tickCumulatives[_i];
-        }
+        _secondsAgo = _secondsAgos[_i];
+        _tickCumulative = _tickCumulatives[_i];
       }
 
       _lastPoolStateObserved = PoolState({
@@ -102,9 +99,9 @@ contract DataFeed is IDataFeed, AdapterManagement {
         tickCumulative: _tickCumulative,
         arithmeticMeanTick: _arithmeticMeanTick
       });
-
-      lastPoolStateObserved[_poolSalt] = _lastPoolStateObserved;
     }
+
+    lastPoolStateObserved[_poolSalt] = _lastPoolStateObserved;
 
     bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _lastPoolStateObserved.poolNonce, _observationsData));
     _observedKeccak[_resultingKeccak] = true;

@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeedKeeper, DataFeedKeeper__factory, IKeep3r, IDataFeed } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
@@ -7,7 +6,6 @@ import { evm, wallet } from '@utils';
 import { KEEP3R, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { onlyGovernor } from '@utils/behaviours';
-import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -19,7 +17,6 @@ describe('DataFeedKeeper.sol', () => {
   let dataFeedKeeperFactory: MockContractFactory<DataFeedKeeper__factory>;
   let keep3r: FakeContract<IKeep3r>;
   let dataFeed: FakeContract<IDataFeed>;
-  let tx: ContractTransaction;
   let snapshotId: string;
 
   const defaultSenderAdapterAddress = wallet.generateRandomAddress();
@@ -27,9 +24,8 @@ describe('DataFeedKeeper.sol', () => {
 
   const randomSenderAdapterAddress = wallet.generateRandomAddress();
   const randomChainId = 32;
-  const randomChainId2 = 22;
   const randomSalt = VALID_POOL_SALT;
-  const randomSalt2 = getRandomBytes32();
+  const randomNonce = 2;
 
   before(async () => {
     [, governor, keeper] = await ethers.getSigners();
@@ -69,14 +65,129 @@ describe('DataFeedKeeper.sol', () => {
     });
   });
 
-  describe('work(...)', () => {
+  describe('work(uint16,bytes32,uint24,(uint32,int24)[])', () => {
+    let observationData0 = [500000, 50];
+    let observationData1 = [1000000, 100];
+    let observationData2 = [3000000, 300];
+    let observationsData = [observationData0, observationData1, observationData2];
+
+    it('should revert if the keeper is not valid', async () => {
+      keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
+      await expect(
+        dataFeedKeeper
+          .connect(governor)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData)
+      ).to.be.revertedWith('KeeperNotValid()');
+    });
+
+    context('when lastPoolNonceBridged is 0', () => {
+      before(async () => {
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([randomNonce, 0, 0, 0]);
+      });
+
+      it('should revert if the nonce is different than the last pool nonce observed', async () => {
+        await expect(
+          dataFeedKeeper
+            .connect(keeper)
+            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
+        ).to.be.revertedWith('NotWorkable()');
+        await expect(
+          dataFeedKeeper
+            .connect(keeper)
+            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
+        ).to.be.revertedWith('NotWorkable()');
+      });
+
+      it('should update lastPoolNonceBridged', async () => {
+        await dataFeedKeeper
+          .connect(keeper)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+        let lastPoolNonceBridged = await dataFeedKeeper.lastPoolNonceBridged(randomChainId, randomSalt);
+        expect(lastPoolNonceBridged).to.eq(randomNonce);
+      });
+
+      it('should call to send observations', async () => {
+        dataFeed.sendObservations.reset();
+        await dataFeedKeeper
+          .connect(keeper)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+        expect(dataFeed.sendObservations).to.have.been.calledOnceWith(
+          defaultSenderAdapterAddress,
+          randomChainId,
+          randomSalt,
+          randomNonce,
+          observationsData
+        );
+      });
+
+      it('should call to pay the keeper', async () => {
+        keep3r.worked.reset();
+        await dataFeedKeeper
+          .connect(keeper)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+        expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
+      });
+    });
+
+    context('when lastPoolNonceBridged is not 0', () => {
+      beforeEach(async () => {
+        await dataFeedKeeper.setVariable('lastPoolNonceBridged', { [randomChainId]: { [randomSalt]: randomNonce - 1 } });
+      });
+
+      it('should revert if the nonce is not one higher than lastPoolNonceBridged', async () => {
+        await expect(
+          dataFeedKeeper
+            .connect(keeper)
+            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
+        ).to.be.revertedWith('NotWorkable()');
+        await expect(
+          dataFeedKeeper
+            .connect(keeper)
+            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
+        ).to.be.revertedWith('NotWorkable()');
+      });
+
+      it('should update lastPoolNonceBridged', async () => {
+        await dataFeedKeeper
+          .connect(keeper)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+        let lastPoolNonceBridged = await dataFeedKeeper.lastPoolNonceBridged(randomChainId, randomSalt);
+        expect(lastPoolNonceBridged).to.eq(randomNonce);
+      });
+
+      it('should call to send observations', async () => {
+        dataFeed.sendObservations.reset();
+        await dataFeedKeeper
+          .connect(keeper)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+        expect(dataFeed.sendObservations).to.have.been.calledOnceWith(
+          defaultSenderAdapterAddress,
+          randomChainId,
+          randomSalt,
+          randomNonce,
+          observationsData
+        );
+      });
+
+      it('should call to pay the keeper', async () => {
+        keep3r.worked.reset();
+        await dataFeedKeeper
+          .connect(keeper)
+          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+        expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
+      });
+    });
+  });
+
+  describe('work(bytes32)', () => {
     let now: number;
     let periodLength: number;
     const lastBlockTimestampObserved = 0;
 
     beforeEach(async () => {
+      now = (await ethers.provider.getBlock('latest')).timestamp + 1;
       periodLength = await dataFeedKeeper.periodLength();
-      dataFeed.lastPoolStateObserved.returns([0, lastBlockTimestampObserved, 0, 0]);
+      dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, lastBlockTimestampObserved, 0, 0]);
     });
 
     it('should revert if the keeper is not valid', async () => {
@@ -84,33 +195,22 @@ describe('DataFeedKeeper.sol', () => {
       await expect(dataFeedKeeper.connect(governor)['work(bytes32)'](randomSalt)).to.be.revertedWith('KeeperNotValid()');
     });
 
-    it.skip('should revert if the pool is not whitelisted', async () => {
+    it('should revert if jobCooldown has not expired', async () => {
+      dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([1, now, 0, 0]);
       await expect(dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt)).to.be.revertedWith('NotWorkable()');
     });
 
-    context('when the pool is whitelisted', () => {
-      beforeEach(async () => {
-        await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, true);
-        now = (await ethers.provider.getBlock('latest')).timestamp;
-      });
+    it('should call to fetch observations (having calculated secondsAgos)', async () => {
+      dataFeed.fetchObservations.reset();
+      await dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt);
+      const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastBlockTimestampObserved);
+      expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+    });
 
-      it('should revert if jobCooldown has not expired', async () => {
-        dataFeed.lastPoolStateObserved.returns([1, now, 0, 0]);
-        await expect(dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt)).to.be.revertedWith('NotWorkable()');
-      });
-
-      it('should call to fetch observations (having calculated secondsAgos)', async () => {
-        dataFeed.fetchObservations.reset();
-        await dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt);
-        const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastBlockTimestampObserved);
-        expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
-      });
-
-      it('should call to pay the keeper', async () => {
-        keep3r.worked.reset();
-        await dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt);
-        expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
-      });
+    it('should call to pay the keeper', async () => {
+      keep3r.worked.reset();
+      await dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt);
+      expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
     });
   });
 
@@ -182,124 +282,91 @@ describe('DataFeedKeeper.sol', () => {
     });
   });
 
-  describe('whitelistPool(...)', () => {
-    onlyGovernor(
-      () => dataFeedKeeper,
-      'whitelistPool',
-      () => governor,
-      () => [randomChainId, randomSalt, true]
-    );
-
-    it('should whitelist the adapter', async () => {
-      await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, true);
-      expect(await dataFeedKeeper.whitelistedPools(randomChainId, randomSalt)).to.eq(true);
+  describe('workable(uint16,bytes32,uint24)', () => {
+    it('should return false if the pipeline is not whitelisted', async () => {
+      dataFeed.whitelistedNonces.whenCalledWith(randomChainId, randomSalt).returns(0);
+      let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+      expect(workable).to.eq(false);
     });
 
-    it('should remove whitelist from the adapter', async () => {
-      await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, true);
-      await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, false);
-      expect(await dataFeedKeeper.whitelistedPools(randomChainId, randomSalt)).to.eq(false);
-    });
+    context('when the pipeline is whitelisted', () => {
+      beforeEach(async () => {
+        dataFeed.whitelistedNonces.whenCalledWith(randomChainId, randomSalt).returns(randomNonce);
+      });
 
-    it('should emit an event when adapter is whitelisted', async () => {
-      await expect(await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, true))
-        .to.emit(dataFeedKeeper, 'PoolWhitelisted')
-        .withArgs(randomChainId, randomSalt, true);
-    });
+      it('should return false if the nonce is lower than the whitelisted nonce', async () => {
+        let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+        expect(workable).to.eq(false);
+      });
 
-    it('should emit an event when adapter whitelist is revoked', async () => {
-      await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, true);
-      await expect(await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, false))
-        .to.emit(dataFeedKeeper, 'PoolWhitelisted')
-        .withArgs(randomChainId, randomSalt, false);
-    });
-  });
+      context('when lastPoolNonceBridged is 0', () => {
+        before(async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([randomNonce, 0, 0, 0]);
+        });
 
-  describe('whitelistPools(...)', () => {
-    onlyGovernor(
-      () => dataFeedKeeper,
-      'whitelistPools',
-      () => governor,
-      () => [
-        [randomChainId, randomChainId2],
-        [randomSalt, randomSalt2],
-        [true, true],
-      ]
-    );
+        it('should return true if the nonce equals the last pool nonce observed', async () => {
+          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+          expect(workable).to.eq(true);
+        });
 
-    it('should revert if the lengths of the arguments do not match', async () => {
-      const mismatchedArgs = [[randomChainId, randomChainId2], [randomSalt, randomSalt2], [true]];
+        it('should return false if the nonce is different than the last pool nonce observed', async () => {
+          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+          expect(workable).to.eq(false);
+          workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
+          expect(workable).to.eq(false);
+        });
+      });
 
-      const mismatchedArgs2 = [[randomChainId, randomChainId2], [randomSalt], [true, true]];
+      context('when lastPoolNonceBridged is not 0', () => {
+        beforeEach(async () => {
+          await dataFeedKeeper.setVariable('lastPoolNonceBridged', { [randomChainId]: { [randomSalt]: randomNonce - 1 } });
+        });
 
-      const mismatchedArgs3 = [[randomChainId], [randomSalt, randomSalt2], [true, true]];
+        it('should return true if the nonce is one higher than lastPoolNonceBridged', async () => {
+          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+          expect(workable).to.eq(true);
+        });
 
-      await expect(dataFeedKeeper.connect(governor).whitelistPools(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
-
-      await expect(dataFeedKeeper.connect(governor).whitelistPools(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
-
-      await expect(dataFeedKeeper.connect(governor).whitelistPools(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
-    });
-
-    it('should whitelist the adapters', async () => {
-      await dataFeedKeeper.connect(governor).whitelistPools([randomChainId, randomChainId2], [randomSalt, randomSalt2], [true, true]);
-      expect(await dataFeedKeeper.whitelistedPools(randomChainId, randomSalt)).to.eq(true);
-      expect(await dataFeedKeeper.whitelistedPools(randomChainId2, randomSalt2)).to.eq(true);
-    });
-
-    it('should remove whitelist from the adapters', async () => {
-      await dataFeedKeeper.connect(governor).whitelistPools([randomChainId, randomChainId2], [randomSalt, randomSalt2], [true, true]);
-      await dataFeedKeeper.connect(governor).whitelistPools([randomChainId, randomChainId2], [randomSalt, randomSalt2], [false, false]);
-      expect(await dataFeedKeeper.whitelistedPools(randomChainId, randomSalt)).to.eq(false);
-      expect(await dataFeedKeeper.whitelistedPools(randomChainId2, randomSalt2)).to.eq(false);
-    });
-
-    it('should emit n events when n adapters are whitelisted', async () => {
-      tx = await dataFeedKeeper.connect(governor).whitelistPools([randomChainId, randomChainId2], [randomSalt, randomSalt2], [true, true]);
-      await expect(tx).to.emit(dataFeedKeeper, 'PoolWhitelisted').withArgs(randomChainId, randomSalt, true);
-
-      await expect(tx).to.emit(dataFeedKeeper, 'PoolWhitelisted').withArgs(randomChainId2, randomSalt2, true);
-    });
-
-    it('should emit n events when n adapters whitelists are revoked', async () => {
-      tx = await dataFeedKeeper.connect(governor).whitelistPools([randomChainId, randomChainId2], [randomSalt, randomSalt2], [false, false]);
-
-      await dataFeedKeeper.connect(governor).whitelistPools([randomChainId, randomChainId2], [randomSalt, randomSalt2], [true, true]);
-      await expect(tx).to.emit(dataFeedKeeper, 'PoolWhitelisted').withArgs(randomChainId, randomSalt, false);
-
-      await expect(tx).to.emit(dataFeedKeeper, 'PoolWhitelisted').withArgs(randomChainId2, randomSalt2, false);
+        it('should return false if the nonce is not one higher than lastPoolNonceBridged', async () => {
+          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+          expect(workable).to.eq(false);
+          workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
+          expect(workable).to.eq(false);
+        });
+      });
     });
   });
 
-  describe('workable(...)', () => {
+  describe('workable(bytes32)', () => {
     let now: number;
     let jobCooldown = initialJobCooldown.toNumber();
 
-    it.skip('should return false if the pool is not whitelisted', async () => {
+    it('should return false if the pool is not whitelisted', async () => {
+      dataFeed.isWhitelistedPool.whenCalledWith(randomSalt).returns(false);
       let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
       expect(workable).to.eq(false);
     });
 
     context('when the pool is whitelisted', () => {
       beforeEach(async () => {
-        await dataFeedKeeper.connect(governor).whitelistPool(randomChainId, randomSalt, true);
+        dataFeed.isWhitelistedPool.whenCalledWith(randomSalt).returns(true);
         now = (await ethers.provider.getBlock('latest')).timestamp;
       });
 
       it('should return true if jobCooldown is 0', async () => {
-        dataFeed.lastPoolStateObserved.returns([0, 0, 0, 0]);
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
         let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
         expect(workable).to.eq(true);
       });
 
       it('should return true if jobCooldown has expired', async () => {
-        dataFeed.lastPoolStateObserved.returns([0, now - jobCooldown, 0, 0]);
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - jobCooldown, 0, 0]);
         let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
         expect(workable).to.eq(true);
       });
 
       it('should return false if jobCooldown has not expired', async () => {
-        dataFeed.lastPoolStateObserved.returns([0, now - jobCooldown + 1, 0, 0]);
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - jobCooldown + 1, 0, 0]);
         let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
         expect(workable).to.eq(false);
       });
@@ -314,12 +381,9 @@ describe('DataFeedKeeper.sol', () => {
     let remainder: number;
     const periodLength = 1_000;
 
-    beforeEach(async () => {
-      fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-    });
-
     context('when less than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
+        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
         await evm.advanceToTimeAndBlock(fromTimestamp + periodLength / 2);
       });
 
@@ -331,6 +395,7 @@ describe('DataFeedKeeper.sol', () => {
 
     context('when more than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
+        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
         await evm.advanceToTimeAndBlock(fromTimestamp + periodLength * 3.14);
         now = (await ethers.provider.getBlock('latest')).timestamp;
         unknownTime = now - fromTimestamp;
@@ -366,6 +431,7 @@ describe('DataFeedKeeper.sol', () => {
 
     context('when exactly n periods have passed since fromTimestamp', () => {
       beforeEach(async () => {
+        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
         await evm.advanceToTimeAndBlock(fromTimestamp + periodLength * 3);
         now = (await ethers.provider.getBlock('latest')).timestamp;
         unknownTime = now - fromTimestamp;
@@ -396,9 +462,9 @@ describe('DataFeedKeeper.sol', () => {
 
     context('when fromTimestamp is 0', () => {
       beforeEach(async () => {
-        await evm.advanceToTimeAndBlock(fromTimestamp + periodLength * 3);
+        fromTimestamp = 0;
         now = (await ethers.provider.getBlock('latest')).timestamp;
-        unknownTime = now - fromTimestamp;
+        unknownTime = now - (now - 5 * periodLength);
         periods = Math.trunc(unknownTime / periodLength);
       });
 

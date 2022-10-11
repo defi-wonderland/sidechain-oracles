@@ -12,13 +12,13 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   IBridgeSenderAdapter public defaultBridgeSenderAdapter;
 
   /// @inheritdoc IDataFeedKeeper
+  mapping(uint16 => mapping(bytes32 => uint24)) public lastPoolNonceBridged;
+
+  /// @inheritdoc IDataFeedKeeper
   uint256 public jobCooldown;
 
   /// @inheritdoc IDataFeedKeeper
   uint32 public periodLength = 1 days;
-
-  /// @inheritdoc IDataFeedKeeper
-  mapping(uint16 => mapping(bytes32 => bool)) public whitelistedPools;
 
   constructor(
     address _governor,
@@ -39,13 +39,14 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     IOracleSidechain.ObservationData[] calldata _observationsData
   ) external upkeep {
     // TODO: change criteria for workable (if there's a new nonce, bridge)
-    if (!workable(_chainId, _poolSalt, _poolNonce)) revert NotWorkable();
+    if (!_workable(_chainId, _poolSalt, _poolNonce)) revert NotWorkable();
+    lastPoolNonceBridged[_chainId][_poolSalt] = _poolNonce;
     dataFeed.sendObservations(defaultBridgeSenderAdapter, _chainId, _poolSalt, _poolNonce, _observationsData);
   }
 
   /// @inheritdoc IDataFeedKeeper
   function work(bytes32 _poolSalt) external upkeep {
-    if (!workable(_poolSalt)) revert NotWorkable();
+    if (!_workable(_poolSalt)) revert NotWorkable();
     // TODO: review if the external call can be avoided
     (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
     uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastBlockTimestampObserved);
@@ -70,50 +71,25 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   }
 
   /// @inheritdoc IDataFeedKeeper
-  function whitelistPool(
-    uint16 _chainId,
-    bytes32 _poolSalt,
-    bool _isWhitelisted
-  ) external onlyGovernor {
-    _whitelistPool(_chainId, _poolSalt, _isWhitelisted);
-  }
-
-  /// @inheritdoc IDataFeedKeeper
-  function whitelistPools(
-    uint16[] calldata _chainIds,
-    bytes32[] calldata _poolSalts,
-    bool[] calldata _isWhitelisted
-  ) external onlyGovernor {
-    uint256 _chainIdsLength = _chainIds.length;
-    if (_chainIdsLength != _poolSalts.length || _chainIdsLength != _isWhitelisted.length) revert LengthMismatch();
-    unchecked {
-      for (uint256 _i; _i < _chainIdsLength; ++_i) {
-        _whitelistPool(_chainIds[_i], _poolSalts[_i], _isWhitelisted[_i]);
-      }
-    }
-  }
-
-  /// @inheritdoc IDataFeedKeeper
   function workable(
     uint16 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) public view returns (bool _isWorkable) {
-    return true;
+    uint24 _whitelistedNonce = dataFeed.whitelistedNonces(_chainId, _poolSalt);
+    if (_whitelistedNonce != 0 && _whitelistedNonce <= _poolNonce) return _workable(_chainId, _poolSalt, _poolNonce);
   }
 
   /// @inheritdoc IDataFeedKeeper
   function workable(bytes32 _poolSalt) public view returns (bool _isWorkable) {
-    // TODO: if (whitelistedPools[_chainId][_poolSalt])?
-    (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
-    return block.timestamp >= _lastBlockTimestampObserved + jobCooldown;
+    if (dataFeed.isWhitelistedPool(_poolSalt)) return _workable(_poolSalt);
   }
 
   /// @inheritdoc IDataFeedKeeper
   function calculateSecondsAgos(uint32 _periodLength, uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     // TODO: define initialization of _fromTimestamp
-    _fromTimestamp = _fromTimestamp == 0 ? _secondsNow - 5 * periodLength : _fromTimestamp;
+    _fromTimestamp = _fromTimestamp == 0 ? _secondsNow - 5 * _periodLength : _fromTimestamp;
     uint32 _unknownTime = _secondsNow - _fromTimestamp;
     uint32 _periods = _unknownTime / _periodLength;
     uint32 _remainder = _unknownTime % _periodLength;
@@ -133,13 +109,23 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     }
   }
 
-  function _whitelistPool(
+  function _workable(
     uint16 _chainId,
     bytes32 _poolSalt,
-    bool _isWhitelisted
-  ) internal {
-    whitelistedPools[_chainId][_poolSalt] = _isWhitelisted;
-    emit PoolWhitelisted(_chainId, _poolSalt, _isWhitelisted);
+    uint24 _poolNonce
+  ) internal view returns (bool _isWorkable) {
+    uint24 _lastPoolNonceBridged = lastPoolNonceBridged[_chainId][_poolSalt];
+    if (_lastPoolNonceBridged == 0) {
+      (uint24 _lastPoolNonceObserved, , , ) = dataFeed.lastPoolStateObserved(_poolSalt);
+      return _poolNonce == _lastPoolNonceObserved;
+    } else {
+      return _poolNonce == ++_lastPoolNonceBridged;
+    }
+  }
+
+  function _workable(bytes32 _poolSalt) internal view returns (bool _isWorkable) {
+    (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
+    return block.timestamp >= _lastBlockTimestampObserved + jobCooldown;
   }
 
   function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {

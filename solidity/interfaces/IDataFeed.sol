@@ -2,11 +2,11 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import {IAdapterManagement} from './peripherals/IAdapterManagement.sol';
+import {IPipelineManagement} from './peripherals/IPipelineManagement.sol';
 import {IDataFeedKeeper} from './IDataFeedKeeper.sol';
 import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from './bridges/IConnextSenderAdapter.sol';
 
-interface IDataFeed is IAdapterManagement {
+interface IDataFeed is IPipelineManagement {
   // STRUCTS
 
   struct PoolState {

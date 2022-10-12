@@ -19,7 +19,6 @@ import { evm, wallet } from '@utils';
 import { RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
-import { onlyKeeper } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -86,10 +85,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let blockTimestamps: number[];
     let tickCumulatives: BigNumber[];
     let arithmeticMeanTicks: BigNumber[];
-    let observationData0 = [500000, 50] as IOracleSidechain.ObservationDataStructOutput;
-    let observationData1 = [1000000, 100] as IOracleSidechain.ObservationDataStructOutput;
-    let observationData2 = [3000000, 300] as IOracleSidechain.ObservationDataStructOutput;
-    let observationsData = [observationData0, observationData1, observationData2];
     let observationsIndex: number;
     let secondsPerLiquidityCumulativeX128s: BigNumber[];
     let swapAmount = toUnit(10);
@@ -101,92 +96,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       await wallet.setBalance(dataFeedKeeper.address, toUnit(10));
     });
 
-    onlyKeeper(
-      () => dataFeed,
-      'fetchObservations',
-      () => dataFeedKeeperSigner,
-      () => [salt, secondsAgos]
-    );
-
-    context('when the pool is not whitelisted', () => {
-      it('should revert', async () => {
-        await expect(dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos)).to.be.revertedWith('UnallowedPool()');
-      });
-    });
-
-    context('when the pipeline is not whitelisted', () => {
-      it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
-          'UnallowedPipeline()'
-        );
-      });
-    });
-
-    context('when only the pool and pipeline are whitelisted', () => {
-      beforeEach(async () => {
-        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
-      });
-
-      it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
-          'UnallowedAdapter()'
-        );
-      });
-    });
-
-    context('when only the pool, pipeline and adapter are whitelisted', () => {
-      beforeEach(async () => {
-        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
-        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-      });
-
-      it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
-          'DestinationDomainIdNotSet()'
-        );
-      });
-    });
-
-    context('when only the pool, pipeline, adapter and destination domain are set', () => {
-      beforeEach(async () => {
-        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
-        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
-      });
-
-      it('should revert', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
-          'ReceiverNotSet()'
-        );
-      });
-    });
-
-    context(
-      'when the pool, pipeline, adapter, destination domain and receiver are set, but the adapter is not whitelisted in the data receiver',
-      () => {
-        beforeEach(async () => {
-          await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
-          await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
-          await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
-          await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
-
-          tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
-        });
-
-        it('should revert', async () => {
-          const observationsFetched = (await readArgFromEvent(
-            tx,
-            'PoolObserved',
-            '_observationsData'
-          )) as IOracleSidechain.ObservationDataStructOutput[];
-
-          await expect(
-            dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
-          ).to.be.revertedWith('UnallowedAdapter()');
-        });
-      }
-    );
-
     context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
       beforeEach(async () => {
         await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
@@ -194,18 +103,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
         await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
         await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
-      });
-
-      it('should revert if the nonce is lower than the whitelisted nonce', async () => {
-        await expect(
-          dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce - 1, observationsData)
-        ).to.be.revertedWith('WrongNonce()');
-      });
-
-      it('should revert if the hash is unknown', async () => {
-        await expect(dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsData)).to.be.revertedWith(
-          'UnknownHash()'
-        );
       });
 
       context('when the oracle has no data', () => {
@@ -341,34 +238,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           await evm.advanceTimeAndBlock(4 * hours);
         });
 
-        context('when the data to be fetched is old compared with that of the oracle', () => {
-          beforeEach(async () => {
-            blockTimestamps = [now - hours, now + hours, now + 2 * hours, now + 4 * hours];
-
-            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-          });
-
-          it('should revert', async () => {
-            await expect(dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos)).to.be.revertedWith(
-              'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
-            );
-          });
-        });
-
-        context('when the data to be fetched is continuous with that of the oracle', () => {
-          beforeEach(async () => {
-            blockTimestamps = [now, now + hours, now + 2 * hours, now + 4 * hours];
-
-            ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
-          });
-
-          it('should revert', async () => {
-            await expect(dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos)).to.be.revertedWith(
-              'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
-            );
-          });
-        });
-
         context('when the data to be fetched is discontinuous with that of the oracle', () => {
           beforeEach(async () => {
             blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
@@ -466,16 +335,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let blockTimestamp: number;
     let expectedObservationsIndices: number[] = [];
 
-    it('should revert if the pool is not initialized', async () => {
-      let secondsAgos = [50];
-      let tokenA = wallet.generateRandomAddress();
-      let tokenB = wallet.generateRandomAddress();
-      let fee = 10000;
-      await uniswapV3Factory.createPool(tokenA, tokenB, fee);
-      let uniswapV3PoolAddress = await uniswapV3Factory.getPool(tokenA, tokenB, fee);
-      await expect(dataFeed.fetchObservationsIndices(uniswapV3PoolAddress, secondsAgos)).to.be.revertedWith('I()');
-    });
-
     context('when the pool is initialized', () => {
       beforeEach(async () => {
         time = (await ethers.provider.getBlock('latest')).timestamp;
@@ -486,12 +345,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           expectedObservationsIndices[i] = i;
           expectedObservationsIndices[i + 1] = i;
         }
-      });
-
-      it('should revert if secondsAgos is too old', async () => {
-        let [oldestObservationTimestamp] = await uniV3Pool.observations(0);
-        let secondsAgos = [time - oldestObservationTimestamp + 1];
-        await expect(dataFeed.fetchObservationsIndices(uniV3Pool.address, secondsAgos)).to.be.revertedWith('OLD()');
       });
 
       it('should return the observations indices', async () => {

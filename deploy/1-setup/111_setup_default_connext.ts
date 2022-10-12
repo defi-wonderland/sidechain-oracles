@@ -18,6 +18,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.dependencies = ['connext-sender-adapter'];
+deployFunction.dependencies = ['connext-sender-adapter', 'pool-whitelisting'];
 deployFunction.tags = ['setup-data-feed', 'sender-stage-2'];
 export default deployFunction;

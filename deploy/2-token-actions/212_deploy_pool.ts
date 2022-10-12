@@ -1,12 +1,11 @@
-import IUniswapV3Factory from '../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
-import IUniswapV3Pool from '../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
+import IUniswapV3Factory from '../../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
+import IUniswapV3Pool from '../../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { TEST_FEE } from '../utils/constants';
+import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
-  const uniswapV3FactoryAddress = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
   const addressZero = '0x0000000000000000000000000000000000000000';
 
   const txSettings = {
@@ -17,7 +16,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await hre.deployments.save('UniV3Factory', {
     abi: IUniswapV3Factory.abi,
-    address: uniswapV3FactoryAddress,
+    address: UNI_V3_FACTORY,
   });
 
   /* DEPLOY POOL */
@@ -48,6 +47,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('UniV3Pool', txSettings, 'increaseObservationCardinalityNext', 64);
   }
 };
-deployFunction.dependencies = ['test-tokens'];
-deployFunction.tags = ['create-pool', 'token-actions'];
+
+deployFunction.dependencies = ['save-tokens'];
+deployFunction.tags = ['create-pool'];
 export default deployFunction;

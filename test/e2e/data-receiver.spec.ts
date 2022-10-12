@@ -5,7 +5,6 @@ import { evm, wallet } from '@utils';
 import { ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
-import { onlyWhitelistedAdapter } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -25,7 +24,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   let fee: number;
   let salt: string;
 
-  let nonce = 1;
+  const nonce = 1;
 
   before(async () => {
     await evm.reset({
@@ -70,13 +69,6 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
       dataReceiver = dataReceiver.connect(connextReceiverAdapterSigner);
     });
 
-    onlyWhitelistedAdapter(
-      () => dataReceiver,
-      'addObservations',
-      () => connextReceiverAdapterSigner,
-      () => [observationsData, salt, nonce]
-    );
-
     context('when the observations are writable', () => {
       it('should add the observations', async () => {
         let tx = await dataReceiver.addObservations(observationsData, salt, nonce);
@@ -85,29 +77,6 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
         await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
         await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
-      });
-
-      it('should emit ObservationsAdded', async () => {
-        let tx = await dataReceiver.addObservations(observationsData, salt, nonce);
-        let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
-        let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
-        expect(eventUser).to.eq(connextReceiverAdapter.address);
-        expect(eventObservationsData).to.eql(observationsData);
-      });
-    });
-
-    context('when the observations are not writable', () => {
-      let blockTimestamp2Before = blockTimestamp2 - 1;
-      let observationData2Before = [blockTimestamp2Before, tick2] as IOracleSidechain.ObservationDataStructOutput;
-      let oldObservationsData = [observationData2Before, observationData2];
-
-      beforeEach(async () => {
-        await dataReceiver.addObservations(observationsData, salt, nonce);
-      });
-
-      // reverts with WrongNonce()
-      it('should revert the tx', async () => {
-        await expect(dataReceiver.addObservations(oldObservationsData, salt, nonce)).to.be.revertedWith('ObservationsNotWritable()');
       });
     });
 

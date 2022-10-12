@@ -13,7 +13,6 @@ import {
 import { evm, wallet } from '@utils';
 import { KP3R, WETH, FEE, UNI_FACTORY, POOL_INIT_CODE_HASH, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { bn } from '@utils';
-import { onlyDataReceiver } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -35,7 +34,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   let fee: number;
   let salt: string;
 
-  let nonce = 10;
+  const nonce = 10;
 
   before(async () => {
     await evm.reset({

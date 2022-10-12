@@ -1,10 +1,11 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { TEST_FEE, domainId } from '../utils/constants';
-import { calculateSalt } from '../test/utils/misc';
+import { TEST_FEE, domainId } from '../../utils/constants';
+import { calculateSalt } from '../../test/utils/misc';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
+  const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
+  const salt = calculateSalt(tokenA, tokenB, TEST_FEE);
 
   const txSettings = {
     from: deployer,
@@ -18,10 +19,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const senderAdapter = await hre.deployments.get('ConnextSenderAdapter');
   const receiverAdapter = await hre.companionNetworks['receiver'].deployments.get('ConnextReceiverAdapter');
 
-  const tokenA = await hre.deployments.get('TokenA');
-  const tokenB = await hre.deployments.get('TokenB');
+  // TODO: deprecate token actions in favour of deployed pools
+  // const tokenA = await hre.deployments.get('TokenA');
+  // const tokenB = await hre.deployments.get('TokenB');
+
   const dataFeed = await hre.deployments.get('DataFeed');
-  const salt = calculateSalt(tokenA.address, tokenB.address, TEST_FEE);
 
   const FETCH_OBSERVATION_ARGS = [salt];
   const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32)', ...FETCH_OBSERVATION_ARGS);
@@ -50,6 +52,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.dependencies = ['sender-stage-2', 'token-actions'];
+deployFunction.dependencies = ['sender-stage-2'];
 deployFunction.tags = ['send-observation', 'mainnet'];
 export default deployFunction;

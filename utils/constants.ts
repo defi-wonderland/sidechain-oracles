@@ -1,6 +1,9 @@
 import { IDomainIDRecord } from './types';
 
 export const TEST_FEE = 10_000;
+export const RANDOM_CHAIN_ID = 42;
+
+export const UNI_V3_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
 
 export const addressRegistry = {
   // KEEP3R DEPLOYMENTS
@@ -22,6 +25,13 @@ export const addressRegistry = {
   },
   connextHandler: {
     5: '0x6c9a905Ab3f4495E2b47f5cA131ab71281E0546e',
+  },
+  // TOKENS
+  tokenA: {
+    5: '0x16F63C5036d3F48A239358656a8f123eCE85789C',
+  },
+  tokenB: {
+    5: '0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6',
   },
 };
 

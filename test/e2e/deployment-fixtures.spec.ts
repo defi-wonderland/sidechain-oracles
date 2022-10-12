@@ -28,7 +28,7 @@ describe('@skip-on-coverage Fixture', () => {
 
   let poolSalt: string;
 
-  before(async () => {
+  beforeEach(async () => {
     ({ deployer } = await getNamedAccounts());
 
     await evm.reset({
@@ -71,17 +71,20 @@ describe('@skip-on-coverage Fixture', () => {
         await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
       });
 
+      it('should work with send-force-test-observation fixture', async () => {
+        await deployments.fixture(['send-force-test-observation'], { keepExistingDeployments: true });
+      });
+
       describe('when the job is setup', () => {
         beforeEach(async () => {
-          await setupJob(dataFeedKeeper.address);
+          await addCreditsToJob(dataFeedKeeper.address);
         });
 
-        // NOTE: reverts with UnallowedPool()
-        it.skip('should be able to fetch observations', async () => {
+        it('should be able to fetch observations', async () => {
           await expect(dataFeedKeeper['work(bytes32)'](poolSalt)).not.to.be.reverted;
         });
 
-        it.skip('should be able to send fetched observations', async () => {
+        it('should be able to fetch and send observations', async () => {
           const tx = await dataFeedKeeper['work(bytes32)'](poolSalt);
           const txReceipt = await tx.wait();
           const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
@@ -100,6 +103,10 @@ describe('@skip-on-coverage Fixture', () => {
 
           expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
         });
+
+        it('should work with send-test-observation fixture', async () => {
+          await deployments.fixture(['send-test-observation'], { keepExistingDeployments: true });
+        });
       });
     });
   });
@@ -115,7 +122,7 @@ describe('@skip-on-coverage Fixture', () => {
       dataFeedKeeper = (await getContractFromFixture('DataFeedKeeper')) as Type.DataFeedKeeper;
 
       await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
-      await setupJob(dataFeedKeeper.address);
+      await addCreditsToJob(dataFeedKeeper.address);
     });
 
     // NOTE: reverts at ConnextBridge: 0x6c9a905ab3f4495e2b47f5ca131ab71281e0546e
@@ -127,21 +134,17 @@ describe('@skip-on-coverage Fixture', () => {
 
 /* HELPER FUNCTIONS */
 
-const setupJob = async (jobAddress: string) => {
-  const { deployer, keep3r, keep3rGovernance } = await getNamedAccounts();
+const addCreditsToJob = async (jobAddress: string) => {
+  const { keep3rGovernance } = await getNamedAccounts();
 
-  const keep3rContract = (await ethers.getContractAt('IKeep3r', keep3r)) as Type.IKeep3r;
-  const erc20 = await (await ethers.getContractFactory('ERC20ForTest')).deploy('Token', 'TKN', deployer, 0);
-  // registers signer as Keeper
-  await keep3rContract.bond(erc20.address, 0);
-  await evm.advanceTimeAndBlock(86400 * 3);
-  await keep3rContract.activate(erc20.address);
-
-  // registers job to Keep3r
-  await keep3rContract.addJob(jobAddress);
+  const keep3rContract = await getContractFromFixture('Keep3r', 'IKeep3r');
 
   // force KP3R credits to job
+  // TODO:
+  // - add IGovernable to IKeep3r interface
+  // - set rewardPeriodTime = 1 days
+  // const keep3rGovernance = await keep3rContract.governor()
   await wallet.setBalance(keep3rGovernance, toUnit(10));
   const governor = await wallet.impersonate(keep3rGovernance);
-  await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(10));
+  await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(100));
 };

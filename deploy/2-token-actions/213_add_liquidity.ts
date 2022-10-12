@@ -1,9 +1,9 @@
-import INFTPositionManager from '../artifacts/solidity/for-test/UniswapV3Importer.sol/INFTPositionManager.json';
+import INFTPositionManager from '../../artifacts/solidity/for-test/UniswapV3Importer.sol/INFTPositionManager.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { bn } from '@utils';
 import { BigNumber } from 'ethers';
-import { TEST_FEE } from '../utils/constants';
+import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();

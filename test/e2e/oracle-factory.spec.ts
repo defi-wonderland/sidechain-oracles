@@ -5,7 +5,6 @@ import { OracleFactory, OracleSidechain, DataReceiver, ERC20 } from '@typechaine
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
-import { onlyGovernor, onlyDataReceiver } from '@utils/behaviours';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -14,7 +13,6 @@ import { expect } from 'chai';
 
 describe('@skip-on-coverage OracleFactory.sol', () => {
   let deployer: SignerWithAddress;
-  let governor: SignerWithAddress;
   let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
   let dataReceiver: DataReceiver;
@@ -24,9 +22,7 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
   let salt: string;
   let snapshotId: string;
 
-  let nonce = 1;
-
-  const randomAddress = wallet.generateRandomAddress();
+  const nonce = 1;
 
   before(async () => {
     await evm.reset({
@@ -38,7 +34,7 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
 
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ deployer, governor, oracleFactory, dataReceiver } = await setupContracts());
+    ({ deployer, oracleFactory, dataReceiver } = await setupContracts());
 
     snapshotId = await evm.snapshot.take();
   });
@@ -63,56 +59,38 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
       oracleFactory = oracleFactory.connect(dataReceiverSigner);
     });
 
-    onlyDataReceiver(
-      () => oracleFactory,
-      'deployOracle',
-      () => dataReceiverSigner,
-      () => [salt, nonce]
-    );
+    it('should deploy an oracle', async () => {
+      await oracleFactory.deployOracle(salt, nonce);
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-    context('when the caller is the data receiver', () => {
-      it('should deploy an oracle', async () => {
-        await oracleFactory.deployOracle(salt, nonce);
-        ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+      expect((await ethers.provider.getCode(oracleSidechain.address)).length).to.be.gt(100);
+    });
 
-        expect((await ethers.provider.getCode(oracleSidechain.address)).length).to.be.gt(100);
-      });
+    it('should add the deployed oracle to the getPool method with the sorted tokens and fee as keys', async () => {
+      expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
+      await oracleFactory.deployOracle(salt, nonce);
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-      it('should add the deployed oracle to the getPool method with the sorted tokens and fee as keys', async () => {
-        expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
-        await oracleFactory.deployOracle(salt, nonce);
-        ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+      expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(oracleSidechain.address);
+    });
 
-        expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(oracleSidechain.address);
-      });
+    it('should add the deployed oracle to the getPool method with the unsorted tokens and fee as keys', async () => {
+      expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
+      await oracleFactory.deployOracle(salt, nonce);
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-      it('should add the deployed oracle to the getPool method with the unsorted tokens and fee as keys', async () => {
-        expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
-        await oracleFactory.deployOracle(salt, nonce);
-        ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+      expect(await oracleFactory.getPool(tokenB.address, tokenA.address, fee)).to.eq(oracleSidechain.address);
+    });
 
-        expect(await oracleFactory.getPool(tokenB.address, tokenA.address, fee)).to.eq(oracleSidechain.address);
-      });
+    it('should return the same address as the precalculated one', async () => {
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-      it('should return the same address as the precalculated one', async () => {
-        ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
-
-        const trueOracleAddress = await oracleFactory.callStatic.deployOracle(salt, nonce);
-        expect(trueOracleAddress).to.be.eq(oracleSidechain.address);
-      });
+      const trueOracleAddress = await oracleFactory.callStatic.deployOracle(salt, nonce);
+      expect(trueOracleAddress).to.be.eq(oracleSidechain.address);
     });
 
     after(async () => {
       oracleFactory = oracleFactory.connect(deployer);
     });
-  });
-
-  describe('setting data receiver', () => {
-    onlyGovernor(
-      () => oracleFactory,
-      'setDataReceiver',
-      () => governor.address,
-      () => [randomAddress]
-    );
   });
 });

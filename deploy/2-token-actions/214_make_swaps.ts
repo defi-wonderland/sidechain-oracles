@@ -1,9 +1,9 @@
-import ISwapRouter from '../artifacts/@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol/ISwapRouter.json';
+import ISwapRouter from '../../artifacts/@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol/ISwapRouter.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { bn } from '@utils';
 import { BigNumber } from 'ethers';
-import { TEST_FEE } from '../utils/constants';
+import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -50,5 +50,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await hre.deployments.execute('SwapRouter', txSettings, 'exactInputSingle', SWAP_ARGS);
 };
 deployFunction.dependencies = ['add-liquidity'];
-deployFunction.tags = ['make-swaps', 'sender-actions', 'token-actions'];
+deployFunction.tags = ['make-swaps', 'token-actions'];
 export default deployFunction;

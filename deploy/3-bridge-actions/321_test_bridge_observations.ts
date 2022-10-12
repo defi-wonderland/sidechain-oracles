@@ -1,12 +1,13 @@
-import OracleSidechain from '../artifacts/solidity/contracts/OracleSidechain.sol/OracleSidechain.json';
+import OracleSidechain from '../../artifacts/solidity/contracts/OracleSidechain.sol/OracleSidechain.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { TEST_FEE } from '../utils/constants';
-import { verifyContractByAddress } from '../utils/deploy';
-import { calculateSalt } from '../test/utils/misc';
+import { TEST_FEE } from '../../utils/constants';
+import { verifyContractByAddress } from '../../utils/deploy';
+import { calculateSalt } from '../../test/utils/misc';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
+  const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
+  const salt = calculateSalt(tokenA, tokenB, TEST_FEE);
 
   const RANDOM_CHAIN_ID = 42; // doesn't matter for dummy adapter
 
@@ -16,23 +17,19 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  const tokenA = await hre.deployments.get('TokenA');
-  const tokenB = await hre.deployments.get('TokenB');
   const dataFeed = await hre.deployments.get('DataFeed');
-
-  const salt = calculateSalt(tokenA.address, tokenB.address, TEST_FEE);
 
   const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32)', salt);
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',
-    fetchTx.logs![0].data
+    fetchTx.logs![1].data
   );
 
   const dummyAdapter = await hre.deployments.get('DummyAdapterForTest');
   const dataReceiver = await hre.deployments.get('DataReceiver');
 
-  const SEND_OBSERVATION_ARGS = [dummyAdapter.address, RANDOM_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
+  const SEND_OBSERVATION_ARGS = [RANDOM_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
 
   /* HEALTH CHECKS */
 
@@ -48,12 +45,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   /* SEND OBSERVATIONS */
 
   if (IS_DUMMY_ADAPTER_WHITELISTED && IS_RECEIVER_SET && IS_DESTINATION_DOMAIN_ID_SET) {
-    await hre.deployments.execute('DataFeed', txSettings, 'sendObservations', ...SEND_OBSERVATION_ARGS);
+    await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
   } else {
     throw new Error('🚧 Setters not properly set. Skipping sending the observation');
   }
 
-  const DUMMY_ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
+  const DUMMY_ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool', tokenA, tokenB, TEST_FEE);
 
   if (IS_FIRST_OBSERVATION) {
     await hre.deployments.save('DummyOracleSidechain', {
@@ -62,6 +59,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     });
 
     await verifyContractByAddress(hre, DUMMY_ORACLE_ADDRESS);
+
+    await hre.deployments.execute('DummyOracleSidechain', txSettings, 'initializePoolInfo', tokenA, tokenB, TEST_FEE);
   }
 };
 

@@ -44,6 +44,7 @@ const networks: NetworksUserConfig =
             sender: 'singleton',
             receiver: 'singleton',
           },
+          gasPrice: 10e9,
         },
         sender: {
           url: env.getNodeUrl('goerli'),

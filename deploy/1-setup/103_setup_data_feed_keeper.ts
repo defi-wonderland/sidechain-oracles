@@ -13,11 +13,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const dataFeedKeeper = await hre.deployments.get('DataFeedKeeper');
 
   const SET_DATA_FEED_KEEPER = await hre.deployments.read('DataFeed', 'keeper');
-  if (dataFeedKeeper.address != SET_DATA_FEED_KEEPER) {
+  if (dataFeedKeeper.address.toLocaleLowerCase() !== SET_DATA_FEED_KEEPER.toLocaleLowerCase()) {
     await hre.deployments.execute('DataFeed', txSettings, 'setKeeper', dataFeedKeeper.address);
   }
 };
 
 deployFunction.dependencies = ['data-feed', 'data-feed-keeper'];
-deployFunction.tags = ['setup-data-feed-keeper', 'sender-stage-1'];
+deployFunction.tags = ['setup-data-feed-keeper', 'setup-base-contracts'];
 export default deployFunction;

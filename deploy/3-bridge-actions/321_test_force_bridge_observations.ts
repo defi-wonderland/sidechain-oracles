@@ -10,7 +10,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
   const salt = calculateSalt(tokenA, tokenB, TEST_FEE);
 
-  const RANDOM_CHAIN_ID = 42; // doesn't matter for dummy adapter
+  const RANDOM_CHAIN_ID = await hre.companionNetworks['receiver'].getChainId();
 
   const txSettings = {
     from: deployer,
@@ -40,7 +40,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const SET_DESTINATION_DOMAIN_ID = await hre.deployments.read('DataFeed', 'destinationDomainIds', dummyAdapter.address, RANDOM_CHAIN_ID);
 
   const IS_RECEIVER_SET = SET_RECEIVER === dataReceiver.address;
-  const IS_DESTINATION_DOMAIN_ID_SET = SET_DESTINATION_DOMAIN_ID === RANDOM_CHAIN_ID;
+  const IS_DESTINATION_DOMAIN_ID_SET = SET_DESTINATION_DOMAIN_ID == RANDOM_CHAIN_ID;
 
   const IS_FIRST_OBSERVATION = fetchData._poolNonce == bn.toBN(1);
 
@@ -52,7 +52,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     throw new Error('🚧 Setters not properly set. Skipping sending the observation');
   }
 
-  const DUMMY_ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool', tokenA, tokenB, TEST_FEE);
+  const DUMMY_ORACLE_ADDRESS = await hre.companionNetworks['receiver'].deployments.read('OracleFactory', 'getPool', tokenA, tokenB, TEST_FEE);
 
   if (IS_FIRST_OBSERVATION) {
     await hre.deployments.save('DummyOracleSidechain', {

@@ -4,16 +4,16 @@ import { verifyContractIfNeeded } from '../../utils/deploy';
 import { domainId } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer, connext } = await hre.getNamedAccounts();
+  const { deployer, connextHandler } = await hre.getNamedAccounts();
 
-  const dataSender = await hre.companionNetworks['sender'].deployments.get('ConnextSenderAdapter');
-  const dataReceiver = await hre.deployments.get('DataReceiver');
+  const dataSender = await hre.deployments.get('ConnextSenderAdapter');
+  const dataReceiver = await hre.companionNetworks['receiver'].deployments.get('DataReceiver');
 
-  const ORIGIN_DOMAIN_ID = domainId[Number(await hre.companionNetworks['sender'].getChainId())];
+  const ORIGIN_DOMAIN_ID = domainId[Number(await hre.getChainId())];
 
-  const CONSTRUCTOR_ARGS = [dataReceiver.address, dataSender.address, ORIGIN_DOMAIN_ID, connext];
+  const CONSTRUCTOR_ARGS = [dataReceiver.address, dataSender.address, ORIGIN_DOMAIN_ID, connextHandler];
 
-  const deploy = await hre.deployments.deploy('ConnextReceiverAdapter', {
+  const deploy = await hre.companionNetworks['receiver'].deployments.deploy('ConnextReceiverAdapter', {
     contract: 'solidity/contracts/bridges/ConnextReceiverAdapter.sol:ConnextReceiverAdapter',
     from: deployer,
     log: true,
@@ -21,10 +21,10 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     gasLimit: 10e6,
   });
 
-  await verifyContractIfNeeded(hre, deploy);
+  // await verifyContractIfNeeded(hre, deploy);
 };
 
-deployFunction.dependencies = ['deploy-data-receiver'];
-deployFunction.tags = ['deploy-connext-receiver-adapter', 'receiver-stage-2'];
+deployFunction.dependencies = ['deploy-data-receiver', 'deploy-connext-sender-adapter'];
+deployFunction.tags = ['deploy-connext-receiver-adapter'];
 
 export default deployFunction;

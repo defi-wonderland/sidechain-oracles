@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleFactory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
@@ -22,7 +21,6 @@ describe('DataReceiver.sol', () => {
   let oracleFactory: FakeContract<IOracleFactory>;
   let ORACLE_INIT_CODE_HASH: string;
   let precalculatedOracleAddress: string;
-  let tx: ContractTransaction;
   let snapshotId: string;
 
   const existingSalt = getRandomBytes32();
@@ -67,8 +65,7 @@ describe('DataReceiver.sol', () => {
     });
   });
 
-  // TODO: fix
-  describe.skip('addObservations(...)', () => {
+  describe('addObservations(...)', () => {
     let blockTimestamp1 = 1000000;
     let tick1 = 100;
     let observationData1 = [blockTimestamp1, tick1];
@@ -105,16 +102,17 @@ describe('DataReceiver.sol', () => {
       });
 
       it('should revert if the observations are not writable', async () => {
-        oracleSidechain.write.whenCalledWith(observationsData).returns(false);
+        oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
         await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, existingSalt, randomNonce)).to.be.revertedWith(
           'ObservationsNotWritable()'
         );
       });
 
       it('should emit ObservationsAdded', async () => {
-        tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, existingSalt, randomNonce);
+        const tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, existingSalt, randomNonce);
         let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
         let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+
         expect(eventUser).to.eq(fakeAdapter.address);
         expect(eventObservationsData).to.eql(observationsData);
       });
@@ -128,26 +126,27 @@ describe('DataReceiver.sol', () => {
       fake, despite this not being the actual precalculated address
     */
     context('when an oracle does not exist for a given pair', () => {
-      beforeEach(() => {
-        oracleFactory.deployOracle.returns(oracleSidechain.address);
+      before(() => {
+        oracleFactory.deployOracle.whenCalledWith(randomSalt, randomNonce).returns(oracleSidechain.address);
       });
 
       it('should call oracleFactory with the correct arguments', async () => {
         await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
-        expect(oracleFactory.deployOracle).to.have.been.calledOnceWith(randomSalt);
+        expect(oracleFactory.deployOracle).to.have.been.calledOnceWith(randomSalt, randomNonce);
       });
 
       it('should revert if the observations are not writable', async () => {
-        oracleSidechain.write.whenCalledWith(observationsData).returns(false);
+        oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
         await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
           'ObservationsNotWritable()'
         );
       });
 
       it('should emit ObservationsAdded', async () => {
-        let tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+        const tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
         let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
         let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+
         expect(eventUser).to.eq(fakeAdapter.address);
         expect(eventObservationsData).to.eql(observationsData);
       });
@@ -222,14 +221,14 @@ describe('DataReceiver.sol', () => {
     });
 
     it('should emit n events when n adapters are whitelisted', async () => {
-      tx = await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
+      const tx = await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(randomAdapter.address, true);
 
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(fakeAdapter.address, true);
     });
 
     it('should emit n events when n adapters whitelists are revoked', async () => {
-      tx = await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [false, false]);
+      const tx = await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [false, false]);
 
       await dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true, true]);
       await expect(tx).to.emit(dataReceiver, 'AdapterWhitelisted').withArgs(randomAdapter.address, false);

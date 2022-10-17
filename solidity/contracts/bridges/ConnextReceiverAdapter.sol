@@ -1,41 +1,35 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IConnextHandler} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnextHandler.sol';
-import {IConnextReceiverAdapter, IBridgeReceiverAdapter, IExecutor, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
+import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
+import {IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
 
-contract ConnextReceiverAdapter is IConnextReceiverAdapter {
+contract ConnextReceiverAdapter is IXReceiver, IConnextReceiverAdapter {
   /// @inheritdoc IConnextReceiverAdapter
   IDataReceiver public immutable dataReceiver;
-  /// @inheritdoc IConnextReceiverAdapter
-  IExecutor public immutable executor;
-  /// @inheritdoc IConnextReceiverAdapter
-  address public immutable originContract;
-  /// @inheritdoc IConnextReceiverAdapter
-  uint32 public immutable originDomain;
+
+  // The connectHandler contract on this domain
+  address public connext;
+  // The origin domain ID
+  uint32 public immutable origin;
+  // The DAO that's expected as the xcaller
+  address public immutable dao;
 
   constructor(
     IDataReceiver _dataReceiver,
-    address _originContract,
-    uint32 _originDomain,
-    IConnextHandler _connext
+    address _dao,
+    uint32 _origin,
+    address _connext
   ) {
     dataReceiver = _dataReceiver;
-    originContract = _originContract;
-    originDomain = _originDomain;
-    executor = _connext.executor();
+    dao = _dao;
+    origin = _origin;
+    connext = _connext;
   }
 
-  function addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt,
-    uint24 _poolNonce
-  ) external onlyExecutor {
-    _addObservations(_observationsData, _poolSalt, _poolNonce);
-  }
-
+  // TODO: move to common Adapter contract
   function _addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) internal {
@@ -43,12 +37,25 @@ contract ConnextReceiverAdapter is IConnextReceiverAdapter {
     emit DataSent(_observationsData, _poolSalt); // TODO: review event emission
   }
 
-  modifier onlyExecutor() {
-    if (
-      IExecutor(msg.sender) != executor ||
-      IExecutor(msg.sender).originSender() != originContract ||
-      IExecutor(msg.sender).origin() != originDomain
-    ) revert UnauthorizedCaller();
+  modifier onlyExecutor(address _originSender, uint32 _origin) {
+    if (msg.sender != connext || _originSender != dao || _origin != origin) revert UnauthorizedCaller();
     _;
+  }
+
+  function xReceive(
+    bytes32 _transferId,
+    uint256 _amount,
+    address _asset,
+    address _originSender,
+    uint32 _origin,
+    bytes memory _callData
+  ) external onlyExecutor(_originSender, _origin) returns (bytes memory) {
+    (IOracleSidechain.ObservationData[] memory _observationsData, bytes32 _poolSalt, uint24 _poolNonce) = abi.decode(
+      _callData,
+      (IOracleSidechain.ObservationData[], bytes32, uint24)
+    );
+
+    _addObservations(_observationsData, _poolSalt, _poolNonce);
+    return bytes(abi.encode('random'));
   }
 }

@@ -95,11 +95,11 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     it('should revert if the caller is not an allowed data receiver', async () => {
       await oracleFactory.connect(allowedDataReceiverWallet).deployOracle(salt, nonce);
 
-      await expect(unallowedDataReceiver.addPermissionlessObservations(observationsData, salt, nonce)).to.be.revertedWith('OnlyDataReceiver');
+      await expect(unallowedDataReceiver.internalAddObservations(observationsData, salt, nonce)).to.be.revertedWith('OnlyDataReceiver');
     });
 
     it('should deploy a oracleSidechain and write an observation', async () => {
-      await allowedDataReceiver.addPermissionlessObservations(observationsData, salt, nonce);
+      await allowedDataReceiver.internalAddObservations(observationsData, salt, nonce);
 
       ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 

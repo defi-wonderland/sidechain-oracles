@@ -54,13 +54,13 @@ describe('Keep3rJob.sol', () => {
   // @notice I created an external function in the ForTest contract that calls _isValidKeeper to test it
   describe('_isValidKeeper(...)', () => {
     it('should call isKeeper with the correct arguments', async () => {
-      await keep3rJob.externalIsValidKeeper(keeper.address);
+      await keep3rJob.internalIsValidKeeper(keeper.address);
       expect(keep3r.isKeeper).to.have.been.calledOnceWith(keeper.address);
     });
 
     it('should revert with the correct error', async () => {
       keep3r.isKeeper.whenCalledWith(randomAddress).returns(false);
-      await expect(keep3rJob.externalIsValidKeeper(randomAddress)).to.be.revertedWith('KeeperNotValid()');
+      await expect(keep3rJob.internalIsValidKeeper(randomAddress)).to.be.revertedWith('KeeperNotValid()');
     });
   });
 });

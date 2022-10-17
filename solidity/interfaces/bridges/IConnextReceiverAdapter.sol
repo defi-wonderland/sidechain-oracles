@@ -1,7 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IExecutor} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IExecutor.sol';
 import {IBridgeReceiverAdapter, IOracleSidechain} from './IBridgeReceiverAdapter.sol';
 import {IDataReceiver} from '../IDataReceiver.sol';
 
@@ -10,17 +9,9 @@ interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
 
   function dataReceiver() external view returns (IDataReceiver _dataReceiver);
 
-  function executor() external view returns (IExecutor _executor);
+  function dao() external view returns (address _originContract);
 
-  function originContract() external view returns (address _originContract);
+  function origin() external view returns (uint32 _originDomain);
 
-  function originDomain() external view returns (uint32 _originDomain);
-
-  // EVENTS
-
-  event DataSent(IOracleSidechain.ObservationData[] _observationsData, bytes32 _poolSalt);
-
-  // ERRORS
-
-  error UnauthorizedCaller();
+  // connext()
 }

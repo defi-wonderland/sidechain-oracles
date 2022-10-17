@@ -3,15 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   ConnextReceiverAdapterForTest,
   ConnextReceiverAdapterForTest__factory,
-  ExecutorForTest,
-  ExecutorForTest__factory,
-  IConnextHandler,
   IConnextSenderAdapter,
   IDataReceiver,
+  ConnextHandlerForTest,
 } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { VALID_POOL_SALT } from '@utils/constants';
+import { VALID_POOL_SALT, ZERO_ADDRESS, ZERO_BYTES_32 } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import chai, { expect } from 'chai';
 
@@ -21,9 +19,7 @@ describe('ConnextReceiverAdapter.sol', () => {
   let randomUser: SignerWithAddress;
   let connextReceiverAdapter: MockContract<ConnextReceiverAdapterForTest>;
   let connextReceiverAdapterFactory: MockContractFactory<ConnextReceiverAdapterForTest__factory>;
-  let executor: MockContract<ExecutorForTest>;
-  let executorFactory: MockContractFactory<ExecutorForTest__factory>;
-  let connextHandler: FakeContract<IConnextHandler>;
+  let connextHandler: FakeContract<ConnextHandlerForTest>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
   let dataReceiver: FakeContract<IDataReceiver>;
   let snapshotId: string;
@@ -36,14 +32,9 @@ describe('ConnextReceiverAdapter.sol', () => {
 
   before(async () => {
     [, randomUser] = await ethers.getSigners();
-    connextHandler = await smock.fake('IConnextHandler');
-    connextSenderAdapter = await smock.fake('IConnextHandler');
+    connextHandler = await smock.fake('ConnextHandlerForTest');
+    connextSenderAdapter = await smock.fake('IConnextSenderAdapter');
     dataReceiver = await smock.fake('IDataReceiver');
-
-    executorFactory = await smock.mock('ExecutorForTest');
-    executor = await executorFactory.deploy(connextHandler.address);
-
-    connextHandler.executor.returns(executor.address);
 
     connextReceiverAdapterFactory = await smock.mock('ConnextReceiverAdapterForTest');
     connextReceiverAdapter = await connextReceiverAdapterFactory.deploy(
@@ -65,13 +56,13 @@ describe('ConnextReceiverAdapter.sol', () => {
       expect(await connextReceiverAdapter.dataReceiver()).to.eq(dataReceiver.address);
     });
     it('should initialize executor to the address passed to the constructor', async () => {
-      expect(await connextReceiverAdapter.executor()).to.eq(executor.address);
+      expect(await connextReceiverAdapter.connext()).to.eq(connextHandler.address);
     });
     it('should initialize origin contract to the address passed to the constructor', async () => {
-      expect(await connextReceiverAdapter.originContract()).to.eq(connextSenderAdapter.address);
+      expect(await connextReceiverAdapter.dao()).to.eq(connextSenderAdapter.address);
     });
     it('should initialize origin domain id to the id passed to the constructor', async () => {
-      expect(await connextReceiverAdapter.originDomain()).to.eq(rinkebyOriginId);
+      expect(await connextReceiverAdapter.origin()).to.eq(rinkebyOriginId);
     });
   });
 
@@ -85,48 +76,54 @@ describe('ConnextReceiverAdapter.sol', () => {
     let observationsData = [observationData1, observationData2];
     let randomNonce = 420;
 
+    const xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, ZERO_ADDRESS, 1111];
+
+    beforeEach(async () => {
+      dataReceiver.addObservations.reset();
+    });
+
     context('when the origin sender is not allowed', async () => {
       it('should revert', async () => {
-        await expect(
-          executor.permissionlessExecute(
-            randomOriginSender,
-            connextReceiverAdapter.address,
-            rinkebyOriginId,
-            observationsData,
-            randomSalt,
-            randomNonce
-          )
-        ).to.be.revertedWith('UnauthorizedCaller()');
+        const callData = ethers.utils.defaultAbiCoder.encode(
+          ['(uint32,int24)[]', 'bytes32', 'uint24'],
+          [observationsData, randomSalt, randomNonce]
+        );
+
+        await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the origin contract is not allowed', async () => {
-      it('should revert', async () => {
+      it.skip('should revert', async () => {
+        const callData = ethers.utils.defaultAbiCoder.encode(
+          ['(uint32,int24)[]', 'bytes32', 'uint24'],
+          [observationsData, randomSalt, randomNonce]
+        );
+
         await expect(
-          executor.permissionlessExecute(
-            connextSenderAdapter.address,
-            connextReceiverAdapter.address,
-            randomOriginId,
-            observationsData,
-            randomSalt,
-            randomNonce
-          )
+          // TODO: change origin contract
+          connextReceiverAdapter.xReceive(...xReceiveParams, callData)
         ).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the caller is not the executor contract', async () => {
-      it('should revert', async () => {
-        await expect(connextReceiverAdapter.connect(randomUser).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
+      it.skip('should revert', async () => {
+        const callData = ethers.utils.defaultAbiCoder.encode(
+          ['(uint32,int24)[]', 'bytes32', 'uint24'],
+          [observationsData, randomSalt, randomNonce]
+        );
+
+        await expect(connextReceiverAdapter.connect(randomUser).xReceive(...xReceiveParams, callData)).to.be.revertedWith(
           'UnauthorizedCaller()'
         );
       });
     });
 
     context('when the executor is the caller and origin sender and domain are correct', async () => {
-      it('should complete the call successfully', async () => {
+      it.skip('should complete the call successfully', async () => {
         await expect(
-          executor.permissionlessExecute(
+          connextHandler.permissionlessExecute(
             connextSenderAdapter.address,
             connextReceiverAdapter.address,
             rinkebyOriginId,
@@ -138,15 +135,15 @@ describe('ConnextReceiverAdapter.sol', () => {
       });
 
       it('should call data receiver with the correct arguments', async () => {
-        dataReceiver.addObservations.reset();
-        await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt, randomNonce);
+        await connextReceiverAdapter.internalAddObservations(observationsData, randomSalt, randomNonce);
         expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomSalt, randomNonce);
       });
 
       it('should emit an event', async () => {
-        let tx = await connextReceiverAdapter.addPermissionlessObservations(observationsData, randomSalt, randomNonce);
+        const tx = await connextReceiverAdapter.internalAddObservations(observationsData, randomSalt, randomNonce);
         let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
         let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
+
         expect(eventObservationsData).to.eql(observationsData);
         expect(eventPoolSalt).to.eq(randomSalt);
       });

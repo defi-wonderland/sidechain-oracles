@@ -20,7 +20,7 @@ contract DummyAdapterForTest {
   function bridgeObservations(
     IDataReceiver _to,
     uint32,
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external payable {

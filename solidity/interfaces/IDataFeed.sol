@@ -4,7 +4,9 @@ pragma solidity >=0.8.8 <0.9.0;
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IPipelineManagement} from './peripherals/IPipelineManagement.sol';
 import {IDataFeedKeeper} from './IDataFeedKeeper.sol';
-import {IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from './bridges/IConnextSenderAdapter.sol';
+import {IConnextSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
+import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
+import {IOracleSidechain} from './IOracleSidechain.sol';
 
 interface IDataFeed is IPipelineManagement {
   // STRUCTS
@@ -65,7 +67,7 @@ interface IDataFeed is IPipelineManagement {
     uint16 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] calldata _observationsData
+    IOracleSidechain.ObservationData[] memory _observationsData
   ) external;
 
   function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external;

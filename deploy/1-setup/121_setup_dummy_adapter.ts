@@ -1,6 +1,5 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { RANDOM_CHAIN_ID } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -11,6 +10,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
+  const RANDOM_CHAIN_ID = await hre.companionNetworks['receiver'].getChainId();
+
   const dummyAdapter = (await hre.deployments.get('DummyAdapterForTest')).address;
   const dataReceiver = (await hre.deployments.get('DataReceiver')).address;
 
@@ -20,7 +21,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('DataFeed', txSettings, 'setReceiver', ...SET_RECEIVER_ARGS);
   }
 
-  const IS_WHITELISTED_RECEIVER_ADAPTER = await hre.deployments.read('DataReceiver', txSettings, 'whitelistedAdapters', dummyAdapter);
+  const IS_WHITELISTED_RECEIVER_ADAPTER = await hre.companionNetworks['receiver'].deployments.read(
+    'DataReceiver',
+    txSettings,
+    'whitelistedAdapters',
+    dummyAdapter
+  );
   const WHITELIST_ADAPTER_ARGS = [dummyAdapter, true];
   if (!IS_WHITELISTED_RECEIVER_ADAPTER) {
     await hre.deployments.execute('DataReceiver', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);
@@ -43,12 +49,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.dependencies = [
-  'deploy-data-receiver',
-  'setup-data-feed-keeper',
-  'deploy-dummy-adapter',
-  'pool-whitelisting',
-  'setup-test-keeper',
-];
+deployFunction.dependencies = ['deploy-dummy-adapter', 'setup-data-feed-keeper', 'setup-test-keeper', 'pool-whitelisting'];
 deployFunction.tags = ['dummy-test-setup', 'test'];
 export default deployFunction;

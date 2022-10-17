@@ -155,12 +155,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           observationsIndex = 0;
 
           for (let i = 1; i < blockTimestamps.length; ++i) {
-            let expectedObservation = [blockTimestamps[i - 1], tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i], true];
             let observation = await oracleSidechain.observations(observationsIndex++);
 
-            // TODO: expect(observation).to.eq(expectedObservation);
-            expect(observation.blockTimestamp).to.eq(expectedObservation[0]);
-            expect(observation.tickCumulative).to.eq(expectedObservation[1]);
+            expect(observation.blockTimestamp).to.eq(blockTimestamps[i - 1]);
+            expect(observation.tickCumulative).to.eq(tickCumulatives[i]);
+            expect(observation.secondsPerLiquidityCumulativeX128).to.eq(secondsPerLiquidityCumulativeX128s[i]);
+            expect(observation.initialized).to.eq(true);
           }
 
           let tick = (await oracleSidechain.slot0()).tick;
@@ -285,20 +285,20 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
               lastSecondsPerLiquidityCumulativeX128
             ));
 
-            const expectedStitchedObservation = [lastBlockTimestampObserved, tickCumulatives[0], secondsPerLiquidityCumulativeX128s[0], true];
             const stitchedObservation = await oracleSidechain.observations(observationsIndex++);
 
-            // TODO: expect(stitchedObservation).to.eql(expectedStitchedObservation);
-            expect(stitchedObservation.blockTimestamp).to.eq(expectedStitchedObservation[0]);
-            expect(stitchedObservation.tickCumulative).to.eq(expectedStitchedObservation[1]);
+            expect(stitchedObservation.blockTimestamp).to.eq(lastBlockTimestampObserved);
+            expect(stitchedObservation.tickCumulative).to.eq(tickCumulatives[0]);
+            expect(stitchedObservation.secondsPerLiquidityCumulativeX128).to.eq(secondsPerLiquidityCumulativeX128s[0]);
+            expect(stitchedObservation.initialized).to.eq(true);
 
             for (let i = 1; i < blockTimestamps.length; ++i) {
-              let expectedObservation = [blockTimestamps[i - 1], tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i], true];
               let observation = await oracleSidechain.observations(observationsIndex++);
 
-              // TODO: expect(observation).to.eq(expectedObservation);
-              expect(observation.blockTimestamp).to.eq(expectedObservation[0]);
-              expect(observation.tickCumulative).to.eq(expectedObservation[1]);
+              expect(observation.blockTimestamp).to.eq(blockTimestamps[i - 1]);
+              expect(observation.tickCumulative).to.eq(tickCumulatives[i]);
+              expect(observation.secondsPerLiquidityCumulativeX128).to.eq(secondsPerLiquidityCumulativeX128s[i]);
+              expect(observation.initialized).to.eq(true);
             }
 
             let tick = (await oracleSidechain.slot0()).tick;
@@ -376,6 +376,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
         await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
+
         await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 

@@ -6,9 +6,13 @@ import {IOracleSidechain} from '../IOracleSidechain.sol';
 interface IBridgeReceiverAdapter {
   // FUNCTIONS
 
-  function addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
-    bytes32 _poolSalt,
-    uint24 _poolNonce
-  ) external;
+  /* NOTE: callback methods should be here declared */
+
+  // EVENTS
+
+  event DataSent(IOracleSidechain.ObservationData[] _observationsData, bytes32 _poolSalt);
+
+  // ERRORS
+
+  error UnauthorizedCaller();
 }

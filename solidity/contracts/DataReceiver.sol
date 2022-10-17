@@ -11,7 +11,7 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x0fe972a6017390d56e73ca70df8e3865b17f00bc279fe9826cd6e44d3e9daa2c;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xd3c84c76027a893c261cc6c48447a62206e59286b7bfc08c0e71e1c581d1b012;
 
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
@@ -22,7 +22,7 @@ contract DataReceiver is IDataReceiver, Governable {
 
   function _writeObservations(
     IOracleSidechain _oracle,
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     uint24 _poolNonce
   ) internal {
     if (_oracle.write(_observationsData, _poolNonce)) {
@@ -33,7 +33,7 @@ contract DataReceiver is IDataReceiver, Governable {
   }
 
   function addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external onlyWhitelistedAdapters {
@@ -41,7 +41,7 @@ contract DataReceiver is IDataReceiver, Governable {
   }
 
   function _addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) internal {

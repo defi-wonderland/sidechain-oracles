@@ -14,6 +14,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await verifyContractIfNeeded(hre, deploy);
 };
 
+deployFunction.dependencies = ['base-contracts'];
 deployFunction.tags = ['deploy-dummy-adapter'];
 
 export default deployFunction;

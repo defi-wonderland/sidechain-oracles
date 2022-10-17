@@ -73,7 +73,7 @@
     "eth-gas-reporter/colors": "1.4.0"
   },
   "dependencies": {
-    "@connext/nxtp-contracts": "0.2.0-beta.14",
+    "@connext/nxtp-contracts": "0.2.0-alpha.25",
     "@defi-wonderland/keep3r-v2": "0.0.0-ba0f8872",
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",

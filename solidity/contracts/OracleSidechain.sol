@@ -103,7 +103,7 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   /// @inheritdoc IOracleSidechain
-  function write(ObservationData[] calldata _observationsData, uint24 _poolNonce) external onlyDataReceiver returns (bool _written) {
+  function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external onlyDataReceiver returns (bool _written) {
     if (_poolNonce != poolNonce++) return false;
 
     uint256 _observationsDataLength = _observationsData.length;
@@ -113,7 +113,7 @@ contract OracleSidechain is IOracleSidechain {
     return true;
   }
 
-  function _write(ObservationData calldata _observationData) private {
+  function _write(ObservationData memory _observationData) private {
     (uint16 _indexUpdated, uint16 _cardinalityUpdated) = observations.write(
       slot0.observationIndex,
       _observationData.blockTimestamp,

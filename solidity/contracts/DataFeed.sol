@@ -28,7 +28,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
     uint16 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] calldata _observationsData
+    IOracleSidechain.ObservationData[] memory _observationsData
   ) external validatePipeline(_chainId, _poolSalt, _poolNonce) {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
 

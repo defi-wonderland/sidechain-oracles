@@ -36,7 +36,7 @@ interface IDataReceiver is IGovernable {
   // FUNCTIONS
 
   function addObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external;

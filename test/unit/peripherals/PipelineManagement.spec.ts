@@ -79,9 +79,9 @@ describe('PipelineManagement.sol', () => {
       expect(await dataFeed.whitelistedNonces(randomChainId, randomSalt)).to.eq(lastPoolNonceObserved + 1);
     });
 
-    it.skip('should whitelist the pool', async () => {
+    it('should whitelist the pool', async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
-      console.log(await dataFeed.getVariable('_whitelistedPools'));
+      expect(await dataFeed.isWhitelistedPool(randomSalt)).to.eq(true);
     });
 
     it('should emit an event when a pipeline is whitelisted', async () => {
@@ -132,9 +132,10 @@ describe('PipelineManagement.sol', () => {
       expect(await dataFeed.whitelistedNonces(randomChainId2, randomSalt2)).to.eq(lastPoolNonceObserved2 + 1);
     });
 
-    it.skip('should whitelist the pools', async () => {
+    it('should whitelist the pools', async () => {
       await dataFeed.connect(governor).whitelistPipelines(...validArgs);
-      console.log(await dataFeed.getVariable('_whitelistedPools'));
+      expect(await dataFeed.isWhitelistedPool(randomSalt)).to.eq(true);
+      expect(await dataFeed.isWhitelistedPool(randomSalt2)).to.eq(true);
     });
 
     it('should emit n events when n pipelines are whitelisted', async () => {

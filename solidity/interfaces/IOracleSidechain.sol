@@ -104,5 +104,5 @@ interface IOracleSidechain {
     view
     returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);
 
-  function write(ObservationData[] calldata _observationsData, uint24 _poolNonce) external returns (bool _written);
+  function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external returns (bool _written);
 }

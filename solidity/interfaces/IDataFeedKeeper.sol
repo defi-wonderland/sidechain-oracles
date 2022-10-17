@@ -51,7 +51,7 @@ interface IDataFeedKeeper is IKeep3rJob {
     uint16 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] calldata _observationsData
+    IOracleSidechain.ObservationData[] memory _observationsData
   ) external;
 
   function work(bytes32 _poolSalt) external;

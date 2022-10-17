@@ -4,7 +4,6 @@ import { DataFeed, DataFeed__factory, IUniswapV3Pool, IConnextSenderAdapter } fr
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
-import { toBN } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor, onlyKeeper } from '@utils/behaviours';
 import { getCreate2Address, getObservedHash } from '@utils/misc';
@@ -209,14 +208,16 @@ describe('DataFeed.sol', () => {
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           });
 
-          // TODO: fix (at some point the deep equality was broken, data is correct)
-          it.skip('should update lastPoolStateObserved', async () => {
+          it('should update lastPoolStateObserved', async () => {
             await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
 
             let lastBlockTimestampObserved = secondsNow - secondsAgos[2];
-            let expectedLastPoolStateObserved = [nonce, lastBlockTimestampObserved, toBN(tickCumulatives[2]), arithmeticMeanTick2];
             let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
-            expect(lastPoolStateObserved).to.eql(expectedLastPoolStateObserved);
+
+            expect(lastPoolStateObserved.poolNonce).to.eq(nonce);
+            expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
+            expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
+            expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
           });
 
           it('should update _observedKeccak', async () => {
@@ -263,13 +264,16 @@ describe('DataFeed.sol', () => {
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           });
 
-          it.skip('should update lastPoolStateObserved', async () => {
+          it('should update lastPoolStateObserved', async () => {
             await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
 
             let lastBlockTimestampObserved = secondsNow - secondsAgos[2];
-            let expectedLastPoolStateObserved = [nonce, lastBlockTimestampObserved, toBN(tickCumulatives[2]), arithmeticMeanTick2];
             let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
-            expect(lastPoolStateObserved).to.eql(expectedLastPoolStateObserved);
+
+            expect(lastPoolStateObserved.poolNonce).to.eq(nonce);
+            expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
+            expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
+            expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
           });
 
           it('should update _observedKeccak', async () => {
@@ -391,18 +395,16 @@ describe('DataFeed.sol', () => {
               uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
             });
 
-            it.skip('should update lastPoolStateObserved', async () => {
+            it('should update lastPoolStateObserved', async () => {
               await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
 
               lastBlockTimestampObserved = secondsNow - secondsAgos[2];
-              let expectedLastPoolStateObserved = [
-                lastPoolNonceObserved + 1,
-                lastBlockTimestampObserved,
-                toBN(tickCumulatives[2]),
-                arithmeticMeanTick2,
-              ];
               let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
-              expect(lastPoolStateObserved).to.eql(expectedLastPoolStateObserved);
+
+              expect(lastPoolStateObserved.poolNonce).to.eq(lastPoolNonceObserved + 1);
+              expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
+              expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
+              expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
             });
 
             it('should update _observedKeccak', async () => {
@@ -453,18 +455,16 @@ describe('DataFeed.sol', () => {
               uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
             });
 
-            it.skip('should update lastPoolStateObserved', async () => {
+            it('should update lastPoolStateObserved', async () => {
               await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
 
               lastBlockTimestampObserved = secondsNow - secondsAgos[2];
-              let expectedLastPoolStateObserved = [
-                lastPoolNonceObserved + 1,
-                lastBlockTimestampObserved,
-                toBN(tickCumulatives[2]),
-                arithmeticMeanTick2,
-              ];
               let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
-              expect(lastPoolStateObserved).to.eql(expectedLastPoolStateObserved);
+
+              expect(lastPoolStateObserved.poolNonce).to.eq(lastPoolNonceObserved + 1);
+              expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
+              expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
+              expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
             });
 
             it('should update _observedKeccak', async () => {

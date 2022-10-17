@@ -18,7 +18,7 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   uint256 public jobCooldown;
 
   /// @inheritdoc IDataFeedKeeper
-  uint32 public periodLength = 1 days;
+  uint32 public periodLength = 12 hours;
 
   constructor(
     address _governor,
@@ -36,7 +36,7 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     uint16 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] calldata _observationsData
+    IOracleSidechain.ObservationData[] memory _observationsData
   ) external upkeep {
     // TODO: change criteria for workable (if there's a new nonce, bridge)
     if (!_workable(_chainId, _poolSalt, _poolNonce)) revert NotWorkable();
@@ -89,7 +89,7 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   function calculateSecondsAgos(uint32 _periodLength, uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     // TODO: define initialization of _fromTimestamp
-    _fromTimestamp = _fromTimestamp == 0 ? _secondsNow - 5 * _periodLength : _fromTimestamp;
+    _fromTimestamp = _fromTimestamp == 0 ? _secondsNow - (_periodLength + 1) : _fromTimestamp;
     uint32 _unknownTime = _secondsNow - _fromTimestamp;
     uint32 _periods = _unknownTime / _periodLength;
     uint32 _remainder = _unknownTime % _periodLength;

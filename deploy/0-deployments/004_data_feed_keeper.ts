@@ -30,6 +30,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await verifyContractIfNeeded(hre, deploy);
 };
 
-deployFunction.tags = ['deploy-data-feed-keeper', 'data-feed-keeper', 'sender-stage-1'];
+deployFunction.tags = ['deploy-data-feed-keeper', 'data-feed-keeper', 'base-contracts'];
 
 export default deployFunction;

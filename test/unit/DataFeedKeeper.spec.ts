@@ -389,7 +389,7 @@ describe('DataFeedKeeper.sol', () => {
 
       it('should return a single datapoint array with 0', async () => {
         const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
-        expect(secondsAgos).to.deep.eq([0]);
+        expect(secondsAgos).to.eql([0]);
       });
     });
 
@@ -401,18 +401,15 @@ describe('DataFeedKeeper.sol', () => {
         unknownTime = now - fromTimestamp;
         periods = Math.trunc(unknownTime / periodLength);
         remainder = unknownTime % periodLength;
+        periods++; // adds the bridged remainder
       });
 
       it('should return an array with proper length', async () => {
-        periods++; // adds the bridged remainder [periodLength % time]
-
         const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
         expect(secondsAgos.length).to.eq(periods);
       });
 
       it('should build the array of secondsAgos', async () => {
-        periods++; // adds the bridged remainder [periodLength % time]
-
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
@@ -420,7 +417,7 @@ describe('DataFeedKeeper.sol', () => {
         }
 
         let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
-        expect(secondsAgos).to.deep.eq(expectedSecondsAgos);
+        expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
@@ -451,7 +448,7 @@ describe('DataFeedKeeper.sol', () => {
         }
 
         let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
-        expect(secondsAgos).to.deep.eq(expectedSecondsAgos);
+        expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
@@ -464,8 +461,10 @@ describe('DataFeedKeeper.sol', () => {
       beforeEach(async () => {
         fromTimestamp = 0;
         now = (await ethers.provider.getBlock('latest')).timestamp;
-        unknownTime = now - (now - 5 * periodLength);
+        unknownTime = now - (now - (periodLength + 1));
         periods = Math.trunc(unknownTime / periodLength);
+        remainder = unknownTime % periodLength;
+        periods++; // adds the bridged remainder
       });
 
       it('should return an array with proper length', async () => {
@@ -477,11 +476,11 @@ describe('DataFeedKeeper.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = unknownTime - (i + 1) * periodLength;
+          expectedSecondsAgos[i] = unknownTime - remainder - i * periodLength;
         }
 
         let secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
-        expect(secondsAgos).to.deep.eq(expectedSecondsAgos);
+        expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {

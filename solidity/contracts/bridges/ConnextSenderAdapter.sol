@@ -1,16 +1,16 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {LibConnextStorage, CallParams, XCallArgs} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import {IConnextSenderAdapter, IBridgeSenderAdapter, IConnextHandler, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
+import {LibConnextStorage, TransferInfo} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
+import {IConnextSenderAdapter, IConnext, IBridgeSenderAdapter, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
 
 contract ConnextSenderAdapter is IConnextSenderAdapter {
   /// @inheritdoc IConnextSenderAdapter
-  IConnextHandler public immutable connext;
+  address public immutable connext;
   /// @inheritdoc IConnextSenderAdapter
   IDataFeed public immutable dataFeed;
 
-  constructor(IConnextHandler _connext, IDataFeed _dataFeed) {
+  constructor(address _connext, IDataFeed _dataFeed) {
     connext = _connext;
     dataFeed = _dataFeed;
   }
@@ -19,37 +19,26 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
   function bridgeObservations(
     address _to,
     uint32 _destinationDomainId,
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce // TODO: review input parameters packing KMC-
   ) external payable onlyDataFeed {
     // TODO: asset will be deprecated, we have to have one for now--will delete as soon as it's deprecated. This address is a random placeholder
-    address _asset = 0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9;
-    bytes4 _selector = bytes4(keccak256('addObservations((uint32,int24)[],bytes32,uint24)'));
+    address _asset = 0x7ea6eA49B0b0Ae9c5db7907d139D9Cd3439862a1;
 
-    bytes memory _callData = abi.encodeWithSelector(_selector, _observationsData, _poolSalt, _poolNonce);
-    uint32 _originDomainId = 1111; // TODO: in theory if we are only going to bridge from mainnet, this could be hardcoded--1111 is rinkeby
+    bytes memory _callData = abi.encode(_observationsData, _poolSalt, _poolNonce);
 
-    CallParams memory _callParams = CallParams({
-      to: _to,
-      callData: _callData,
-      originDomain: _originDomainId,
-      destinationDomain: _destinationDomainId,
-      agent: address(0),
-      recovery: _to,
-      forceSlow: true,
-      receiveLocal: false,
-      callback: address(0),
-      callbackFee: 0,
-      relayerFee: 0,
-      slippageTol: 9995
+    IConnext(connext).xcall({
+      _destination: _destinationDomainId, // unique identifier for destination domain
+      _to: _to, // recipient of funds, where calldata will be executed
+      _asset: _asset, // asset being transferred
+      _delegate: address(0), // permissioned address to recover in edgecases on destination domain
+      _amount: 0, // amount being transferred
+      _slippage: 0, // slippage in bps
+      _callData: _callData // to be executed on _to on the destination domain
     });
 
-    XCallArgs memory _xcallArgs = XCallArgs({params: _callParams, transactingAssetId: _asset, amount: 0});
-
-    connext.xcall(_xcallArgs);
-
-    emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _poolSalt);
+    // emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _poolSalt);
   }
 
   modifier onlyDataFeed() {

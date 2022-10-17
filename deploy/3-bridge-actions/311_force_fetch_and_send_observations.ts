@@ -25,12 +25,13 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeed = await hre.deployments.get('DataFeed');
 
-  const FETCH_OBSERVATION_ARGS = [salt];
-  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32)', ...FETCH_OBSERVATION_ARGS);
+  const BLOCK_TIMESTAMP = (await hre.ethers.provider.getBlock('latest')).timestamp;
+  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'forceWork(bytes32,uint32)', salt, BLOCK_TIMESTAMP - 86400);
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',
-    fetchTx.logs![1].data
+    fetchTx.logs![0].data
+    // fetchTx.logs![1].data
   );
 
   const SET_RECEIVER = await hre.deployments.read('DataFeed', 'receivers', senderAdapter.address, DESTINATION_DOMAIN_ID);
@@ -53,5 +54,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 };
 
 deployFunction.dependencies = ['connext-setup', 'setup-test-keeper'];
-deployFunction.tags = ['send-observation', 'mainnet'];
+deployFunction.tags = ['force-fetch-observation', 'mainnet'];
 export default deployFunction;

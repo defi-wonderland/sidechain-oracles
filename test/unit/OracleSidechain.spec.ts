@@ -131,8 +131,7 @@ describe('OracleSidechain.sol', () => {
     });
   });
 
-  // TODO: fix (it doesn't revert with OLD)
-  describe.skip('observe(...)', () => {
+  describe('observe(...)', () => {
     let blockTimestamp1: number;
     let tick1 = 100;
     let observationData1: number[];
@@ -172,9 +171,13 @@ describe('OracleSidechain.sol', () => {
         let secondsPerLiquidityCumulativeX128_1 = toBN(blockTimestamp1).shl(128);
         let secondsPerLiquidityCumulativeX128_2 = secondsPerLiquidityCumulativeX128_1.add(toBN(delta2).shl(128));
         let expectedSecondsPerLiquidityCumulativeX128s = [secondsPerLiquidityCumulativeX128_1, secondsPerLiquidityCumulativeX128_2];
+
         [tickCumulatives, secondsPerLiquidityCumulativeX128s] = await oracleSidechain.observe(secondsAgos);
-        expect(tickCumulatives).to.eql(expectedTickCumulatives);
-        expect(secondsPerLiquidityCumulativeX128s).to.eql(expectedSecondsPerLiquidityCumulativeX128s);
+
+        for (let i = 0; i < secondsAgos.length; ++i) {
+          expect(tickCumulatives[i]).to.eq(expectedTickCumulatives[i]);
+          expect(secondsPerLiquidityCumulativeX128s[i]).to.eq(expectedSecondsPerLiquidityCumulativeX128s[i]);
+        }
       });
     });
 
@@ -203,9 +206,13 @@ describe('OracleSidechain.sol', () => {
           beforeSecondsPerLiquidityCumulativeX128,
           interpolatedSecondsPerLiquidityCumulativeX128,
         ];
+
         [tickCumulatives, secondsPerLiquidityCumulativeX128s] = await oracleSidechain.observe(secondsAgos);
-        expect(tickCumulatives).to.eql(expectedTickCumulatives);
-        expect(secondsPerLiquidityCumulativeX128s).to.eql(expectedSecondsPerLiquidityCumulativeX128s);
+
+        for (let i = 0; i < secondsAgos.length; ++i) {
+          expect(tickCumulatives[i]).to.eq(expectedTickCumulatives[i]);
+          expect(secondsPerLiquidityCumulativeX128s[i]).to.eq(expectedSecondsPerLiquidityCumulativeX128s[i]);
+        }
       });
     });
 
@@ -226,9 +233,13 @@ describe('OracleSidechain.sol', () => {
         let lastSecondsPerLiquidityCumulativeX128 = secondsPerLiquidityCumulativeX128_1.add(toBN(delta2).shl(128));
         let extrapolatedSecondsPerLiquidityCumulativeX128 = lastSecondsPerLiquidityCumulativeX128.add(toBN(delta3).shl(128));
         let expectedSecondsPerLiquidityCumulativeX128s = [secondsPerLiquidityCumulativeX128_1, extrapolatedSecondsPerLiquidityCumulativeX128];
+
         [tickCumulatives, secondsPerLiquidityCumulativeX128s] = await oracleSidechain.observe(secondsAgos);
-        expect(tickCumulatives).to.eql(expectedTickCumulatives);
-        expect(secondsPerLiquidityCumulativeX128s).to.eql(expectedSecondsPerLiquidityCumulativeX128s);
+
+        for (let i = 0; i < secondsAgos.length; ++i) {
+          expect(tickCumulatives[i]).to.eq(expectedTickCumulatives[i]);
+          expect(secondsPerLiquidityCumulativeX128s[i]).to.eq(expectedSecondsPerLiquidityCumulativeX128s[i]);
+        }
       });
     });
   });
@@ -250,28 +261,40 @@ describe('OracleSidechain.sol', () => {
     );
 
     context('when the caller is the data receiver', () => {
-      // TODO: fix: appears to be writing wrong information
-      context.skip('when the observations are writable', () => {
+      context('when the observations are writable', () => {
         it('should write the observations', async () => {
           let tickCumulative1 = toBN(0);
           let secondsPerLiquidityCumulativeX128_1 = toBN(blockTimestamp1).shl(128);
-          let expectedObservation1 = [blockTimestamp1, tickCumulative1, secondsPerLiquidityCumulativeX128_1, true];
           let delta2 = blockTimestamp2 - blockTimestamp1;
           let tickCumulative2 = toBN(tick1 * delta2);
           let secondsPerLiquidityCumulativeX128_2 = secondsPerLiquidityCumulativeX128_1.add(toBN(delta2).shl(128));
-          let expectedObservation2 = [blockTimestamp2, tickCumulative2, secondsPerLiquidityCumulativeX128_2, true];
+
           await oracleSidechain.connect(dataReceiver.wallet).write(observationsData, randomNonce);
           let observation1 = await oracleSidechain.observations(0);
           let observation2 = await oracleSidechain.observations(1);
-          expect(observation1).to.eql(expectedObservation1);
-          expect(observation2).to.eql(expectedObservation2);
+
+          expect(observation1.blockTimestamp).to.eq(blockTimestamp1);
+          expect(observation1.tickCumulative).to.eq(tickCumulative1);
+          expect(observation1.secondsPerLiquidityCumulativeX128).to.eq(secondsPerLiquidityCumulativeX128_1);
+          expect(observation1.initialized).to.eq(true);
+
+          expect(observation2.blockTimestamp).to.eq(blockTimestamp2);
+          expect(observation2.tickCumulative).to.eq(tickCumulative2);
+          expect(observation2.secondsPerLiquidityCumulativeX128).to.eq(secondsPerLiquidityCumulativeX128_2);
+          expect(observation2.initialized).to.eq(true);
         });
 
         it('should update slot0', async () => {
-          let expectedSlot0 = [toBN(0), tick2, 1, CARDINALITY, CARDINALITY, 0, true];
           await oracleSidechain.connect(dataReceiver.wallet).write(observationsData, randomNonce);
           let slot0 = await oracleSidechain.slot0();
-          expect(slot0).to.eql(expectedSlot0);
+
+          expect(slot0.sqrtPriceX96).to.eq(0);
+          expect(slot0.tick).to.eq(tick2);
+          expect(slot0.observationIndex).to.eq(1);
+          expect(slot0.observationCardinality).to.eq(CARDINALITY);
+          expect(slot0.observationCardinalityNext).to.eq(CARDINALITY);
+          expect(slot0.feeProtocol).to.eq(0);
+          expect(slot0.unlocked).to.eq(true);
         });
 
         it('should emit ObservationWritten', async () => {

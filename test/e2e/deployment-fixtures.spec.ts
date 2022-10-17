@@ -2,7 +2,6 @@ import { ethers, deployments, getNamedAccounts } from 'hardhat';
 import { Contract } from 'ethers';
 import * as Type from '@typechained';
 import { evm, wallet } from '@utils';
-import { RANDOM_CHAIN_ID } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { getContractFromFixture } from '@utils/contracts';
 import { calculateSalt } from '@utils/misc';
@@ -60,9 +59,12 @@ describe('@skip-on-coverage Fixture', () => {
       expect(await dataReceiver.whitelistedAdapters(receiverAdapter.address)).to.be.true;
     });
 
+    // TODO: reverts with UnallowedPool()
     describe('when pool is deployed', () => {
       beforeEach(async () => {
+        await deployments.fixture(['save-tokens'], { keepExistingDeployments: true });
         await deployments.fixture(['create-pool'], { keepExistingDeployments: true });
+        await deployments.fixture(['pool-whitelisting'], { keepExistingDeployments: true });
 
         tokenA = (await getContractFromFixture('TokenA', 'ERC20ForTest')) as Type.IERC20;
         tokenB = (await getContractFromFixture('TokenB', 'ERC20ForTest')) as Type.IERC20;
@@ -89,6 +91,9 @@ describe('@skip-on-coverage Fixture', () => {
           const txReceipt = await tx.wait();
           const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
 
+          // TODO: read from deployment
+          const RANDOM_CHAIN_ID = 5;
+
           await expect(
             dataFeedKeeper['work(uint16,bytes32,uint24,(uint32,int24)[])'](
               RANDOM_CHAIN_ID,
@@ -113,11 +118,9 @@ describe('@skip-on-coverage Fixture', () => {
 
   describe('production setup', () => {
     beforeEach(async () => {
-      await deployments.fixture(['receiver-stage-1']);
-      await deployments.fixture(['sender-stage-1'], { keepExistingDeployments: true });
-      await deployments.fixture(['receiver-stage-2'], { keepExistingDeployments: true });
-      await deployments.fixture(['sender-stage-2'], { keepExistingDeployments: true });
+      await deployments.fixture(['connext-setup'], { keepExistingDeployments: true });
       await deployments.fixture(['token-actions'], { keepExistingDeployments: true });
+      await deployments.fixture(['setup-test-keeper'], { keepExistingDeployments: true });
 
       dataFeedKeeper = (await getContractFromFixture('DataFeedKeeper')) as Type.DataFeedKeeper;
 
@@ -126,6 +129,7 @@ describe('@skip-on-coverage Fixture', () => {
     });
 
     // NOTE: reverts at ConnextBridge: 0x6c9a905ab3f4495e2b47f5ca131ab71281e0546e
+    // NOTE: works in deployment
     it.skip('should work', async () => {
       await deployments.fixture(['send-observation'], { keepExistingDeployments: true });
     });

@@ -1,7 +1,6 @@
 import { IDomainIDRecord } from './types';
 
 export const TEST_FEE = 10_000;
-export const RANDOM_CHAIN_ID = 42;
 
 export const UNI_V3_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
 
@@ -20,11 +19,9 @@ export const addressRegistry = {
     5: '0x16F63C5036d3F48A239358656a8f123eCE85789C',
   },
   // CONNEXT DEPLOYMENTS
-  connext: {
-    5: '0xEC3A723DE47a644b901DC269829bf8718F175EBF',
-  },
   connextHandler: {
-    5: '0x6c9a905Ab3f4495E2b47f5cA131ab71281E0546e',
+    5: '0x6F9F801CeE214Cf6dCf216Cc0FFEC3D908f15A12',
+    420: '0xac43de57EbD38f19b30ED443B6e8F1190Ff85809',
   },
   // TOKENS
   tokenA: {
@@ -36,6 +33,6 @@ export const addressRegistry = {
 };
 
 export const domainId: IDomainIDRecord = {
-  4: 1111,
-  5: 3331,
+  5: 1735353714,
+  420: 1735356532,
 };

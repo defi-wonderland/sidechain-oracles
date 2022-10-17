@@ -25,12 +25,13 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeed = await hre.deployments.get('DataFeed');
 
-  const FETCH_OBSERVATION_ARGS = [salt];
-  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32)', ...FETCH_OBSERVATION_ARGS);
+  const FETCH_TX_HASH = '0xcc5e80a567512204edf38bec16e7e8977f63bc2de26becb32ccf24a896327dc8';
+  const fetchTx = await (await hre.ethers.provider.getTransaction(FETCH_TX_HASH)).wait();
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',
-    fetchTx.logs![1].data
+    fetchTx.logs![0].data
+    // fetchTx.logs![1].data
   );
 
   const SET_RECEIVER = await hre.deployments.read('DataFeed', 'receivers', senderAdapter.address, DESTINATION_DOMAIN_ID);
@@ -41,8 +42,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const IS_DESTINATION_DOMAIN_ID_SET = SET_DESTINATION_DOMAIN_ID === DESTINATION_DOMAIN_ID;
 
   if (IS_WHITELISTED_SENDER_ADAPTER && IS_RECEIVER_SET && IS_DESTINATION_DOMAIN_ID_SET) {
-    const SEND_OBSERVATION_ARGS = [RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
-    await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
+    const SEND_OBSERVATION_ARGS = [senderAdapter.address, RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
+    await hre.deployments.execute('DataFeed', txSettings, 'sendObservations', ...SEND_OBSERVATION_ARGS);
 
     // TODO: read event and log bridge txID for tracking
     // XCalled topic = 0x9ff13ab44d4ea07af1c3b3ffb93494b9e0e32bb1564d8ba56e62e7ee9b7489d3
@@ -53,5 +54,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 };
 
 deployFunction.dependencies = ['connext-setup', 'setup-test-keeper'];
-deployFunction.tags = ['send-observation', 'mainnet'];
+deployFunction.tags = ['force-send-observation', 'mainnet'];
 export default deployFunction;

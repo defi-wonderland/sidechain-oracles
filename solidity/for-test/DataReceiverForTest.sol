@@ -10,8 +10,8 @@ import {Create2Address} from '../libraries/Create2Address.sol';
 contract DataReceiverForTest is DataReceiver {
   constructor(address _governor, IOracleFactory _oracleFactory) DataReceiver(_governor, _oracleFactory) {}
 
-  function addPermissionlessObservations(
-    IOracleSidechain.ObservationData[] calldata _observationsData,
+  function internalAddObservations(
+    IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external {

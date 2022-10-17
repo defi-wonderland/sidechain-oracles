@@ -4,7 +4,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { calculateSalt } from '../../test/utils/misc';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
-import { TEST_FEE, RANDOM_CHAIN_ID, UNI_V3_FACTORY } from '../../utils/constants';
+import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
 
 /* TODO:
  * - setup fee, tokens, and chain ID (destination)
@@ -13,6 +13,7 @@ import { TEST_FEE, RANDOM_CHAIN_ID, UNI_V3_FACTORY } from '../../utils/constants
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
+  const DESTINATION_CHAIN_ID = await hre.companionNetworks['receiver'].getChainId();
 
   const txSettings = {
     from: deployer,
@@ -40,7 +41,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const IS_WHITELISTED_POOL = await hre.deployments.read('DataFeed', 'isWhitelistedPool', salt);
   if (!IS_WHITELISTED_POOL) {
-    await hre.deployments.execute('DataFeed', txSettings, 'whitelistPipeline', RANDOM_CHAIN_ID, salt);
+    await hre.deployments.execute('DataFeed', txSettings, 'whitelistPipeline', DESTINATION_CHAIN_ID, salt);
   }
 };
 

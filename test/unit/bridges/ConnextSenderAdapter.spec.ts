@@ -61,16 +61,16 @@ describe('ConnextSenderAdapter.sol', () => {
       connextHandler.xcall.reset();
     });
 
-    // TODO: fix
-    it.skip('should call xCall with the correct arguments', async () => {
+    it('should call xCall with the correct arguments', async () => {
       const xcallArgs = await prepareData(observationsData);
       await connextSenderAdapter
         .connect(randomFeed)
         .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce);
 
-      expect(connextHandler.xcall).to.have.been.calledOnceWith(xcallArgs);
+      expect(connextHandler.xcall).to.have.been.calledOnceWith(...xcallArgs);
     });
 
+    // TODO: review event emission
     it.skip('should emit an event', async () => {
       const tx = await connextSenderAdapter
         .connect(randomFeed)
@@ -97,29 +97,24 @@ describe('ConnextSenderAdapter.sol', () => {
   });
 
   const prepareData = async (observationsData: number[][]) => {
-    const ABI = ['function addObservations((uint32,int24)[], bytes32, uint24)'];
-    const helperInterface = new ethers.utils.Interface(ABI);
-    const callData = helperInterface.encodeFunctionData('addObservations', [observationsData, randomSalt, randomNonce]);
-    const callParams = {
-      to: randomReceiverAdapterAddress,
+    const callData = ethers.utils.defaultAbiCoder.encode(['(uint32,int24)[]', 'bytes32', 'uint24'], [observationsData, randomSalt, randomNonce]);
+    const callParams = [
+      // _destination:
+      randomDestinationDomainId,
+      // _to:
+      randomReceiverAdapterAddress,
+      // _asset:
+      '0x7ea6eA49B0b0Ae9c5db7907d139D9Cd3439862a1',
+      // _delegate:
+      ZERO_ADDRESS,
+      // _amount:
+      toBN(0),
+      // _slippage:
+      toBN(0),
+      // _callData:
       callData,
-      originDomain: rinkebyOriginId,
-      destinationDomain: randomDestinationDomainId,
-      agent: ZERO_ADDRESS,
-      recovery: randomReceiverAdapterAddress,
-      forceSlow: true,
-      receiveLocal: false,
-      callback: ZERO_ADDRESS,
-      callbackFee: toBN(0),
-      relayerFee: toBN(0),
-      slippageTol: toBN(9995),
-    };
-    const xcallArgs = {
-      params: callParams,
-      transactingAssetId: '0x3FFc03F05D1869f493c7dbf913E636C6280e0ff9',
-      amount: toBN(0),
-    };
+    ];
 
-    return xcallArgs;
+    return callParams;
   };
 });

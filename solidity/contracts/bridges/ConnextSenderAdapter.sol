@@ -2,7 +2,8 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {LibConnextStorage, TransferInfo} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import {IConnextSenderAdapter, IConnext, IBridgeSenderAdapter, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
+import {IConnextSenderAdapter, IConnext, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
+import {IBridgeSenderAdapter} from '../../interfaces/bridges/IBridgeSenderAdapter.sol';
 
 contract ConnextSenderAdapter is IConnextSenderAdapter {
   /// @inheritdoc IConnextSenderAdapter

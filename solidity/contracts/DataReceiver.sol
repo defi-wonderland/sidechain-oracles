@@ -11,7 +11,7 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xd3c84c76027a893c261cc6c48447a62206e59286b7bfc08c0e71e1c581d1b012;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc;
 
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;

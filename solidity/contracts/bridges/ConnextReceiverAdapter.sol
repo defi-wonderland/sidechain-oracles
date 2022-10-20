@@ -3,11 +3,9 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
 import {IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
+import {BridgeReceiverAdapter} from './BridgeReceiverAdapter.sol';
 
-contract ConnextReceiverAdapter is IXReceiver, IConnextReceiverAdapter {
-  /// @inheritdoc IConnextReceiverAdapter
-  IDataReceiver public immutable dataReceiver;
-
+contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
   // The connectHandler contract on this domain
   address public connext;
   // The origin domain ID
@@ -20,21 +18,10 @@ contract ConnextReceiverAdapter is IXReceiver, IConnextReceiverAdapter {
     address _dao,
     uint32 _origin,
     address _connext
-  ) {
-    dataReceiver = _dataReceiver;
+  ) BridgeReceiverAdapter(_dataReceiver) {
     dao = _dao;
     origin = _origin;
     connext = _connext;
-  }
-
-  // TODO: move to common Adapter contract
-  function _addObservations(
-    IOracleSidechain.ObservationData[] memory _observationsData,
-    bytes32 _poolSalt,
-    uint24 _poolNonce
-  ) internal {
-    dataReceiver.addObservations(_observationsData, _poolSalt, _poolNonce);
-    emit DataSent(_observationsData, _poolSalt); // TODO: review event emission
   }
 
   modifier onlyExecutor(address _originSender, uint32 _origin) {

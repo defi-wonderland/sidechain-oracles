@@ -13,4 +13,19 @@ interface IBridgeSenderAdapter {
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external payable;
+
+  // ERRORS
+
+  error OnlyDataFeed();
+
+  // TODO: rm events from Adapters
+  // EVENTS
+
+  event DataSent(
+    address _to,
+    uint32 _originDomainId,
+    uint32 _destinationDomainId,
+    IOracleSidechain.ObservationData[] _observationsData,
+    bytes32 _poolSalt
+  );
 }

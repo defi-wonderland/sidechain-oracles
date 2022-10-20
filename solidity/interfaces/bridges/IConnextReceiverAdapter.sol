@@ -7,11 +7,9 @@ import {IDataReceiver} from '../IDataReceiver.sol';
 interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
   // STATE VARIABLES
 
-  function dataReceiver() external view returns (IDataReceiver _dataReceiver);
+  function connext() external view returns (address _connext);
 
   function dao() external view returns (address _originContract);
 
   function origin() external view returns (uint32 _originDomain);
-
-  // connext()
 }

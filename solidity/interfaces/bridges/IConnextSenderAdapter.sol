@@ -11,18 +11,4 @@ interface IConnextSenderAdapter is IBridgeSenderAdapter {
   function connext() external view returns (address _connext);
 
   function dataFeed() external view returns (IDataFeed _dataFeed);
-
-  // EVENTS
-
-  event DataSent(
-    address _to,
-    uint32 _originDomainId,
-    uint32 _destinationDomainId,
-    IOracleSidechain.ObservationData[] _observationsData,
-    bytes32 _poolSalt
-  );
-
-  // ERRORS
-
-  error OnlyDataFeed();
 }

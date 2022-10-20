@@ -1,14 +1,14 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
-  ConnextReceiverAdapterForTest,
-  ConnextReceiverAdapterForTest__factory,
+  ConnextReceiverAdapter,
+  ConnextReceiverAdapter__factory,
   IConnextSenderAdapter,
   IDataReceiver,
   ConnextHandlerForTest,
 } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
-import { evm, wallet } from '@utils';
+import { evm, wallet, bn } from '@utils';
 import { VALID_POOL_SALT, ZERO_ADDRESS, ZERO_BYTES_32 } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import chai, { expect } from 'chai';
@@ -17,15 +17,13 @@ chai.use(smock.matchers);
 
 describe('ConnextReceiverAdapter.sol', () => {
   let randomUser: SignerWithAddress;
-  let connextReceiverAdapter: MockContract<ConnextReceiverAdapterForTest>;
-  let connextReceiverAdapterFactory: MockContractFactory<ConnextReceiverAdapterForTest__factory>;
+  let connextReceiverAdapterFactory: MockContractFactory<ConnextReceiverAdapter__factory>;
+  let connextReceiverAdapter: MockContract<ConnextReceiverAdapter>;
   let connextHandler: FakeContract<ConnextHandlerForTest>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
   let dataReceiver: FakeContract<IDataReceiver>;
   let snapshotId: string;
 
-  const randomOriginSender = wallet.generateRandomAddress();
-  const randomOriginId = 3;
   const rinkebyOriginId = 1111;
 
   const randomSalt = VALID_POOL_SALT;
@@ -36,13 +34,15 @@ describe('ConnextReceiverAdapter.sol', () => {
     connextSenderAdapter = await smock.fake('IConnextSenderAdapter');
     dataReceiver = await smock.fake('IDataReceiver');
 
-    connextReceiverAdapterFactory = await smock.mock('ConnextReceiverAdapterForTest');
+    connextReceiverAdapterFactory = await smock.mock('ConnextReceiverAdapter');
     connextReceiverAdapter = await connextReceiverAdapterFactory.deploy(
       dataReceiver.address,
       connextSenderAdapter.address,
       rinkebyOriginId,
       connextHandler.address
     );
+
+    await wallet.setBalance(connextHandler.address, bn.toUnit(1));
 
     snapshotId = await evm.snapshot.take();
   });
@@ -66,7 +66,7 @@ describe('ConnextReceiverAdapter.sol', () => {
     });
   });
 
-  describe('addObservations(...)', async () => {
+  describe('xReceive(...)', async () => {
     let blockTimestamp1 = 1000000;
     let tick1 = 100;
     let observationData1 = [blockTimestamp1, tick1];
@@ -75,8 +75,13 @@ describe('ConnextReceiverAdapter.sol', () => {
     let observationData2 = [blockTimestamp2, tick2];
     let observationsData = [observationData1, observationData2];
     let randomNonce = 420;
+    let xReceiveParams: any[];
 
-    const xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, ZERO_ADDRESS, 1111];
+    xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, ZERO_ADDRESS, rinkebyOriginId];
+    let callData: string = ethers.utils.defaultAbiCoder.encode(
+      ['(uint32,int24)[]', 'bytes32', 'uint24'],
+      [observationsData, randomSalt, randomNonce]
+    );
 
     beforeEach(async () => {
       dataReceiver.addObservations.reset();
@@ -84,63 +89,38 @@ describe('ConnextReceiverAdapter.sol', () => {
 
     context('when the origin sender is not allowed', async () => {
       it('should revert', async () => {
-        const callData = ethers.utils.defaultAbiCoder.encode(
-          ['(uint32,int24)[]', 'bytes32', 'uint24'],
-          [observationsData, randomSalt, randomNonce]
-        );
-
         await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
-    context('when the origin contract is not allowed', async () => {
-      it.skip('should revert', async () => {
-        const callData = ethers.utils.defaultAbiCoder.encode(
-          ['(uint32,int24)[]', 'bytes32', 'uint24'],
-          [observationsData, randomSalt, randomNonce]
-        );
-
-        await expect(
-          // TODO: change origin contract
-          connextReceiverAdapter.xReceive(...xReceiveParams, callData)
-        ).to.be.revertedWith('UnauthorizedCaller()');
+    context('when the origin chain is not allowed', async () => {
+      beforeEach(async () => {
+        xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, connextSenderAdapter.address, 0];
       });
-    });
 
-    context('when the caller is not the executor contract', async () => {
-      it.skip('should revert', async () => {
-        const callData = ethers.utils.defaultAbiCoder.encode(
-          ['(uint32,int24)[]', 'bytes32', 'uint24'],
-          [observationsData, randomSalt, randomNonce]
-        );
-
-        await expect(connextReceiverAdapter.connect(randomUser).xReceive(...xReceiveParams, callData)).to.be.revertedWith(
-          'UnauthorizedCaller()'
-        );
+      it('should revert', async () => {
+        await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
     context('when the executor is the caller and origin sender and domain are correct', async () => {
-      it.skip('should complete the call successfully', async () => {
-        await expect(
-          connextHandler.permissionlessExecute(
-            connextSenderAdapter.address,
-            connextReceiverAdapter.address,
-            rinkebyOriginId,
-            observationsData,
-            randomSalt,
-            randomNonce
-          )
-        ).not.to.be.reverted;
+      beforeEach(async () => {
+        xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, connextSenderAdapter.address, rinkebyOriginId];
+      });
+
+      it('should revert if caller is not the executor contract', async () => {
+        await expect(connextReceiverAdapter.connect(randomUser).xReceive(...xReceiveParams, callData)).to.be.revertedWith(
+          'UnauthorizedCaller()'
+        );
       });
 
       it('should call data receiver with the correct arguments', async () => {
-        await connextReceiverAdapter.internalAddObservations(observationsData, randomSalt, randomNonce);
+        await connextReceiverAdapter.connect(connextHandler.wallet).xReceive(...xReceiveParams, callData);
         expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomSalt, randomNonce);
       });
 
       it('should emit an event', async () => {
-        const tx = await connextReceiverAdapter.internalAddObservations(observationsData, randomSalt, randomNonce);
+        const tx = await connextReceiverAdapter.connect(connextHandler.wallet).xReceive(...xReceiveParams, callData);
         let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
         let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
 

@@ -11,7 +11,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     deployer,
     dataFeed.address,
     ZERO_ADDRESS, // defaultBridgeSenderAdapter
-    300,
+    3600,
+    1200,
   ];
 
   const deploy = await hre.deployments.deploy('DataFeedKeeper', {

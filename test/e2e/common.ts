@@ -29,9 +29,11 @@ import {
 } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
-import { hrtime } from 'process';
 
 const destinationDomain = 1111;
+
+const cooldown = 3600;
+const periodLength = 1200;
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
@@ -71,7 +73,7 @@ export async function setupContracts(): Promise<{
   const precalculatedConnextSenderAdapterAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 2 });
   const dataFeedKeeper = (await dataFeedKeeperFactory
     .connect(deployer)
-    .deploy(governor.address, dataFeed.address, precalculatedConnextSenderAdapterAddress, 0)) as DataFeedKeeper;
+    .deploy(governor.address, dataFeed.address, precalculatedConnextSenderAdapterAddress, cooldown, periodLength)) as DataFeedKeeper;
 
   const connextHandler = (await connextHandlerFactory.connect(deployer).deploy()) as ConnextHandlerForTest;
 

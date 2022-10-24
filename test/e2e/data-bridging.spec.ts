@@ -47,8 +47,11 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let tx: ContractTransaction;
   let snapshotId: string;
 
-  const nonce = 1;
   const destinationDomain = 420;
+  const nonce = 1;
+
+  const TIME_TRIGGER = 0;
+  const TWAP_TRIGGER = 1;
 
   before(async () => {
     await evm.reset({
@@ -381,14 +384,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(dataFeedKeeper.connect(governor)['work(bytes32)'](salt)).to.be.revertedWith('KeeperNotValid()');
+        await expect(dataFeedKeeper.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
         await expect(
           dataFeedKeeper.connect(governor)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
         ).to.be.revertedWith('KeeperNotValid()');
       });
 
       it('should work the job', async () => {
-        tx = await dataFeedKeeper.connect(keeper)['work(bytes32)'](salt);
+        tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
         const eventPoolObserved = (await tx.wait()).events![1];
         const observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -401,7 +404,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should pay the keeper', async () => {
-        tx = await dataFeedKeeper.connect(keeper)['work(bytes32)'](salt);
+        tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
         const eventPoolObserved = (await tx.wait()).events![1];
         const observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -458,7 +461,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when the bridge ignores a message', () => {
           beforeEach(async () => {
-            tx = await dataFeedKeeper.connect(keeper)['work(bytes32)'](salt);
+            tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
             const eventPoolObserved = (await tx.wait()).events![1];
             observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -509,7 +512,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
-          tx = await dataFeedKeeper.connect(keeper)['work(bytes32)'](salt);
+          tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
           const eventPoolObserved = (await tx.wait()).events![1];
           observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -520,11 +523,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           await dataFeedKeeper
             .connect(keeper)
             ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+
+          const jobCooldown = await dataFeedKeeper.jobCooldown();
+          await evm.advanceTimeAndBlock(jobCooldown);
         });
 
         context('when the bridge ignores a message', () => {
           beforeEach(async () => {
-            tx = await dataFeedKeeper.connect(keeper)['work(bytes32)'](salt);
+            tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
             const eventPoolObserved = (await tx.wait()).events![1];
             observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)

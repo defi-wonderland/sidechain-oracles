@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataFeedKeeper, DataFeedKeeper__factory, IKeep3r, IDataFeed } from '@typechained';
+import { DataFeedKeeper, DataFeedKeeper__factory, IKeep3r, IDataFeed, IUniswapV3Pool } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { KEEP3R, VALID_POOL_SALT } from '@utils/constants';
+import { KEEP3R, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
 import { onlyGovernor } from '@utils/behaviours';
+import { getCreate2Address } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -17,15 +18,23 @@ describe('DataFeedKeeper.sol', () => {
   let dataFeedKeeperFactory: MockContractFactory<DataFeedKeeper__factory>;
   let keep3r: FakeContract<IKeep3r>;
   let dataFeed: FakeContract<IDataFeed>;
+  let uniswapV3Pool: FakeContract<IUniswapV3Pool>;
   let snapshotId: string;
 
   const defaultSenderAdapterAddress = wallet.generateRandomAddress();
-  const initialJobCooldown = toBN(4 * 60 * 60);
+  const initialJobCooldown = 4 * 60 * 60;
+  const initialPeriodLength = 1 * 60 * 60;
+  const initialTwapLength = 4 * 60 * 60;
+  const initialUpperTwapThreshold = toBN(953); // log_{1.0001}(1.1) = log(1.1)/log(1.0001) = 953 ===> (+10 %)
+  const initialLowerTwapThreshold = toBN(-1053); // log_{1.0001}(0.9) = log(0.9)/log(1.0001) = -1053 ===> (-10 %)
 
   const randomSenderAdapterAddress = wallet.generateRandomAddress();
   const randomChainId = 32;
   const randomSalt = VALID_POOL_SALT;
   const randomNonce = 2;
+
+  const TIME_TRIGGER = 0;
+  const TWAP_TRIGGER = 1;
 
   before(async () => {
     [, governor, keeper] = await ethers.getSigners();
@@ -34,8 +43,18 @@ describe('DataFeedKeeper.sol', () => {
     keep3r.isKeeper.whenCalledWith(keeper.address).returns(true);
     dataFeed = await smock.fake('IDataFeed');
 
+    uniswapV3Pool = await smock.fake('IUniswapV3Pool', {
+      address: getCreate2Address(UNI_FACTORY, randomSalt, POOL_INIT_CODE_HASH),
+    });
+
     dataFeedKeeperFactory = await smock.mock('DataFeedKeeper');
-    dataFeedKeeper = await dataFeedKeeperFactory.deploy(governor.address, dataFeed.address, defaultSenderAdapterAddress, initialJobCooldown);
+    dataFeedKeeper = await dataFeedKeeperFactory.deploy(
+      governor.address,
+      dataFeed.address,
+      defaultSenderAdapterAddress,
+      initialJobCooldown,
+      initialPeriodLength
+    );
 
     snapshotId = await evm.snapshot.take();
   });
@@ -62,6 +81,11 @@ describe('DataFeedKeeper.sol', () => {
     it('should set the jobCooldown', async () => {
       let jobCooldown = await dataFeedKeeper.jobCooldown();
       expect(jobCooldown).to.eq(initialJobCooldown);
+    });
+
+    it('should set the periodLength', async () => {
+      let periodLength = await dataFeedKeeper.periodLength();
+      expect(periodLength).to.eq(initialPeriodLength);
     });
   });
 
@@ -179,49 +203,167 @@ describe('DataFeedKeeper.sol', () => {
     });
   });
 
-  describe('work(bytes32)', () => {
-    let now: number;
-    let periodLength: number;
-    const lastBlockTimestampObserved = 0;
-
-    beforeEach(async () => {
-      now = (await ethers.provider.getBlock('latest')).timestamp + 1;
-      periodLength = await dataFeedKeeper.periodLength();
-      dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, lastBlockTimestampObserved, 0, 0]);
-    });
-
+  describe('work(bytes32,uint8)', () => {
     it('should revert if the keeper is not valid', async () => {
       keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
-      await expect(dataFeedKeeper.connect(governor)['work(bytes32)'](randomSalt)).to.be.revertedWith('KeeperNotValid()');
+      await expect(dataFeedKeeper.connect(governor)['work(bytes32,uint8)'](randomSalt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
+      await expect(dataFeedKeeper.connect(governor)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
     });
 
-    it('should revert if jobCooldown has not expired', async () => {
-      dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([1, now, 0, 0]);
-      await expect(dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt)).to.be.revertedWith('NotWorkable()');
+    context('when the trigger reason is TIME', () => {
+      let now: number;
+      const lastBlockTimestampObserved = 0;
+
+      beforeEach(async () => {
+        now = (await ethers.provider.getBlock('latest')).timestamp + 1;
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, lastBlockTimestampObserved, 0, 0]);
+      });
+
+      it('should revert if jobCooldown has not expired', async () => {
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([1, now, 0, 0]);
+        await expect(dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TIME_TRIGGER)).to.be.revertedWith('NotWorkable()');
+      });
+
+      it('should call to fetch observations (having calculated secondsAgos)', async () => {
+        dataFeed.fetchObservations.reset();
+        await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+        const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
+        expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+      });
+
+      it('should call to pay the keeper', async () => {
+        keep3r.worked.reset();
+        await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+        expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
+      });
     });
 
-    it('should call to fetch observations (having calculated secondsAgos)', async () => {
-      dataFeed.fetchObservations.reset();
-      await dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt);
-      const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, lastBlockTimestampObserved);
-      expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
-    });
+    context('when the trigger reason is TWAP', () => {
+      let secondsNow: number;
+      let twapLength = 30;
+      let secondsAgos = [twapLength, 0];
+      let tickCumulative = 3000;
+      let tickCumulativesDelta: number;
+      let tickCumulatives: number[];
+      let poolArithmeticMeanTick: number;
+      let lastBlockTimestampObserved: number;
+      let lastTickCumulativeObserved: number;
+      let lastArithmeticMeanTickObserved = 200;
+      let oracleDelta = 10;
+      let oracleTickCumulative: number;
+      let oracleTickCumulativesDelta: number;
+      let oracleArithmeticMeanTick: number;
+      let upperIsSurpassed = 25;
+      let upperIsNotSurpassed = 50;
+      let lowerIsSurpassed = 50;
+      let lowerIsNotSurpassed = 25;
 
-    it('should call to pay the keeper', async () => {
-      keep3r.worked.reset();
-      await dataFeedKeeper.connect(keeper)['work(bytes32)'](randomSalt);
-      expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
+      beforeEach(async () => {
+        await dataFeedKeeper.connect(governor).setTwapLength(twapLength);
+        secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 2;
+      });
+
+      // arithmeticMeanTick = tickCumulativesDelta / delta
+      context('when the arithmetic mean ticks are truncated', () => {
+        beforeEach(async () => {
+          tickCumulativesDelta = 2000;
+          tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
+          poolArithmeticMeanTick = Math.trunc(tickCumulativesDelta / twapLength);
+          uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          lastBlockTimestampObserved = secondsNow - oracleDelta;
+          lastTickCumulativeObserved = 2000;
+          oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
+          oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
+          oracleArithmeticMeanTick = Math.trunc(oracleTickCumulativesDelta / twapLength);
+          dataFeed.lastPoolStateObserved
+            .whenCalledWith(randomSalt)
+            .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
+        });
+
+        context('when no thresholds are surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+          });
+
+          it('should revert', async () => {
+            await expect(dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotWorkable()');
+          });
+        });
+
+        context('when a threshold is surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+          });
+
+          it('should call to fetch observations (having calculated secondsAgos)', async () => {
+            dataFeed.fetchObservations.reset();
+            await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
+            expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+          });
+
+          it('should call to pay the keeper', async () => {
+            keep3r.worked.reset();
+            await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
+          });
+        });
+      });
+
+      // arithmeticMeanTick = tickCumulativesDelta / delta
+      context('when the arithmetic mean ticks are rounded to negative infinity', () => {
+        beforeEach(async () => {
+          tickCumulativesDelta = -2001;
+          tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
+          poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
+          uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          lastTickCumulativeObserved = -2001;
+          oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
+          oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
+          oracleArithmeticMeanTick = Math.floor(oracleTickCumulativesDelta / twapLength);
+          dataFeed.lastPoolStateObserved
+            .whenCalledWith(randomSalt)
+            .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
+        });
+
+        context('when no thresholds are surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+          });
+
+          it('should revert', async () => {
+            await expect(dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotWorkable()');
+          });
+        });
+
+        context('when a threshold is surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+          });
+
+          it('should call to fetch observations (having calculated secondsAgos)', async () => {
+            dataFeed.fetchObservations.reset();
+            await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            const secondsAgos = await dataFeedKeeper.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
+            expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+          });
+
+          it('should call to pay the keeper', async () => {
+            keep3r.worked.reset();
+            await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
+          });
+        });
+      });
     });
   });
 
   describe('forceWork(...)', () => {
-    let periodLength: number;
     let secondsAgos: number[];
     const fromTimestamp = 0;
 
     beforeEach(async () => {
-      periodLength = await dataFeedKeeper.periodLength();
-      secondsAgos = await dataFeedKeeper.calculateSecondsAgos(periodLength, fromTimestamp);
+      secondsAgos = await dataFeedKeeper.calculateSecondsAgos(initialPeriodLength, fromTimestamp);
     });
 
     onlyGovernor(
@@ -260,7 +402,7 @@ describe('DataFeedKeeper.sol', () => {
   });
 
   describe('setJobCooldown(...)', () => {
-    let newJobCooldown = initialJobCooldown.add(1 * 60 * 60);
+    let newJobCooldown = initialJobCooldown + 1 * 60 * 60;
 
     onlyGovernor(
       () => dataFeedKeeper,
@@ -268,6 +410,16 @@ describe('DataFeedKeeper.sol', () => {
       () => governor,
       () => [newJobCooldown]
     );
+
+    it('should revert if jobCooldown <= periodLength', async () => {
+      await expect(dataFeedKeeper.connect(governor).setJobCooldown(initialPeriodLength)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedKeeper.connect(governor).setJobCooldown(initialPeriodLength + 1)).not.to.be.reverted;
+    });
+
+    it.skip('should revert if jobCooldown >= twapLength', async () => {
+      await expect(dataFeedKeeper.connect(governor).setJobCooldown(initialTwapLength)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedKeeper.connect(governor).setJobCooldown(initialTwapLength - 1)).not.to.be.reverted;
+    });
 
     it('should update the jobCooldown', async () => {
       await dataFeedKeeper.connect(governor).setJobCooldown(newJobCooldown);
@@ -282,11 +434,106 @@ describe('DataFeedKeeper.sol', () => {
     });
   });
 
+  describe('setPeriodLength(...)', () => {
+    let newPeriodLength = initialPeriodLength + 1 * 60 * 60;
+
+    onlyGovernor(
+      () => dataFeedKeeper,
+      'setPeriodLength',
+      () => governor,
+      () => [newPeriodLength]
+    );
+
+    it('should revert if periodLength >= jobCooldown', async () => {
+      await expect(dataFeedKeeper.connect(governor).setPeriodLength(initialJobCooldown)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedKeeper.connect(governor).setPeriodLength(initialJobCooldown - 1)).not.to.be.reverted;
+    });
+
+    it('should update the periodLength', async () => {
+      await dataFeedKeeper.connect(governor).setPeriodLength(newPeriodLength);
+      let periodLength = await dataFeedKeeper.periodLength();
+      expect(periodLength).to.eq(newPeriodLength);
+    });
+
+    it('should emit PeriodLengthUpdated', async () => {
+      await expect(dataFeedKeeper.connect(governor).setPeriodLength(newPeriodLength))
+        .to.emit(dataFeedKeeper, 'PeriodLengthUpdated')
+        .withArgs(newPeriodLength);
+    });
+  });
+
+  describe('setTwapLength(...)', () => {
+    let newTwapLength = initialTwapLength + 1 * 60 * 60;
+
+    onlyGovernor(
+      () => dataFeedKeeper,
+      'setTwapLength',
+      () => governor,
+      () => [newTwapLength]
+    );
+
+    it.skip('should revert if twapLength <= jobCooldown', async () => {
+      await expect(dataFeedKeeper.connect(governor).setTwapLength(initialJobCooldown)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedKeeper.connect(governor).setTwapLength(initialJobCooldown + 1)).not.to.be.reverted;
+    });
+
+    it('should update the twapLength', async () => {
+      await dataFeedKeeper.connect(governor).setTwapLength(newTwapLength);
+      let twapLength = await dataFeedKeeper.twapLength();
+      expect(twapLength).to.eq(newTwapLength);
+    });
+
+    it('should emit TwapLengthUpdated', async () => {
+      await expect(dataFeedKeeper.connect(governor).setTwapLength(newTwapLength))
+        .to.emit(dataFeedKeeper, 'TwapLengthUpdated')
+        .withArgs(newTwapLength);
+    });
+  });
+
+  describe('setTwapThresholds(...)', () => {
+    let newUpperTwapThreshold = initialUpperTwapThreshold.add(10);
+    let newLowerTwapThreshold = initialLowerTwapThreshold.add(10);
+
+    onlyGovernor(
+      () => dataFeedKeeper,
+      'setTwapThresholds',
+      () => governor,
+      () => [newUpperTwapThreshold, newLowerTwapThreshold]
+    );
+
+    it.skip('should revert if newUpperTwapThreshold < 0 || newLowerTwapThreshold > 0', async () => {
+      await expect(dataFeedKeeper.connect(governor).setTwapThresholds(newLowerTwapThreshold, newUpperTwapThreshold)).to.be.revertedWith(
+        'WrongSetting()'
+      );
+      await expect(dataFeedKeeper.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold)).not.to.be.reverted;
+    });
+
+    it('should update the upperTwapThreshold', async () => {
+      await dataFeedKeeper.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold);
+      let upperTwapThreshold = await dataFeedKeeper.upperTwapThreshold();
+      expect(upperTwapThreshold).to.eq(newUpperTwapThreshold);
+    });
+
+    it('should update the lowerTwapThreshold', async () => {
+      await dataFeedKeeper.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold);
+      let lowerTwapThreshold = await dataFeedKeeper.lowerTwapThreshold();
+      expect(lowerTwapThreshold).to.eq(newLowerTwapThreshold);
+    });
+
+    it('should emit TwapThresholdsUpdated', async () => {
+      await expect(dataFeedKeeper.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold))
+        .to.emit(dataFeedKeeper, 'TwapThresholdsUpdated')
+        .withArgs(newUpperTwapThreshold, newLowerTwapThreshold);
+    });
+  });
+
   describe('workable(uint16,bytes32,uint24)', () => {
+    let isWorkable: boolean;
+
     it('should return false if the pipeline is not whitelisted', async () => {
       dataFeed.whitelistedNonces.whenCalledWith(randomChainId, randomSalt).returns(0);
-      let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
-      expect(workable).to.eq(false);
+      isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+      expect(isWorkable).to.eq(false);
     });
 
     context('when the pipeline is whitelisted', () => {
@@ -295,8 +542,8 @@ describe('DataFeedKeeper.sol', () => {
       });
 
       it('should return false if the nonce is lower than the whitelisted nonce', async () => {
-        let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
-        expect(workable).to.eq(false);
+        isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+        expect(isWorkable).to.eq(false);
       });
 
       context('when lastPoolNonceBridged is 0', () => {
@@ -305,15 +552,15 @@ describe('DataFeedKeeper.sol', () => {
         });
 
         it('should return true if the nonce equals the last pool nonce observed', async () => {
-          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
-          expect(workable).to.eq(true);
+          isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+          expect(isWorkable).to.eq(true);
         });
 
         it('should return false if the nonce is different than the last pool nonce observed', async () => {
-          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
-          expect(workable).to.eq(false);
-          workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
-          expect(workable).to.eq(false);
+          isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+          expect(isWorkable).to.eq(false);
+          isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
+          expect(isWorkable).to.eq(false);
         });
       });
 
@@ -323,52 +570,163 @@ describe('DataFeedKeeper.sol', () => {
         });
 
         it('should return true if the nonce is one higher than lastPoolNonceBridged', async () => {
-          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
-          expect(workable).to.eq(true);
+          isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+          expect(isWorkable).to.eq(true);
         });
 
         it('should return false if the nonce is not one higher than lastPoolNonceBridged', async () => {
-          let workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
-          expect(workable).to.eq(false);
-          workable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
-          expect(workable).to.eq(false);
+          isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+          expect(isWorkable).to.eq(false);
+          isWorkable = await dataFeedKeeper['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
+          expect(isWorkable).to.eq(false);
         });
       });
     });
   });
 
-  describe('workable(bytes32)', () => {
-    let now: number;
-    let jobCooldown = initialJobCooldown.toNumber();
+  describe('workable(bytes32,uint8)', () => {
+    let isWorkable: boolean;
 
     it('should return false if the pool is not whitelisted', async () => {
       dataFeed.isWhitelistedPool.whenCalledWith(randomSalt).returns(false);
-      let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
-      expect(workable).to.eq(false);
+      isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+      expect(isWorkable).to.eq(false);
+      isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+      expect(isWorkable).to.eq(false);
     });
 
     context('when the pool is whitelisted', () => {
       beforeEach(async () => {
         dataFeed.isWhitelistedPool.whenCalledWith(randomSalt).returns(true);
-        now = (await ethers.provider.getBlock('latest')).timestamp;
       });
 
-      it('should return true if jobCooldown is 0', async () => {
-        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
-        let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
-        expect(workable).to.eq(true);
+      context('when the trigger reason is TIME', () => {
+        let now: number;
+
+        beforeEach(async () => {
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+        });
+
+        it('should return true if jobCooldown is 0', async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
+          isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+          expect(isWorkable).to.eq(true);
+        });
+
+        it('should return true if jobCooldown has expired', async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialJobCooldown, 0, 0]);
+          isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+          expect(isWorkable).to.eq(true);
+        });
+
+        it('should return false if jobCooldown has not expired', async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialJobCooldown + 1, 0, 0]);
+          isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+          expect(isWorkable).to.eq(false);
+        });
       });
 
-      it('should return true if jobCooldown has expired', async () => {
-        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - jobCooldown, 0, 0]);
-        let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
-        expect(workable).to.eq(true);
-      });
+      context('when the trigger reason is TWAP', () => {
+        let secondsNow: number;
+        let twapLength = 30;
+        let secondsAgos = [twapLength, 0];
+        let tickCumulative = 3000;
+        let tickCumulativesDelta: number;
+        let tickCumulatives: number[];
+        let poolArithmeticMeanTick: number;
+        let lastBlockTimestampObserved: number;
+        let lastTickCumulativeObserved: number;
+        let lastArithmeticMeanTickObserved = 200;
+        let oracleDelta = 10;
+        let oracleTickCumulative: number;
+        let oracleTickCumulativesDelta: number;
+        let oracleArithmeticMeanTick: number;
+        let upperIsSurpassed = 25;
+        let upperIsNotSurpassed = 50;
+        let lowerIsSurpassed = 50;
+        let lowerIsNotSurpassed = 25;
 
-      it('should return false if jobCooldown has not expired', async () => {
-        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - jobCooldown + 1, 0, 0]);
-        let workable = await dataFeedKeeper['workable(bytes32)'](randomSalt);
-        expect(workable).to.eq(false);
+        beforeEach(async () => {
+          await dataFeedKeeper.connect(governor).setTwapLength(twapLength);
+          secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
+        });
+
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean ticks are truncated', () => {
+          beforeEach(async () => {
+            tickCumulativesDelta = 2000;
+            tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
+            poolArithmeticMeanTick = Math.trunc(tickCumulativesDelta / twapLength);
+            uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+            lastBlockTimestampObserved = secondsNow - oracleDelta;
+            lastTickCumulativeObserved = 2000;
+            oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
+            oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
+            oracleArithmeticMeanTick = Math.trunc(oracleTickCumulativesDelta / twapLength);
+            dataFeed.lastPoolStateObserved
+              .whenCalledWith(randomSalt)
+              .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
+          });
+
+          it('should return true if only the upper threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+
+            isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isWorkable).to.eq(true);
+          });
+
+          it('should return true if only the lower threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+
+            isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isWorkable).to.eq(true);
+          });
+
+          it('should return false if no thresholds are surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+
+            isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isWorkable).to.eq(false);
+          });
+        });
+
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean ticks are rounded to negative infinity', () => {
+          beforeEach(async () => {
+            tickCumulativesDelta = -2001;
+            tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
+            poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
+            uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+            lastTickCumulativeObserved = -2001;
+            oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
+            oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
+            oracleArithmeticMeanTick = Math.floor(oracleTickCumulativesDelta / twapLength);
+            dataFeed.lastPoolStateObserved
+              .whenCalledWith(randomSalt)
+              .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
+          });
+
+          it('should return true if only the upper threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+
+            isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isWorkable).to.eq(true);
+          });
+
+          it('should return true if only the lower threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+
+            isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isWorkable).to.eq(true);
+          });
+
+          it('should return false if no thresholds are surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+
+            isWorkable = await dataFeedKeeper['workable(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isWorkable).to.eq(false);
+          });
+        });
       });
     });
   });

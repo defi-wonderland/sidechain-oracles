@@ -83,11 +83,11 @@ describe('@skip-on-coverage Fixture', () => {
         });
 
         it('should be able to fetch observations', async () => {
-          await expect(dataFeedKeeper['work(bytes32)'](poolSalt)).not.to.be.reverted;
+          await expect(dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0)).not.to.be.reverted;
         });
 
         it('should be able to fetch and send observations', async () => {
-          const tx = await dataFeedKeeper['work(bytes32)'](poolSalt);
+          const tx = await dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0);
           const txReceipt = await tx.wait();
           const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
 

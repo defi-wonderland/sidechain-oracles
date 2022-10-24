@@ -25,8 +25,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeed = await hre.deployments.get('DataFeed');
 
-  const FETCH_OBSERVATION_ARGS = [salt];
-  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32)', ...FETCH_OBSERVATION_ARGS);
+  // TODO: replace 0 with Enum Reason
+  const FETCH_OBSERVATION_ARGS = [salt, 0];
+  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',

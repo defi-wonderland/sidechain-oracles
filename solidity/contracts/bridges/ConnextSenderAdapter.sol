@@ -24,15 +24,12 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     bytes32 _poolSalt,
     uint24 _poolNonce // TODO: review input parameters packing KMC-
   ) external payable onlyDataFeed {
-    // TODO: asset will be deprecated, we have to have one for now--will delete as soon as it's deprecated. This address is a random placeholder
-    address _asset = 0x7ea6eA49B0b0Ae9c5db7907d139D9Cd3439862a1;
-
     bytes memory _callData = abi.encode(_observationsData, _poolSalt, _poolNonce);
 
     IConnext(connext).xcall({
       _destination: _destinationDomainId, // unique identifier for destination domain
       _to: _to, // recipient of funds, where calldata will be executed
-      _asset: _asset, // asset being transferred
+      _asset: address(0), // asset being transferred
       _delegate: address(0), // permissioned address to recover in edgecases on destination domain
       _amount: 0, // amount being transferred
       _slippage: 0, // slippage in bps

@@ -9,7 +9,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const txSettings = {
     from: deployer,
-    gasLimit: 10e6,
     log: true,
   };
 
@@ -17,6 +16,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     address: keep3r,
     abi: IKeep3r.abi,
   });
+
+  const SET_KEEPER = await hre.deployments.read('DataFeed', 'keeper');
+  if (dataFeedKeeper.address != SET_KEEPER) {
+    await hre.deployments.execute('DataFeed', txSettings, 'setKeeper', dataFeedKeeper.address);
+  }
 
   const IS_KEEPER = await hre.deployments.read('Keep3r', 'isKeeper', deployer);
   if (!IS_KEEPER) {
@@ -36,5 +40,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.tags = ['setup-test-keeper', 'test'];
+deployFunction.dependencies = ['setup-data-feed-keeper'];
+deployFunction.tags = ['setup-keeper'];
 export default deployFunction;

@@ -95,7 +95,7 @@ describe('OracleSidechain.sol', () => {
 
     it('should work with disordered tokens', async () => {
       await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenA, randomTokenB, randomFee)).not.to.be.revertedWith('InvalidPool()');
-      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenA, randomTokenB, randomFee)).not.to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenB, randomTokenA, randomFee)).not.to.be.revertedWith('InvalidPool()');
     });
 
     it('should set token0', async () => {

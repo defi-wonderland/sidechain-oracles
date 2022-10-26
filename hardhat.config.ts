@@ -24,7 +24,6 @@ const networks: NetworksUserConfig =
           },
           chainId: 5,
           companionNetworks: {
-            sender: 'hardhat',
             receiver: 'hardhat',
           },
         },
@@ -36,30 +35,21 @@ const networks: NetworksUserConfig =
             receiver: 'goerli',
           },
         },
-        singleton: {
+        // setup: mumbai bridges to goerli and goerli uses dummy adapter
+        goerli: {
           url: env.getNodeUrl('goerli'),
-          accounts: env.getAccounts('goerli'),
+          accounts: env.getAccounts('test'),
           chainId: 5,
           companionNetworks: {
-            sender: 'singleton',
-            receiver: 'singleton',
-          },
-          gasPrice: 10e9,
-        },
-        sender: {
-          url: env.getNodeUrl('goerli'),
-          accounts: env.getAccounts('goerli'),
-          chainId: 5,
-          companionNetworks: {
-            receiver: 'receiver',
+            receiver: 'goerli',
           },
         },
-        receiver: {
-          url: env.getNodeUrl('op_goerli'),
-          accounts: env.getAccounts('goerli'),
-          chainId: 420,
+        mumbai: {
+          url: 'https://rpc-mumbai.maticvigil.com/',
+          accounts: env.getAccounts('test'),
+          chainId: 80001,
           companionNetworks: {
-            sender: 'sender',
+            receiver: 'goerli',
           },
         },
       };
@@ -114,7 +104,7 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'kovan', 'rinkeby', 'goerli']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'goerli']),
   },
   typechain: {
     outDir: 'typechained',

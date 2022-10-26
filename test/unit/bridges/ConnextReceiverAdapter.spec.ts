@@ -59,10 +59,10 @@ describe('ConnextReceiverAdapter.sol', () => {
       expect(await connextReceiverAdapter.connext()).to.eq(connextHandler.address);
     });
     it('should initialize origin contract to the address passed to the constructor', async () => {
-      expect(await connextReceiverAdapter.dao()).to.eq(connextSenderAdapter.address);
+      expect(await connextReceiverAdapter.source()).to.eq(connextSenderAdapter.address);
     });
     it('should initialize origin domain id to the id passed to the constructor', async () => {
-      expect(await connextReceiverAdapter.origin()).to.eq(rinkebyOriginId);
+      expect(await connextReceiverAdapter.originDomain()).to.eq(rinkebyOriginId);
     });
   });
 

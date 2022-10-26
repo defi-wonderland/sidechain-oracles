@@ -42,7 +42,6 @@ describe('@skip-on-coverage Fixture', () => {
 
       oracleFactory = (await getContractFromFixture('OracleFactory')) as Type.OracleFactory;
       dataFeed = (await getContractFromFixture('DataFeed')) as Type.DataFeed;
-      dataFeedKeeper = (await getContractFromFixture('DataFeedKeeper')) as Type.DataFeedKeeper;
       dataReceiver = (await getContractFromFixture('DataReceiver')) as Type.DataReceiver;
 
       senderAdapter = await getContractFromFixture('DummyAdapterForTest');
@@ -52,18 +51,15 @@ describe('@skip-on-coverage Fixture', () => {
     it('should set correct test settings', async () => {
       expect(await oracleFactory.dataReceiver()).to.eq(dataReceiver.address);
       expect(await dataReceiver.oracleFactory()).to.eq(oracleFactory.address);
-      expect(await dataFeed.keeper()).to.eq(dataFeedKeeper.address);
-      expect(await dataFeedKeeper.dataFeed()).to.eq(dataFeed.address);
+      expect(await dataFeed.keeper()).to.eq(deployer);
 
       expect(await dataFeed.whitelistedAdapters(senderAdapter.address)).to.be.true;
       expect(await dataReceiver.whitelistedAdapters(receiverAdapter.address)).to.be.true;
     });
 
-    // TODO: reverts with UnallowedPool()
     describe('when pool is deployed', () => {
       beforeEach(async () => {
         await deployments.fixture(['save-tokens'], { keepExistingDeployments: true });
-        await deployments.fixture(['create-pool'], { keepExistingDeployments: true });
         await deployments.fixture(['pool-whitelisting'], { keepExistingDeployments: true });
 
         tokenA = (await getContractFromFixture('TokenA', 'ERC20ForTest')) as Type.IERC20;
@@ -73,44 +69,58 @@ describe('@skip-on-coverage Fixture', () => {
         await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
       });
 
-      it('should work with send-force-test-observation fixture', async () => {
-        await deployments.fixture(['send-force-test-observation'], { keepExistingDeployments: true });
+      it('should work with manual-send-test-observation fixture', async () => {
+        await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
       });
 
       describe('when the job is setup', () => {
         beforeEach(async () => {
+          await deployments.fixture(['setup-data-feed-keeper'], { keepExistingDeployments: true });
+          await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
+          dataFeedKeeper = (await getContractFromFixture('DataFeedKeeper')) as Type.DataFeedKeeper;
           await addCreditsToJob(dataFeedKeeper.address);
+        });
+
+        it('should set correct test settings', async () => {
+          expect(await dataFeed.keeper()).to.eq(dataFeedKeeper.address);
+          expect(await dataFeedKeeper.dataFeed()).to.eq(dataFeed.address);
         });
 
         it('should be able to fetch observations', async () => {
           await expect(dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0)).not.to.be.reverted;
         });
 
-        it('should be able to fetch and send observations', async () => {
-          const tx = await dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0);
-          const txReceipt = await tx.wait();
-          const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+        context('when dummy adapter is setup', () => {
+          beforeEach(async () => {
+            await deployments.fixture(['dummy-keeper-setup'], { keepExistingDeployments: true });
+            await addCreditsToJob(dataFeedKeeper.address);
+          });
 
-          // TODO: read from deployment
-          const RANDOM_CHAIN_ID = 5;
+          it('should be able to fetch and send observations', async () => {
+            const tx = await dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0);
+            const txReceipt = await tx.wait();
+            const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
 
-          await expect(
-            dataFeedKeeper['work(uint16,bytes32,uint24,(uint32,int24)[])'](
-              RANDOM_CHAIN_ID,
-              poolSalt,
-              fetchData._poolNonce,
-              fetchData._observationsData
-            )
-          ).not.to.be.reverted;
+            const RANDOM_CHAIN_ID = 5;
 
-          const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
-          oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
+            await expect(
+              dataFeedKeeper['work(uint16,bytes32,uint24,(uint32,int24)[])'](
+                RANDOM_CHAIN_ID,
+                poolSalt,
+                fetchData._poolNonce,
+                fetchData._observationsData
+              )
+            ).not.to.be.reverted;
 
-          expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
-        });
+            const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
+            oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
 
-        it('should work with send-test-observation fixture', async () => {
-          await deployments.fixture(['send-test-observation'], { keepExistingDeployments: true });
+            expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
+          });
+
+          it('should work with send-test-observation fixture', async () => {
+            await deployments.fixture(['send-test-observation'], { keepExistingDeployments: true });
+          });
         });
       });
     });
@@ -118,9 +128,8 @@ describe('@skip-on-coverage Fixture', () => {
 
   describe('production setup', () => {
     beforeEach(async () => {
-      await deployments.fixture(['connext-setup'], { keepExistingDeployments: true });
-      await deployments.fixture(['token-actions'], { keepExistingDeployments: true });
-      await deployments.fixture(['setup-test-keeper'], { keepExistingDeployments: true });
+      await deployments.fixture(['base-contracts']);
+      await deployments.fixture(['setup-keeper', 'connext-setup'], { keepExistingDeployments: true });
 
       dataFeedKeeper = (await getContractFromFixture('DataFeedKeeper')) as Type.DataFeedKeeper;
 
@@ -128,10 +137,12 @@ describe('@skip-on-coverage Fixture', () => {
       await addCreditsToJob(dataFeedKeeper.address);
     });
 
-    // NOTE: reverts at ConnextBridge: 0x6c9a905ab3f4495e2b47f5ca131ab71281e0546e
-    // NOTE: works in deployment
-    it.skip('should work', async () => {
+    it('should work with send-observation', async () => {
       await deployments.fixture(['send-observation'], { keepExistingDeployments: true });
+    });
+
+    it('should work with force-fetch-observation', async () => {
+      await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
     });
   });
 });

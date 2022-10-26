@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { DeployResult } from 'hardhat-deploy/dist/types';
+import { DeployResult, Deployment } from 'hardhat-deploy/dist/types';
 import { HardhatNetworkUserConfig, HardhatRuntimeEnvironment } from 'hardhat/types';
 
 let testChainId: number;
@@ -41,7 +41,7 @@ export const verifyContractIfNeeded = async (hre: HardhatRuntimeEnvironment, dep
   return false;
 };
 
-export const verifyContract = async (hre: HardhatRuntimeEnvironment, deploy: DeployResult): Promise<void> => {
+export const verifyContract = async (hre: HardhatRuntimeEnvironment, deploy: DeployResult | Deployment): Promise<void> => {
   if (hre.network.config.chainId === 31337 || !hre.config.etherscan.apiKey) {
     return; // contract is deployed on local network or no apiKey is configured
   }
@@ -68,4 +68,13 @@ export const verifyContractByAddress = async (hre: HardhatRuntimeEnvironment, ad
 export const waitDeployment = async (deploy: DeployResult, blocks: number) => {
   const txReceipt = await ethers.provider.getTransaction(deploy.receipt!.transactionHash);
   await txReceipt.wait(blocks);
+};
+
+export const getReceiverChainId = async (hre: HardhatRuntimeEnvironment): Promise<string | void> => {
+  const senderChainId = await hre.getChainId();
+  const receiverChainId = await hre.companionNetworks['receiver'].getChainId();
+
+  if (senderChainId != receiverChainId) return receiverChainId;
+  // returns 420 for same chain test
+  return '420';
 };

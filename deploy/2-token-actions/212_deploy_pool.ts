@@ -10,7 +10,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const txSettings = {
     from: deployer,
-    gasLimit: 10e6,
     log: true,
   };
 
@@ -35,6 +34,13 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await hre.deployments.save('UniV3Pool', {
     abi: IUniswapV3Pool.abi,
     address: UNI_V3_POOL_ADDRESS,
+  });
+
+  console.log('deployed', {
+    tokenA: tokenA.address,
+    tokenB: tokenB.address,
+    fee: TEST_FEE,
+    pool: UNI_V3_POOL_ADDRESS,
   });
 
   /* INITIALIZE POOL */

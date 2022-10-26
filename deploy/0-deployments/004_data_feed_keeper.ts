@@ -1,6 +1,5 @@
 import { DeployFunction } from 'hardhat-deploy/types';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { verifyContractIfNeeded } from 'utils/deploy';
 import { ZERO_ADDRESS } from '@utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -15,7 +14,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     1200,
   ];
 
-  const deploy = await hre.deployments.deploy('DataFeedKeeper', {
+  await hre.deployments.deploy('DataFeedKeeper', {
     contract: 'solidity/contracts/DataFeedKeeper.sol:DataFeedKeeper',
     from: deployer,
     log: true,
@@ -27,10 +26,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   if (keep3r != SET_KEEP3R) {
     await hre.deployments.execute('DataFeedKeeper', { from: deployer, log: true }, 'setKeep3r', keep3r);
   }
-
-  await verifyContractIfNeeded(hre, deploy);
 };
 
-deployFunction.tags = ['deploy-data-feed-keeper', 'data-feed-keeper', 'base-contracts'];
+deployFunction.tags = ['data-feed-keeper'];
 
 export default deployFunction;

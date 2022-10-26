@@ -5,6 +5,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 import { calculateSalt } from '../../test/utils/misc';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
 import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
+import { getReceiverChainId } from '../../utils/deploy';
 
 /* TODO:
  * - setup fee, tokens, and chain ID (destination)
@@ -13,11 +14,10 @@ import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
-  const DESTINATION_CHAIN_ID = await hre.companionNetworks['receiver'].getChainId();
+  const DESTINATION_CHAIN_ID = await getReceiverChainId(hre);
 
   const txSettings = {
     from: deployer,
-    gasLimit: 10e6,
     log: true,
   };
 

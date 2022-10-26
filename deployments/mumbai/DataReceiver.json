@@ -1,0 +1,449 @@
+{
+  "address": "0xf02380D3Bc037357E243C6Ed0CA22eBfC4f80111",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_governor",
+          "type": "address"
+        },
+        {
+          "internalType": "contract IOracleFactory",
+          "name": "_oracleFactory",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "LengthMismatch",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ObservationsNotWritable",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyGovernor",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "OnlyPendingGovernor",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "UnallowedAdapter",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "ZeroAddress",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "contract IBridgeReceiverAdapter",
+          "name": "_adapter",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "_isAllowed",
+          "type": "bool"
+        }
+      ],
+      "name": "AdapterWhitelisted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_user",
+          "type": "address"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint32",
+              "name": "blockTimestamp",
+              "type": "uint32"
+            },
+            {
+              "internalType": "int24",
+              "name": "tick",
+              "type": "int24"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct IOracleSidechain.ObservationData[]",
+          "name": "_observationsData",
+          "type": "tuple[]"
+        }
+      ],
+      "name": "ObservationsAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_newGovernor",
+          "type": "address"
+        }
+      ],
+      "name": "PendingGovernorAccepted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_governor",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "_pendingGovernor",
+          "type": "address"
+        }
+      ],
+      "name": "PendingGovernorSet",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "ORACLE_INIT_CODE_HASH",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "acceptPendingGovernor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint32",
+              "name": "blockTimestamp",
+              "type": "uint32"
+            },
+            {
+              "internalType": "int24",
+              "name": "tick",
+              "type": "int24"
+            }
+          ],
+          "internalType": "struct IOracleSidechain.ObservationData[]",
+          "name": "_observationsData",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_poolSalt",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint24",
+          "name": "_poolNonce",
+          "type": "uint24"
+        }
+      ],
+      "name": "addObservations",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "governor",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "oracleFactory",
+      "outputs": [
+        {
+          "internalType": "contract IOracleFactory",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "pendingGovernor",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_pendingGovernor",
+          "type": "address"
+        }
+      ],
+      "name": "setPendingGovernor",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBridgeReceiverAdapter",
+          "name": "_receiverAdapter",
+          "type": "address"
+        },
+        {
+          "internalType": "bool",
+          "name": "_isWhitelisted",
+          "type": "bool"
+        }
+      ],
+      "name": "whitelistAdapter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBridgeReceiverAdapter[]",
+          "name": "_receiverAdapters",
+          "type": "address[]"
+        },
+        {
+          "internalType": "bool[]",
+          "name": "_isWhitelisted",
+          "type": "bool[]"
+        }
+      ],
+      "name": "whitelistAdapters",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IBridgeReceiverAdapter",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "whitelistedAdapters",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x37dfb0d6c9be244aea89da79158919f1061f4cf71e8cc26557df32240e48b156",
+  "receipt": {
+    "to": null,
+    "from": "0x57B067e4E27558FE2c60fCE86941011cB5F5A4FD",
+    "contractAddress": "0xf02380D3Bc037357E243C6Ed0CA22eBfC4f80111",
+    "transactionIndex": 24,
+    "gasUsed": "691682",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000010000000000000000000000020000000000000000000008000000000000000000000000000000000000000000000000000000000800000000000000000000100000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000004000000010000000000001000000000000000000000000000000100000001000000000000000000000004000000000000000000000000000800000000000100000",
+    "blockHash": "0x5ea59d7691c684a5881844d08f0f461f6728cb7c1946964c924581727c553824",
+    "transactionHash": "0x37dfb0d6c9be244aea89da79158919f1061f4cf71e8cc26557df32240e48b156",
+    "logs": [
+      {
+        "transactionIndex": 24,
+        "blockNumber": 28787342,
+        "transactionHash": "0x37dfb0d6c9be244aea89da79158919f1061f4cf71e8cc26557df32240e48b156",
+        "address": "0x0000000000000000000000000000000000001010",
+        "topics": [
+          "0x4dfe1bbbcf077ddc3e01291eea2d5c70c2b422b415d95645b9adcfd678cb1d63",
+          "0x0000000000000000000000000000000000000000000000000000000000001010",
+          "0x00000000000000000000000057b067e4e27558fe2c60fce86941011cb5f5a4fd",
+          "0x000000000000000000000000f903ba9e006193c1527bfbe65fe2123704ea3f99"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000003b3109d6f9a8a0000000000000000000000000000000000000000000000000b66df15954936cf000000000000000000000000000000000000000000000847864d7c4bf474c0850000000000000000000000000000000000000000000000000b632c04f7d99c4500000000000000000000000000000000000000000000084786512f5c91e45b0f",
+        "logIndex": 110,
+        "blockHash": "0x5ea59d7691c684a5881844d08f0f461f6728cb7c1946964c924581727c553824"
+      }
+    ],
+    "blockNumber": 28787342,
+    "cumulativeGasUsed": "17627608",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x57B067e4E27558FE2c60fCE86941011cB5F5A4FD",
+    "0xB935EcCdA96A2D0588781c05142fBa49f8727cE7"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "e7fc03fa33df5bc693f224b1290bbe21",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.15+commit.e14f2714\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_governor\",\"type\":\"address\"},{\"internalType\":\"contract IOracleFactory\",\"name\":\"_oracleFactory\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"LengthMismatch\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ObservationsNotWritable\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyGovernor\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"OnlyPendingGovernor\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"UnallowedAdapter\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ZeroAddress\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"contract IBridgeReceiverAdapter\",\"name\":\"_adapter\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"_isAllowed\",\"type\":\"bool\"}],\"name\":\"AdapterWhitelisted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_user\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"uint32\",\"name\":\"blockTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"int24\",\"name\":\"tick\",\"type\":\"int24\"}],\"indexed\":false,\"internalType\":\"struct IOracleSidechain.ObservationData[]\",\"name\":\"_observationsData\",\"type\":\"tuple[]\"}],\"name\":\"ObservationsAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_newGovernor\",\"type\":\"address\"}],\"name\":\"PendingGovernorAccepted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_governor\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"_pendingGovernor\",\"type\":\"address\"}],\"name\":\"PendingGovernorSet\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"ORACLE_INIT_CODE_HASH\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"acceptPendingGovernor\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"uint32\",\"name\":\"blockTimestamp\",\"type\":\"uint32\"},{\"internalType\":\"int24\",\"name\":\"tick\",\"type\":\"int24\"}],\"internalType\":\"struct IOracleSidechain.ObservationData[]\",\"name\":\"_observationsData\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes32\",\"name\":\"_poolSalt\",\"type\":\"bytes32\"},{\"internalType\":\"uint24\",\"name\":\"_poolNonce\",\"type\":\"uint24\"}],\"name\":\"addObservations\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"governor\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"oracleFactory\",\"outputs\":[{\"internalType\":\"contract IOracleFactory\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"pendingGovernor\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_pendingGovernor\",\"type\":\"address\"}],\"name\":\"setPendingGovernor\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IBridgeReceiverAdapter\",\"name\":\"_receiverAdapter\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"_isWhitelisted\",\"type\":\"bool\"}],\"name\":\"whitelistAdapter\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IBridgeReceiverAdapter[]\",\"name\":\"_receiverAdapters\",\"type\":\"address[]\"},{\"internalType\":\"bool[]\",\"name\":\"_isWhitelisted\",\"type\":\"bool[]\"}],\"name\":\"whitelistAdapters\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IBridgeReceiverAdapter\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"whitelistedAdapters\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"setPendingGovernor(address)\":{\"params\":{\"_pendingGovernor\":\"Address of the proposed new governor\"}}},\"version\":1},\"userdoc\":{\"errors\":{\"OnlyGovernor()\":[{\"notice\":\"Throws if a non-governor user tries to call a OnlyGovernor function\"}],\"OnlyPendingGovernor()\":[{\"notice\":\"Throws if a non-pending-governor user tries to call a OnlyPendingGovernor function\"}],\"ZeroAddress()\":[{\"notice\":\"Throws if a variable is assigned to the zero address\"}]},\"events\":{\"PendingGovernorAccepted(address)\":{\"notice\":\"Emitted when a new governor is set\"},\"PendingGovernorSet(address,address)\":{\"notice\":\"Emitted when a new pending governor is set\"}},\"kind\":\"user\",\"methods\":{\"acceptPendingGovernor()\":{\"notice\":\"Allows a proposed governor to accept the governance\"},\"setPendingGovernor(address)\":{\"notice\":\"Allows a governor to propose a new governor\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"solidity/contracts/DataReceiver.sol\":\"DataReceiver\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@uniswap/v3-core/contracts/libraries/Oracle.sol\":{\"content\":\"// SPDX-License-Identifier: BUSL-1.1\\npragma solidity ^0.8.0;\\n\\n/// @title Oracle\\n/// @notice Provides price and liquidity data useful for a wide variety of system designs\\n/// @dev Instances of stored oracle data, \\\"observations\\\", are collected in the oracle array\\n/// Every pool is initialized with an oracle array length of 1. Anyone can pay the SSTOREs to increase the\\n/// maximum length of the oracle array. New slots will be added when the array is fully populated.\\n/// Observations are overwritten when the full length of the oracle array is populated.\\n/// The most recent observation is available, independent of the length of the oracle array, by passing 0 to observe()\\nlibrary Oracle {\\n    error I();\\n    error OLD();\\n\\n    struct Observation {\\n        // the block timestamp of the observation\\n        uint32 blockTimestamp;\\n        // the tick accumulator, i.e. tick * time elapsed since the pool was first initialized\\n        int56 tickCumulative;\\n        // the seconds per liquidity, i.e. seconds elapsed / max(1, liquidity) since the pool was first initialized\\n        uint160 secondsPerLiquidityCumulativeX128;\\n        // whether or not the observation is initialized\\n        bool initialized;\\n    }\\n\\n    /// @notice Transforms a previous observation into a new observation, given the passage of time and the current tick and liquidity values\\n    /// @dev blockTimestamp _must_ be chronologically equal to or greater than last.blockTimestamp, safe for 0 or 1 overflows\\n    /// @param last The specified observation to be transformed\\n    /// @param blockTimestamp The timestamp of the new observation\\n    /// @param tick The active tick at the time of the new observation\\n    /// @param liquidity The total in-range liquidity at the time of the new observation\\n    /// @return Observation The newly populated observation\\n    function transform(\\n        Observation memory last,\\n        uint32 blockTimestamp,\\n        int24 tick,\\n        uint128 liquidity\\n    ) private pure returns (Observation memory) {\\n        unchecked {\\n            uint32 delta = blockTimestamp - last.blockTimestamp;\\n            return\\n                Observation({\\n                    blockTimestamp: blockTimestamp,\\n                    tickCumulative: last.tickCumulative + int56(tick) * int56(uint56(delta)),\\n                    secondsPerLiquidityCumulativeX128: last.secondsPerLiquidityCumulativeX128 +\\n                        ((uint160(delta) << 128) / (liquidity > 0 ? liquidity : 1)),\\n                    initialized: true\\n                });\\n        }\\n    }\\n\\n    /// @notice Initialize the oracle array by writing the first slot. Called once for the lifecycle of the observations array\\n    /// @param self The stored oracle array\\n    /// @param time The time of the oracle initialization, via block.timestamp truncated to uint32\\n    /// @return cardinality The number of populated elements in the oracle array\\n    /// @return cardinalityNext The new length of the oracle array, independent of population\\n    function initialize(Observation[65535] storage self, uint32 time)\\n        internal\\n        returns (uint16 cardinality, uint16 cardinalityNext)\\n    {\\n        self[0] = Observation({\\n            blockTimestamp: time,\\n            tickCumulative: 0,\\n            secondsPerLiquidityCumulativeX128: 0,\\n            initialized: true\\n        });\\n        return (1, 1);\\n    }\\n\\n    /// @notice Writes an oracle observation to the array\\n    /// @dev Writable at most once per block. Index represents the most recently written element. cardinality and index must be tracked externally.\\n    /// If the index is at the end of the allowable array length (according to cardinality), and the next cardinality\\n    /// is greater than the current one, cardinality may be increased. This restriction is created to preserve ordering.\\n    /// @param self The stored oracle array\\n    /// @param index The index of the observation that was most recently written to the observations array\\n    /// @param blockTimestamp The timestamp of the new observation\\n    /// @param tick The active tick at the time of the new observation\\n    /// @param liquidity The total in-range liquidity at the time of the new observation\\n    /// @param cardinality The number of populated elements in the oracle array\\n    /// @param cardinalityNext The new length of the oracle array, independent of population\\n    /// @return indexUpdated The new index of the most recently written element in the oracle array\\n    /// @return cardinalityUpdated The new cardinality of the oracle array\\n    function write(\\n        Observation[65535] storage self,\\n        uint16 index,\\n        uint32 blockTimestamp,\\n        int24 tick,\\n        uint128 liquidity,\\n        uint16 cardinality,\\n        uint16 cardinalityNext\\n    ) internal returns (uint16 indexUpdated, uint16 cardinalityUpdated) {\\n        unchecked {\\n            Observation memory last = self[index];\\n\\n            // early return if we've already written an observation this block\\n            if (last.blockTimestamp == blockTimestamp) return (index, cardinality);\\n\\n            // if the conditions are right, we can bump the cardinality\\n            if (cardinalityNext > cardinality && index == (cardinality - 1)) {\\n                cardinalityUpdated = cardinalityNext;\\n            } else {\\n                cardinalityUpdated = cardinality;\\n            }\\n\\n            indexUpdated = (index + 1) % cardinalityUpdated;\\n            self[indexUpdated] = transform(last, blockTimestamp, tick, liquidity);\\n        }\\n    }\\n\\n    /// @notice Prepares the oracle array to store up to `next` observations\\n    /// @param self The stored oracle array\\n    /// @param current The current next cardinality of the oracle array\\n    /// @param next The proposed next cardinality which will be populated in the oracle array\\n    /// @return next The next cardinality which will be populated in the oracle array\\n    function grow(\\n        Observation[65535] storage self,\\n        uint16 current,\\n        uint16 next\\n    ) internal returns (uint16) {\\n        unchecked {\\n            if (current <= 0) revert I();\\n            // no-op if the passed next value isn't greater than the current next value\\n            if (next <= current) return current;\\n            // store in each slot to prevent fresh SSTOREs in swaps\\n            // this data will not be used because the initialized boolean is still false\\n            for (uint16 i = current; i < next; i++) self[i].blockTimestamp = 1;\\n            return next;\\n        }\\n    }\\n\\n    /// @notice comparator for 32-bit timestamps\\n    /// @dev safe for 0 or 1 overflows, a and b _must_ be chronologically before or equal to time\\n    /// @param time A timestamp truncated to 32 bits\\n    /// @param a A comparison timestamp from which to determine the relative position of `time`\\n    /// @param b From which to determine the relative position of `time`\\n    /// @return Whether `a` is chronologically <= `b`\\n    function lte(\\n        uint32 time,\\n        uint32 a,\\n        uint32 b\\n    ) private pure returns (bool) {\\n        unchecked {\\n            // if there hasn't been overflow, no need to adjust\\n            if (a <= time && b <= time) return a <= b;\\n\\n            uint256 aAdjusted = a > time ? a : a + 2**32;\\n            uint256 bAdjusted = b > time ? b : b + 2**32;\\n\\n            return aAdjusted <= bAdjusted;\\n        }\\n    }\\n\\n    /// @notice Fetches the observations beforeOrAt and atOrAfter a target, i.e. where [beforeOrAt, atOrAfter] is satisfied.\\n    /// The result may be the same observation, or adjacent observations.\\n    /// @dev The answer must be contained in the array, used when the target is located within the stored observation\\n    /// boundaries: older than the most recent observation and younger, or the same age as, the oldest observation\\n    /// @param self The stored oracle array\\n    /// @param time The current block.timestamp\\n    /// @param target The timestamp at which the reserved observation should be for\\n    /// @param index The index of the observation that was most recently written to the observations array\\n    /// @param cardinality The number of populated elements in the oracle array\\n    /// @return beforeOrAt The observation recorded before, or at, the target\\n    /// @return atOrAfter The observation recorded at, or after, the target\\n    function binarySearch(\\n        Observation[65535] storage self,\\n        uint32 time,\\n        uint32 target,\\n        uint16 index,\\n        uint16 cardinality\\n    ) private view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {\\n        unchecked {\\n            uint256 l = (index + 1) % cardinality; // oldest observation\\n            uint256 r = l + cardinality - 1; // newest observation\\n            uint256 i;\\n            while (true) {\\n                i = (l + r) / 2;\\n\\n                beforeOrAt = self[i % cardinality];\\n\\n                // we've landed on an uninitialized tick, keep searching higher (more recently)\\n                if (!beforeOrAt.initialized) {\\n                    l = i + 1;\\n                    continue;\\n                }\\n\\n                atOrAfter = self[(i + 1) % cardinality];\\n\\n                bool targetAtOrAfter = lte(time, beforeOrAt.blockTimestamp, target);\\n\\n                // check if we've found the answer!\\n                if (targetAtOrAfter && lte(time, target, atOrAfter.blockTimestamp)) break;\\n\\n                if (!targetAtOrAfter) r = i - 1;\\n                else l = i + 1;\\n            }\\n        }\\n    }\\n\\n    /// @notice Fetches the observations beforeOrAt and atOrAfter a given target, i.e. where [beforeOrAt, atOrAfter] is satisfied\\n    /// @dev Assumes there is at least 1 initialized observation.\\n    /// Used by observeSingle() to compute the counterfactual accumulator values as of a given block timestamp.\\n    /// @param self The stored oracle array\\n    /// @param time The current block.timestamp\\n    /// @param target The timestamp at which the reserved observation should be for\\n    /// @param tick The active tick at the time of the returned or simulated observation\\n    /// @param index The index of the observation that was most recently written to the observations array\\n    /// @param liquidity The total pool liquidity at the time of the call\\n    /// @param cardinality The number of populated elements in the oracle array\\n    /// @return beforeOrAt The observation which occurred at, or before, the given timestamp\\n    /// @return atOrAfter The observation which occurred at, or after, the given timestamp\\n    function getSurroundingObservations(\\n        Observation[65535] storage self,\\n        uint32 time,\\n        uint32 target,\\n        int24 tick,\\n        uint16 index,\\n        uint128 liquidity,\\n        uint16 cardinality\\n    ) private view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {\\n        unchecked {\\n            // optimistically set before to the newest observation\\n            beforeOrAt = self[index];\\n\\n            // if the target is chronologically at or after the newest observation, we can early return\\n            if (lte(time, beforeOrAt.blockTimestamp, target)) {\\n                if (beforeOrAt.blockTimestamp == target) {\\n                    // if newest observation equals target, we're in the same block, so we can ignore atOrAfter\\n                    return (beforeOrAt, atOrAfter);\\n                } else {\\n                    // otherwise, we need to transform\\n                    return (beforeOrAt, transform(beforeOrAt, target, tick, liquidity));\\n                }\\n            }\\n\\n            // now, set before to the oldest observation\\n            beforeOrAt = self[(index + 1) % cardinality];\\n            if (!beforeOrAt.initialized) beforeOrAt = self[0];\\n\\n            // ensure that the target is chronologically at or after the oldest observation\\n            if (!lte(time, beforeOrAt.blockTimestamp, target)) revert OLD();\\n\\n            // if we've reached this point, we have to binary search\\n            return binarySearch(self, time, target, index, cardinality);\\n        }\\n    }\\n\\n    /// @dev Reverts if an observation at or before the desired observation timestamp does not exist.\\n    /// 0 may be passed as `secondsAgo' to return the current cumulative values.\\n    /// If called with a timestamp falling between two observations, returns the counterfactual accumulator values\\n    /// at exactly the timestamp between the two observations.\\n    /// @param self The stored oracle array\\n    /// @param time The current block timestamp\\n    /// @param secondsAgo The amount of time to look back, in seconds, at which point to return an observation\\n    /// @param tick The current tick\\n    /// @param index The index of the observation that was most recently written to the observations array\\n    /// @param liquidity The current in-range pool liquidity\\n    /// @param cardinality The number of populated elements in the oracle array\\n    /// @return tickCumulative The tick * time elapsed since the pool was first initialized, as of `secondsAgo`\\n    /// @return secondsPerLiquidityCumulativeX128 The time elapsed / max(1, liquidity) since the pool was first initialized, as of `secondsAgo`\\n    function observeSingle(\\n        Observation[65535] storage self,\\n        uint32 time,\\n        uint32 secondsAgo,\\n        int24 tick,\\n        uint16 index,\\n        uint128 liquidity,\\n        uint16 cardinality\\n    ) internal view returns (int56 tickCumulative, uint160 secondsPerLiquidityCumulativeX128) {\\n        unchecked {\\n            if (secondsAgo == 0) {\\n                Observation memory last = self[index];\\n                if (last.blockTimestamp != time) last = transform(last, time, tick, liquidity);\\n                return (last.tickCumulative, last.secondsPerLiquidityCumulativeX128);\\n            }\\n\\n            uint32 target = time - secondsAgo;\\n\\n            (Observation memory beforeOrAt, Observation memory atOrAfter) = getSurroundingObservations(\\n                self,\\n                time,\\n                target,\\n                tick,\\n                index,\\n                liquidity,\\n                cardinality\\n            );\\n\\n            if (target == beforeOrAt.blockTimestamp) {\\n                // we're at the left boundary\\n                return (beforeOrAt.tickCumulative, beforeOrAt.secondsPerLiquidityCumulativeX128);\\n            } else if (target == atOrAfter.blockTimestamp) {\\n                // we're at the right boundary\\n                return (atOrAfter.tickCumulative, atOrAfter.secondsPerLiquidityCumulativeX128);\\n            } else {\\n                // we're in the middle\\n                uint32 observationTimeDelta = atOrAfter.blockTimestamp - beforeOrAt.blockTimestamp;\\n                uint32 targetDelta = target - beforeOrAt.blockTimestamp;\\n                return (\\n                    beforeOrAt.tickCumulative +\\n                        ((atOrAfter.tickCumulative - beforeOrAt.tickCumulative) / int56(uint56(observationTimeDelta))) *\\n                        int56(uint56(targetDelta)),\\n                    beforeOrAt.secondsPerLiquidityCumulativeX128 +\\n                        uint160(\\n                            (uint256(\\n                                atOrAfter.secondsPerLiquidityCumulativeX128 -\\n                                    beforeOrAt.secondsPerLiquidityCumulativeX128\\n                            ) * targetDelta) / observationTimeDelta\\n                        )\\n                );\\n            }\\n        }\\n    }\\n\\n    /// @notice Returns the accumulator values as of each time seconds ago from the given time in the array of `secondsAgos`\\n    /// @dev Reverts if `secondsAgos` > oldest observation\\n    /// @param self The stored oracle array\\n    /// @param time The current block.timestamp\\n    /// @param secondsAgos Each amount of time to look back, in seconds, at which point to return an observation\\n    /// @param tick The current tick\\n    /// @param index The index of the observation that was most recently written to the observations array\\n    /// @param liquidity The current in-range pool liquidity\\n    /// @param cardinality The number of populated elements in the oracle array\\n    /// @return tickCumulatives The tick * time elapsed since the pool was first initialized, as of each `secondsAgo`\\n    /// @return secondsPerLiquidityCumulativeX128s The cumulative seconds / max(1, liquidity) since the pool was first initialized, as of each `secondsAgo`\\n    function observe(\\n        Observation[65535] storage self,\\n        uint32 time,\\n        uint32[] memory secondsAgos,\\n        int24 tick,\\n        uint16 index,\\n        uint128 liquidity,\\n        uint16 cardinality\\n    ) internal view returns (int56[] memory tickCumulatives, uint160[] memory secondsPerLiquidityCumulativeX128s) {\\n        unchecked {\\n            if (cardinality <= 0) revert I();\\n\\n            tickCumulatives = new int56[](secondsAgos.length);\\n            secondsPerLiquidityCumulativeX128s = new uint160[](secondsAgos.length);\\n            for (uint256 i = 0; i < secondsAgos.length; i++) {\\n                (tickCumulatives[i], secondsPerLiquidityCumulativeX128s[i]) = observeSingle(\\n                    self,\\n                    time,\\n                    secondsAgos[i],\\n                    tick,\\n                    index,\\n                    liquidity,\\n                    cardinality\\n                );\\n            }\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xa25b18af947c36b9add9e229c361beb6aba176fb435d7a24e6dc723cbc187442\",\"license\":\"BUSL-1.1\"},\"solidity/contracts/DataReceiver.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {OracleSidechain} from './OracleSidechain.sol';\\nimport {Governable} from './peripherals/Governable.sol';\\nimport {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';\\nimport {IOracleFactory} from '../interfaces/IOracleFactory.sol';\\nimport {Create2Address} from '../libraries/Create2Address.sol';\\n\\ncontract DataReceiver is IDataReceiver, Governable {\\n  /// @inheritdoc IDataReceiver\\n  IOracleFactory public oracleFactory;\\n\\n  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc;\\n\\n  /// @inheritdoc IDataReceiver\\n  mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;\\n\\n  constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {\\n    oracleFactory = _oracleFactory;\\n  }\\n\\n  function _writeObservations(\\n    IOracleSidechain _oracle,\\n    IOracleSidechain.ObservationData[] memory _observationsData,\\n    uint24 _poolNonce\\n  ) internal {\\n    if (_oracle.write(_observationsData, _poolNonce)) {\\n      emit ObservationsAdded(msg.sender, _observationsData);\\n    } else {\\n      revert ObservationsNotWritable();\\n    }\\n  }\\n\\n  function addObservations(\\n    IOracleSidechain.ObservationData[] memory _observationsData,\\n    bytes32 _poolSalt,\\n    uint24 _poolNonce\\n  ) external onlyWhitelistedAdapters {\\n    _addObservations(_observationsData, _poolSalt, _poolNonce);\\n  }\\n\\n  function _addObservations(\\n    IOracleSidechain.ObservationData[] memory _observationsData,\\n    bytes32 _poolSalt,\\n    uint24 _poolNonce\\n  ) internal {\\n    IOracleSidechain _resultingAddress = IOracleSidechain(\\n      Create2Address.computeAddress(address(oracleFactory), _poolSalt, ORACLE_INIT_CODE_HASH)\\n    );\\n    bool _isDeployed = address(_resultingAddress).code.length > 0;\\n    if (_isDeployed) {\\n      return _writeObservations(_resultingAddress, _observationsData, _poolNonce);\\n    }\\n    address _deployedOracle = oracleFactory.deployOracle(_poolSalt, _poolNonce);\\n    _writeObservations(IOracleSidechain(_deployedOracle), _observationsData, _poolNonce);\\n  }\\n\\n  function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {\\n    _whitelistAdapter(_receiverAdapter, _isWhitelisted);\\n  }\\n\\n  /// @inheritdoc IDataReceiver\\n  function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {\\n    uint256 _receiverAdapterLength = _receiverAdapters.length;\\n    if (_receiverAdapterLength != _isWhitelisted.length) revert LengthMismatch();\\n    unchecked {\\n      for (uint256 _i; _i < _receiverAdapterLength; ++_i) {\\n        _whitelistAdapter(_receiverAdapters[_i], _isWhitelisted[_i]);\\n      }\\n    }\\n  }\\n\\n  function _whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) internal {\\n    whitelistedAdapters[_receiverAdapter] = _isWhitelisted;\\n    emit AdapterWhitelisted(_receiverAdapter, _isWhitelisted);\\n  }\\n\\n  modifier onlyWhitelistedAdapters() {\\n    if (!whitelistedAdapters[IBridgeReceiverAdapter(msg.sender)]) revert UnallowedAdapter();\\n    _;\\n  }\\n}\\n\",\"keccak256\":\"0xb380a27c5a13483ecdffa0b7f29fea40de8bce74aee8e9bc7e073ac6b2491a7a\",\"license\":\"Unlicense\"},\"solidity/contracts/OracleSidechain.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';\\nimport {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';\\nimport {IOracleFactory} from '../interfaces/IOracleFactory.sol';\\n\\n/// @title A sidechain oracle contract\\n/// @author 0xJabberwock (from DeFi Wonderland)\\n/// @notice Computes on-chain price data from Mainnet\\n/// @dev Bridges Uniswap V3 pool observations\\ncontract OracleSidechain is IOracleSidechain {\\n  using Oracle for Oracle.Observation[65535];\\n\\n  /// @inheritdoc IOracleSidechain\\n  IOracleFactory public immutable factory;\\n\\n  struct Slot0 {\\n    // the current price\\n    uint160 sqrtPriceX96;\\n    // the current tick\\n    int24 tick;\\n    // the most-recently updated index of the observations array\\n    uint16 observationIndex;\\n    // the current maximum number of observations that are being stored\\n    uint16 observationCardinality;\\n    // the next maximum number of observations to store, triggered in observations.write\\n    uint16 observationCardinalityNext;\\n    // the current protocol fee as a percentage of the swap fee taken on withdrawal\\n    // represented as an integer denominator (1/x)%\\n    uint8 feeProtocol;\\n    // whether the pool is locked\\n    bool unlocked;\\n  }\\n  /// @inheritdoc IOracleSidechain\\n  Slot0 public slot0;\\n\\n  /// @inheritdoc IOracleSidechain\\n  Oracle.Observation[65535] public observations;\\n\\n  /// @inheritdoc IOracleSidechain\\n  bytes32 public immutable poolSalt;\\n\\n  uint24 public poolNonce;\\n  /// @inheritdoc IOracleSidechain\\n  address public token0;\\n  /// @inheritdoc IOracleSidechain\\n  address public token1;\\n  /// @inheritdoc IOracleSidechain\\n  uint24 public fee;\\n\\n  /// @dev Returns the block timestamp truncated to 32 bits, i.e. mod 2**32. This method is overridden in tests.\\n  function _getBlockTimestamp() internal view virtual returns (uint32) {\\n    return uint32(block.timestamp); // truncation is desired\\n  }\\n\\n  constructor() {\\n    uint16 _cardinality;\\n    // TODO: remove factory from parameters (use msg.sender)\\n    (factory, poolSalt, poolNonce, _cardinality) = IOracleFactory(msg.sender).oracleParameters();\\n\\n    slot0 = Slot0({\\n      sqrtPriceX96: 0,\\n      tick: 0,\\n      observationIndex: _cardinality - 1,\\n      observationCardinality: _cardinality,\\n      observationCardinalityNext: _cardinality,\\n      feeProtocol: 0,\\n      unlocked: true\\n    });\\n  }\\n\\n  /*\\n   * NOTE: public function that allows signer to register token0, token1 and fee\\n   *       before someone registers, oracle can be found with poolSalt, but token0 and token1 views will return address(0)\\n   */\\n  /// @inheritdoc IOracleSidechain\\n  function initializePoolInfo(\\n    address _tokenA,\\n    address _tokenB,\\n    uint24 _fee\\n  ) external {\\n    if (!slot0.unlocked) revert AI();\\n\\n    (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);\\n    if (poolSalt != keccak256(abi.encode(_token0, _token1, _fee))) revert InvalidPool();\\n\\n    token0 = _token0;\\n    token1 = _token1;\\n    fee = _fee;\\n    slot0.unlocked = false;\\n\\n    emit PoolInfoInitialized(poolSalt, _token0, _token1, _fee);\\n  }\\n\\n  /// @inheritdoc IOracleSidechain\\n  function observe(uint32[] calldata _secondsAgos)\\n    external\\n    view\\n    returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s)\\n  {\\n    return observations.observe(_getBlockTimestamp(), _secondsAgos, slot0.tick, slot0.observationIndex, 0, slot0.observationCardinality);\\n  }\\n\\n  /// @inheritdoc IOracleSidechain\\n  function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external onlyDataReceiver returns (bool _written) {\\n    if (_poolNonce != poolNonce++) return false;\\n\\n    uint256 _observationsDataLength = _observationsData.length;\\n    for (uint256 _i; _i < _observationsDataLength; ++_i) {\\n      _write(_observationsData[_i]);\\n    }\\n    return true;\\n  }\\n\\n  function _write(ObservationData memory _observationData) private {\\n    (uint16 _indexUpdated, uint16 _cardinalityUpdated) = observations.write(\\n      slot0.observationIndex,\\n      _observationData.blockTimestamp,\\n      slot0.tick,\\n      0,\\n      slot0.observationCardinality,\\n      slot0.observationCardinalityNext\\n    );\\n    (slot0.observationIndex, slot0.observationCardinality) = (_indexUpdated, _cardinalityUpdated);\\n    slot0.tick = _observationData.tick;\\n    emit ObservationWritten(msg.sender, _observationData);\\n  }\\n\\n  modifier onlyDataReceiver() {\\n    if (msg.sender != address(factory.dataReceiver())) revert OnlyDataReceiver();\\n    _;\\n  }\\n}\\n\",\"keccak256\":\"0x6ccc5cb074e6bdcd847dcea0baefc7ebf3763150a880500cd3c0944c27d944d5\",\"license\":\"Unlicense\"},\"solidity/contracts/peripherals/Governable.sol\":{\"content\":\"//SPDX-License-Identifier: MIT\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IGovernable} from '../../interfaces/peripherals/IGovernable.sol';\\n\\nabstract contract Governable is IGovernable {\\n  /// @inheritdoc IGovernable\\n  address public governor;\\n  /// @inheritdoc IGovernable\\n  address public pendingGovernor;\\n\\n  constructor(address _governor) {\\n    if (_governor == address(0)) revert ZeroAddress();\\n    governor = _governor;\\n  }\\n\\n  /// @inheritdoc IGovernable\\n  function setPendingGovernor(address _pendingGovernor) external onlyGovernor {\\n    _setPendingGovernor(_pendingGovernor);\\n  }\\n\\n  /// @inheritdoc IGovernable\\n  function acceptPendingGovernor() external onlyPendingGovernor {\\n    _acceptPendingGovernor();\\n  }\\n\\n  function _setPendingGovernor(address _pendingGovernor) internal {\\n    if (_pendingGovernor == address(0)) revert ZeroAddress();\\n    pendingGovernor = _pendingGovernor;\\n    emit PendingGovernorSet(governor, pendingGovernor);\\n  }\\n\\n  function _acceptPendingGovernor() internal {\\n    governor = pendingGovernor;\\n    pendingGovernor = address(0);\\n    emit PendingGovernorAccepted(governor);\\n  }\\n\\n  modifier onlyGovernor() {\\n    if (msg.sender != governor) revert OnlyGovernor();\\n    _;\\n  }\\n\\n  modifier onlyPendingGovernor() {\\n    if (msg.sender != pendingGovernor) revert OnlyPendingGovernor();\\n    _;\\n  }\\n}\\n\",\"keccak256\":\"0x84e87f51a8305e77664fbdb9da1a82a9565119e98916943ca6f1ea6cfdaea7c8\",\"license\":\"MIT\"},\"solidity/interfaces/IDataReceiver.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IOracleFactory} from './IOracleFactory.sol';\\nimport {IOracleSidechain} from './IOracleSidechain.sol';\\nimport {IBridgeReceiverAdapter} from './bridges/IBridgeReceiverAdapter.sol';\\nimport {IGovernable} from './peripherals/IGovernable.sol';\\n\\n/// @title The DataReceiver interface\\n/// @author 0xJabberwock (from DeFi Wonderland)\\n/// @notice Contains state variables, events, custom errors and functions used in DataReceiver\\ninterface IDataReceiver is IGovernable {\\n  // STATE VARIABLES\\n\\n  function oracleFactory() external view returns (IOracleFactory _oracleFactory);\\n\\n  //solhint-disable-next-line func-name-mixedcase\\n  function ORACLE_INIT_CODE_HASH() external view returns (bytes32 _oracleInitCodeHash);\\n\\n  function whitelistedAdapters(IBridgeReceiverAdapter _adapter) external view returns (bool _isAllowed);\\n\\n  // EVENTS\\n\\n  event ObservationsAdded(address _user, IOracleSidechain.ObservationData[] _observationsData);\\n\\n  event AdapterWhitelisted(IBridgeReceiverAdapter _adapter, bool _isAllowed);\\n\\n  // ERRORS\\n\\n  error ObservationsNotWritable();\\n\\n  error UnallowedAdapter();\\n\\n  error LengthMismatch();\\n\\n  // FUNCTIONS\\n\\n  function addObservations(\\n    IOracleSidechain.ObservationData[] memory _observationsData,\\n    bytes32 _poolSalt,\\n    uint24 _poolNonce\\n  ) external;\\n\\n  function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external;\\n\\n  function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external;\\n}\\n\",\"keccak256\":\"0x4f552a143960a51478853098fa323f20f9bffa6edeb4f3307fad9ac2baa7e527\",\"license\":\"Unlicense\"},\"solidity/interfaces/IOracleFactory.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IOracleSidechain} from './IOracleSidechain.sol';\\nimport {IDataReceiver} from './IDataReceiver.sol';\\nimport {IGovernable} from './peripherals/IGovernable.sol';\\n\\ninterface IOracleFactory is IGovernable {\\n  // STRUCTS\\n\\n  struct OracleParameters {\\n    IOracleFactory factory;\\n    bytes32 poolSalt;\\n    uint24 poolNonce;\\n    uint16 cardinality;\\n  }\\n\\n  // STATE VARIABLES\\n\\n  function dataReceiver() external view returns (IDataReceiver _dataReceiver);\\n\\n  /// @return _factory The address of the deployer factory\\n  /// @return _poolSalt The id of both the oracle and the pool\\n  /// @return _poolNonce The initial nonce of the pool data\\n  /// @return _cardinality The size of the observations memory storage\\n  function oracleParameters()\\n    external\\n    view\\n    returns (\\n      IOracleFactory _factory,\\n      bytes32 _poolSalt,\\n      uint24 _poolNonce,\\n      uint16 _cardinality\\n    );\\n\\n  /// @return _initialCardinality The initial size of the observations memory storage for newly deployed pools\\n  function initialCardinality() external view returns (uint16 _initialCardinality);\\n\\n  // EVENTS\\n\\n  event OracleDeployed(address _oracle, bytes32 _poolSalt, uint16 _cardinality);\\n  event DataReceiverSet(IDataReceiver _dataReceiver);\\n\\n  event InitialCardinalitySet(uint16 _initialCardinality);\\n\\n  // ERRORS\\n\\n  error OnlyDataReceiver();\\n\\n  // VIEWS\\n\\n  /// @notice Overrides UniV3Factory getPool mapping\\n  /// @param _tokenA The contract address of either token0 or token1\\n  /// @param _tokenB The contract address of the other token\\n  /// @param _fee The fee denominated in hundredths of a bip\\n  /// @return _oracle The oracle address\\n  function getPool(\\n    address _tokenA,\\n    address _tokenB,\\n    uint24 _fee\\n  ) external view returns (address _oracle);\\n\\n  /// @param _tokenA The contract address of either token0 or token1\\n  /// @param _tokenB The contract address of the other token\\n  /// @param _fee The fee denominated in hundredths of a bip\\n  /// @return _poolSalt Pool salt for inquired parameters\\n  function getPoolSalt(\\n    address _tokenA,\\n    address _tokenB,\\n    uint24 _fee\\n  ) external view returns (bytes32 _poolSalt);\\n\\n  // FUNCTIONS\\n\\n  /// @notice Deploys a new oracle given an inputted salt\\n  /// @dev Requires that the salt has not been deployed before\\n  /// @param _poolSalt Pool salt that deterministically binds an oracle with a pool\\n  /// @return _deployedOracle The address of the newly deployed oracle\\n  function deployOracle(bytes32 _poolSalt, uint24 _poolNonce) external returns (address _deployedOracle);\\n\\n  /// @notice Allows governor to set a new allowed dataReceiver\\n  /// @dev Will disallow the previous dataReceiver\\n  /// @param _dataReceiver The address of the new allowed dataReceiver\\n  function setDataReceiver(IDataReceiver _dataReceiver) external;\\n\\n  /// @notice Allows governor to set a new initial cardinality for new oracles\\n  /// @param _initialCardinality The initial size of the observations memory storage for newly deployed pools\\n  function setInitialCardinality(uint16 _initialCardinality) external;\\n}\\n\",\"keccak256\":\"0xca2a4e0a0178e408f308a07a3d255019b8ac06f961f1a7b9d781779d0d5158e4\",\"license\":\"Unlicense\"},\"solidity/interfaces/IOracleSidechain.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IOracleFactory} from './IOracleFactory.sol';\\n\\n/// @title The OracleSidechain interface\\n/// @author 0xJabberwock (from DeFi Wonderland)\\n/// @notice Contains state variables, events, custom errors and functions used in OracleSidechain\\ninterface IOracleSidechain {\\n  // STRUCTS\\n\\n  struct ObservationData {\\n    uint32 blockTimestamp;\\n    int24 tick;\\n  }\\n\\n  // STATE VARIABLES\\n\\n  // TODO: complete natspec\\n\\n  function factory() external view returns (IOracleFactory _oracleFactory);\\n\\n  function token0() external view returns (address _token0);\\n\\n  function token1() external view returns (address _token1);\\n\\n  function fee() external view returns (uint24 _fee);\\n\\n  function poolSalt() external view returns (bytes32 _poolSalt);\\n\\n  function poolNonce() external view returns (uint24 _poolNonce);\\n\\n  /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas\\n  /// when accessed externally.\\n  /// @return _sqrtPriceX96 Used to maintain compatibility with Uniswap V3\\n  /// @return _tick Used to maintain compatibility with Uniswap V3\\n  /// @return _observationIndex The index of the last oracle observation that was written,\\n  /// @return _observationCardinality The current maximum number of observations stored in the pool,\\n  /// @return _observationCardinalityNext The next maximum number of observations, to be updated when the observation.\\n  /// @return _feeProtocol Used to maintain compatibility with Uniswap V3\\n  /// @return _unlocked Used to maintain compatibility with Uniswap V3\\n  function slot0()\\n    external\\n    view\\n    returns (\\n      uint160 _sqrtPriceX96,\\n      int24 _tick,\\n      uint16 _observationIndex,\\n      uint16 _observationCardinality,\\n      uint16 _observationCardinalityNext,\\n      uint8 _feeProtocol,\\n      bool _unlocked\\n    );\\n\\n  /// @notice Returns data about a specific observation index\\n  /// @param _index The element of the observations array to fetch\\n  /// @dev You most likely want to use #observe() instead of this method to get an observation as of some amount of time\\n  /// ago, rather than at a specific index in the array.\\n  /// @return _blockTimestamp The timestamp of the observation,\\n  /// @return _tickCumulative the tick multiplied by seconds elapsed for the life of the pool as of the observation timestamp,\\n  /// @return _secondsPerLiquidityCumulativeX128 the seconds per in range liquidity for the life of the pool as of the observation timestamp,\\n  /// @return _initialized whether the observation has been initialized and the values are safe to use\\n  function observations(uint256 _index)\\n    external\\n    view\\n    returns (\\n      uint32 _blockTimestamp,\\n      int56 _tickCumulative,\\n      uint160 _secondsPerLiquidityCumulativeX128,\\n      bool _initialized\\n    );\\n\\n  // EVENTS\\n\\n  event PoolInfoInitialized(bytes32 _poolSalt, address _token0, address _token1, uint24 _fee);\\n  event ObservationWritten(address _user, ObservationData _observationData);\\n\\n  // ERRORS\\n\\n  error AI();\\n  error InvalidPool();\\n  error OnlyDataReceiver();\\n\\n  // FUNCTIONS\\n\\n  function initializePoolInfo(\\n    address _tokenA,\\n    address _tokenB,\\n    uint24 _fee\\n  ) external;\\n\\n  /// @notice Returns the cumulative tick and liquidity as of each timestamp `secondsAgo` from the current block timestamp\\n  /// @dev To get a time weighted average tick or liquidity-in-range, you must call this with two values, one representing\\n  /// the beginning of the period and another for the end of the period. E.g., to get the last hour time-weighted average tick,\\n  /// you must call it with secondsAgos = [3600, 0].\\n  /// @dev The time weighted average tick represents the geometric time weighted average price of the pool, in\\n  /// log base sqrt(1.0001) of token1 / token0. The TickMath library can be used to go from a tick value to a ratio.\\n  /// @param _secondsAgos From how long ago each cumulative tick and liquidity value should be returned\\n  /// @return _tickCumulatives Cumulative tick values as of each `secondsAgos` from the current block timestamp\\n  /// @return _secondsPerLiquidityCumulativeX128s Cumulative seconds per liquidity-in-range value as of each `secondsAgos` from the current block\\n  /// timestamp\\n  function observe(uint32[] calldata _secondsAgos)\\n    external\\n    view\\n    returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);\\n\\n  function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external returns (bool _written);\\n}\\n\",\"keccak256\":\"0xc6bc070321f7e322a0b6723665365d06c19d73180ea3f2665cfd1cb39426bcdb\",\"license\":\"Unlicense\"},\"solidity/interfaces/bridges/IBridgeReceiverAdapter.sol\":{\"content\":\"//SPDX-License-Identifier: Unlicense\\npragma solidity >=0.8.8 <0.9.0;\\n\\nimport {IOracleSidechain} from '../IOracleSidechain.sol';\\nimport {IDataReceiver} from '../IDataReceiver.sol';\\n\\ninterface IBridgeReceiverAdapter {\\n  // FUNCTIONS\\n\\n  function dataReceiver() external view returns (IDataReceiver _dataReceiver);\\n\\n  /* NOTE: callback methods should be here declared */\\n\\n  // EVENTS\\n\\n  event DataSent(IOracleSidechain.ObservationData[] _observationsData, bytes32 _poolSalt);\\n\\n  // ERRORS\\n\\n  error UnauthorizedCaller();\\n}\\n\",\"keccak256\":\"0x811b2f83bab7e79b5a9f4f8c2e27e3779d29a2fe932db28c141180108b298268\",\"license\":\"Unlicense\"},\"solidity/interfaces/peripherals/IGovernable.sol\":{\"content\":\"//SPDX-License-Identifier: MIT\\npragma solidity >=0.8.8 <0.9.0;\\n\\ninterface IGovernable {\\n  // STATE VARIABLES\\n\\n  /// @return _governor Address of the current governor\\n  function governor() external view returns (address _governor);\\n\\n  /// @return _pendingGovernor Address of the current pending governor\\n  function pendingGovernor() external view returns (address _pendingGovernor);\\n\\n  // EVENTS\\n\\n  /// @notice Emitted when a new pending governor is set\\n  /// @param _governor Address of the current governor\\n  /// @param _pendingGovernor Address of the proposed next governor\\n  event PendingGovernorSet(address _governor, address _pendingGovernor);\\n\\n  /// @notice Emitted when a new governor is set\\n  /// @param _newGovernor Address of the new governor\\n  event PendingGovernorAccepted(address _newGovernor);\\n\\n  // ERRORS\\n\\n  /// @notice Throws if a variable is assigned to the zero address\\n  error ZeroAddress();\\n\\n  /// @notice Throws if a non-governor user tries to call a OnlyGovernor function\\n  error OnlyGovernor();\\n\\n  /// @notice Throws if a non-pending-governor user tries to call a OnlyPendingGovernor function\\n  error OnlyPendingGovernor();\\n\\n  // FUNCTIONS\\n\\n  /// @notice Allows a governor to propose a new governor\\n  /// @param _pendingGovernor Address of the proposed new governor\\n  function setPendingGovernor(address _pendingGovernor) external;\\n\\n  /// @notice Allows a proposed governor to accept the governance\\n  function acceptPendingGovernor() external;\\n}\\n\",\"keccak256\":\"0xcbd9ae88cf32e1f7005a6ca222b76a357388953ccc05747ed694b28a4f89e306\",\"license\":\"MIT\"},\"solidity/libraries/Create2Address.sol\":{\"content\":\"//SPDX-License-Identifier: BUSL-1.1\\npragma solidity >=0.8.8 <0.9.0;\\n\\n/// @title Provides functions for deriving a pool address from the factory, tokens, and the fee\\nlibrary Create2Address {\\n  /// @notice Deterministically computes the pool address given the factory, salt and initCodeHash\\n  /// @param _factory The Uniswap V3 factory contract address\\n  /// @param _salt The PoolKey encoded bytes\\n  /// @param _initCodeHash The Init Code Hash of the target\\n  /// @return _pool The contract address of the target pool/oracle\\n  function computeAddress(\\n    address _factory,\\n    bytes32 _salt,\\n    bytes32 _initCodeHash\\n  ) internal pure returns (address _pool) {\\n    _pool = address(uint160(uint256(keccak256(abi.encodePacked(hex'ff', _factory, _salt, _initCodeHash)))));\\n  }\\n}\\n\",\"keccak256\":\"0x37295cf40b85029677ff0fa75cae30717f9e258a4dc88fd6021bb0c174efe633\",\"license\":\"BUSL-1.1\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50604051610b99380380610b9983398101604081905261002f916100a4565b816001600160a01b0381166100575760405163d92e233d60e01b815260040160405180910390fd5b600080546001600160a01b039283166001600160a01b03199182161790915560028054939092169216919091179055506100de565b6001600160a01b03811681146100a157600080fd5b50565b600080604083850312156100b757600080fd5b82516100c28161008c565b60208401519092506100d38161008c565b809150509250929050565b610aac806100ed6000396000f3fe608060405234801561001057600080fd5b506004361061009e5760003560e01c8063b893cce211610066578063b893cce214610138578063c7f7fb901461016b578063d34ad4091461017e578063e3056a3414610191578063f235757f146101a457600080fd5b80630c340a24146100a35780630ddb5dd2146100d357806313f6986d146100e857806391a0b979146100f0578063954e863e14610125575b600080fd5b6000546100b6906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6100e66100e13660046106e7565b6101b7565b005b6100e6610277565b6101177f3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc81565b6040519081526020016100ca565b6100e6610133366004610776565b6102ac565b61015b6101463660046107af565b60036020526000908152604090205460ff1681565b60405190151581526020016100ca565b6002546100b6906001600160a01b031681565b6100e661018c36600461085b565b6102e5565b6001546100b6906001600160a01b031681565b6100e66101b23660046107af565b610325565b6000546001600160a01b031633146101e25760405163070545c960e51b815260040160405180910390fd5b82818114610206576040516001621398b960e31b0319815260040160405180910390fd5b60005b8181101561026f5761026786868381811061022657610226610967565b905060200201602081019061023b91906107af565b85858481811061024d5761024d610967565b9050602002016020810190610262919061097d565b61035c565b600101610209565b505050505050565b6001546001600160a01b031633146102a257604051639ba0305d60e01b815260040160405180910390fd5b6102aa6103bf565b565b6000546001600160a01b031633146102d75760405163070545c960e51b815260040160405180910390fd5b6102e1828261035c565b5050565b3360009081526003602052604090205460ff16610315576040516360ece74160e01b815260040160405180910390fd5b61032083838361041d565b505050565b6000546001600160a01b031633146103505760405163070545c960e51b815260040160405180910390fd5b61035981610545565b50565b6001600160a01b038216600081815260036020908152604091829020805460ff19168515159081179091558251938452908301527f3cece36ac6216147f57b10bb30975f82b18b8b290a7925c322277e684afcce4a910160405180910390a15050565b60018054600080546001600160a01b0383166001600160a01b031991821681179092559091169091556040519081527f5d5d6e01b731c3e68060f7fe13156f6197d4aeffc2d6f498e34c717ae616b7349060200160405180910390a1565b600254604080516001600160f81b031960208083019190915260609390931b6bffffffffffffffffffffffff19166021820152603581018590527f3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc60558083019190915282518083039091018152607590910190915280519101206001600160a01b0381163b158015906104bd576104b68286856105ce565b5050505050565b600254604051632e60fe9b60e11b81526004810186905262ffffff851660248201526000916001600160a01b031690635cc1fd36906044016020604051808303816000875af1158015610514573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610538919061099a565b905061026f8187866105ce565b6001600160a01b03811661056c5760405163d92e233d60e01b815260040160405180910390fd5b600180546001600160a01b0319166001600160a01b038381169182179092556000546040805191909316815260208101919091527f6353ec38ac394f8be94bfafcdd3580d356470599059eaeebedc3207e1cc03dec910160405180910390a150565b6040516308f944b560e21b81526001600160a01b038416906323e512d4906105fc9085908590600401610a06565b6020604051808303816000875af115801561061b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061063f9190610a2d565b15610682577f617afa62635b4d3e0901427201c347a24650276db5c920f7347d6d969bf256743383604051610675929190610a4a565b60405180910390a1505050565b604051630a96dcbd60e11b815260040160405180910390fd5b60008083601f8401126106ad57600080fd5b50813567ffffffffffffffff8111156106c557600080fd5b6020830191508360208260051b85010111156106e057600080fd5b9250929050565b600080600080604085870312156106fd57600080fd5b843567ffffffffffffffff8082111561071557600080fd5b6107218883890161069b565b9096509450602087013591508082111561073a57600080fd5b506107478782880161069b565b95989497509550505050565b6001600160a01b038116811461035957600080fd5b801515811461035957600080fd5b6000806040838503121561078957600080fd5b823561079481610753565b915060208301356107a481610768565b809150509250929050565b6000602082840312156107c157600080fd5b81356107cc81610753565b9392505050565b634e487b7160e01b600052604160045260246000fd5b6040805190810167ffffffffffffffff8111828210171561080c5761080c6107d3565b60405290565b604051601f8201601f1916810167ffffffffffffffff8111828210171561083b5761083b6107d3565b604052919050565b803562ffffff8116811461085657600080fd5b919050565b60008060006060848603121561087057600080fd5b833567ffffffffffffffff8082111561088857600080fd5b818601915086601f83011261089c57600080fd5b81356020828211156108b0576108b06107d3565b6108be818360051b01610812565b828152818101935060069290921b8401810191898311156108de57600080fd5b938101935b82851015610946576040858b0312156108fc5760008081fd5b6109046107e9565b853563ffffffff811681146109195760008081fd5b815285830135600281900b81146109305760008081fd5b81840152845260409490940193928101926108e3565b9650870135945061095e925050604086019050610843565b90509250925092565b634e487b7160e01b600052603260045260246000fd5b60006020828403121561098f57600080fd5b81356107cc81610768565b6000602082840312156109ac57600080fd5b81516107cc81610753565b600081518084526020808501945080840160005b838110156109fb578151805163ffffffff16885283015160020b83880152604090960195908201906001016109cb565b509495945050505050565b604081526000610a1960408301856109b7565b905062ffffff831660208301529392505050565b600060208284031215610a3f57600080fd5b81516107cc81610768565b6001600160a01b0383168152604060208201819052600090610a6e908301846109b7565b94935050505056fea264697066735822122082d6b67c92e373bd85a5586da238ab3b29145b430b3917ff26a6351d4ffe27a164736f6c634300080f0033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061009e5760003560e01c8063b893cce211610066578063b893cce214610138578063c7f7fb901461016b578063d34ad4091461017e578063e3056a3414610191578063f235757f146101a457600080fd5b80630c340a24146100a35780630ddb5dd2146100d357806313f6986d146100e857806391a0b979146100f0578063954e863e14610125575b600080fd5b6000546100b6906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b6100e66100e13660046106e7565b6101b7565b005b6100e6610277565b6101177f3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc81565b6040519081526020016100ca565b6100e6610133366004610776565b6102ac565b61015b6101463660046107af565b60036020526000908152604090205460ff1681565b60405190151581526020016100ca565b6002546100b6906001600160a01b031681565b6100e661018c36600461085b565b6102e5565b6001546100b6906001600160a01b031681565b6100e66101b23660046107af565b610325565b6000546001600160a01b031633146101e25760405163070545c960e51b815260040160405180910390fd5b82818114610206576040516001621398b960e31b0319815260040160405180910390fd5b60005b8181101561026f5761026786868381811061022657610226610967565b905060200201602081019061023b91906107af565b85858481811061024d5761024d610967565b9050602002016020810190610262919061097d565b61035c565b600101610209565b505050505050565b6001546001600160a01b031633146102a257604051639ba0305d60e01b815260040160405180910390fd5b6102aa6103bf565b565b6000546001600160a01b031633146102d75760405163070545c960e51b815260040160405180910390fd5b6102e1828261035c565b5050565b3360009081526003602052604090205460ff16610315576040516360ece74160e01b815260040160405180910390fd5b61032083838361041d565b505050565b6000546001600160a01b031633146103505760405163070545c960e51b815260040160405180910390fd5b61035981610545565b50565b6001600160a01b038216600081815260036020908152604091829020805460ff19168515159081179091558251938452908301527f3cece36ac6216147f57b10bb30975f82b18b8b290a7925c322277e684afcce4a910160405180910390a15050565b60018054600080546001600160a01b0383166001600160a01b031991821681179092559091169091556040519081527f5d5d6e01b731c3e68060f7fe13156f6197d4aeffc2d6f498e34c717ae616b7349060200160405180910390a1565b600254604080516001600160f81b031960208083019190915260609390931b6bffffffffffffffffffffffff19166021820152603581018590527f3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc60558083019190915282518083039091018152607590910190915280519101206001600160a01b0381163b158015906104bd576104b68286856105ce565b5050505050565b600254604051632e60fe9b60e11b81526004810186905262ffffff851660248201526000916001600160a01b031690635cc1fd36906044016020604051808303816000875af1158015610514573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610538919061099a565b905061026f8187866105ce565b6001600160a01b03811661056c5760405163d92e233d60e01b815260040160405180910390fd5b600180546001600160a01b0319166001600160a01b038381169182179092556000546040805191909316815260208101919091527f6353ec38ac394f8be94bfafcdd3580d356470599059eaeebedc3207e1cc03dec910160405180910390a150565b6040516308f944b560e21b81526001600160a01b038416906323e512d4906105fc9085908590600401610a06565b6020604051808303816000875af115801561061b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061063f9190610a2d565b15610682577f617afa62635b4d3e0901427201c347a24650276db5c920f7347d6d969bf256743383604051610675929190610a4a565b60405180910390a1505050565b604051630a96dcbd60e11b815260040160405180910390fd5b60008083601f8401126106ad57600080fd5b50813567ffffffffffffffff8111156106c557600080fd5b6020830191508360208260051b85010111156106e057600080fd5b9250929050565b600080600080604085870312156106fd57600080fd5b843567ffffffffffffffff8082111561071557600080fd5b6107218883890161069b565b9096509450602087013591508082111561073a57600080fd5b506107478782880161069b565b95989497509550505050565b6001600160a01b038116811461035957600080fd5b801515811461035957600080fd5b6000806040838503121561078957600080fd5b823561079481610753565b915060208301356107a481610768565b809150509250929050565b6000602082840312156107c157600080fd5b81356107cc81610753565b9392505050565b634e487b7160e01b600052604160045260246000fd5b6040805190810167ffffffffffffffff8111828210171561080c5761080c6107d3565b60405290565b604051601f8201601f1916810167ffffffffffffffff8111828210171561083b5761083b6107d3565b604052919050565b803562ffffff8116811461085657600080fd5b919050565b60008060006060848603121561087057600080fd5b833567ffffffffffffffff8082111561088857600080fd5b818601915086601f83011261089c57600080fd5b81356020828211156108b0576108b06107d3565b6108be818360051b01610812565b828152818101935060069290921b8401810191898311156108de57600080fd5b938101935b82851015610946576040858b0312156108fc5760008081fd5b6109046107e9565b853563ffffffff811681146109195760008081fd5b815285830135600281900b81146109305760008081fd5b81840152845260409490940193928101926108e3565b9650870135945061095e925050604086019050610843565b90509250925092565b634e487b7160e01b600052603260045260246000fd5b60006020828403121561098f57600080fd5b81356107cc81610768565b6000602082840312156109ac57600080fd5b81516107cc81610753565b600081518084526020808501945080840160005b838110156109fb578151805163ffffffff16885283015160020b83880152604090960195908201906001016109cb565b509495945050505050565b604081526000610a1960408301856109b7565b905062ffffff831660208301529392505050565b600060208284031215610a3f57600080fd5b81516107cc81610768565b6001600160a01b0383168152604060208201819052600090610a6e908301846109b7565b94935050505056fea264697066735822122082d6b67c92e373bd85a5586da238ab3b29145b430b3917ff26a6351d4ffe27a164736f6c634300080f0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "setPendingGovernor(address)": {
+        "params": {
+          "_pendingGovernor": "Address of the proposed new governor"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "errors": {
+      "OnlyGovernor()": [
+        {
+          "notice": "Throws if a non-governor user tries to call a OnlyGovernor function"
+        }
+      ],
+      "OnlyPendingGovernor()": [
+        {
+          "notice": "Throws if a non-pending-governor user tries to call a OnlyPendingGovernor function"
+        }
+      ],
+      "ZeroAddress()": [
+        {
+          "notice": "Throws if a variable is assigned to the zero address"
+        }
+      ]
+    },
+    "events": {
+      "PendingGovernorAccepted(address)": {
+        "notice": "Emitted when a new governor is set"
+      },
+      "PendingGovernorSet(address,address)": {
+        "notice": "Emitted when a new pending governor is set"
+      }
+    },
+    "kind": "user",
+    "methods": {
+      "acceptPendingGovernor()": {
+        "notice": "Allows a proposed governor to accept the governance"
+      },
+      "setPendingGovernor(address)": {
+        "notice": "Allows a governor to propose a new governor"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 14697,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "governor",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 14700,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "pendingGovernor",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_address"
+      },
+      {
+        "astId": 13608,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "oracleFactory",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_contract(IOracleFactory)16277"
+      },
+      {
+        "astId": 13617,
+        "contract": "solidity/contracts/DataReceiver.sol:DataReceiver",
+        "label": "whitelistedAdapters",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_mapping(t_contract(IBridgeReceiverAdapter)16430,t_bool)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_contract(IBridgeReceiverAdapter)16430": {
+        "encoding": "inplace",
+        "label": "contract IBridgeReceiverAdapter",
+        "numberOfBytes": "20"
+      },
+      "t_contract(IOracleFactory)16277": {
+        "encoding": "inplace",
+        "label": "contract IOracleFactory",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_contract(IBridgeReceiverAdapter)16430,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_contract(IBridgeReceiverAdapter)16430",
+        "label": "mapping(contract IBridgeReceiverAdapter => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      }
+    }
+  }
+}

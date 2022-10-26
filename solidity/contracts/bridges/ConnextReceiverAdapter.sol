@@ -2,30 +2,30 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
-import {IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
+import {IConnext, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
 import {BridgeReceiverAdapter} from './BridgeReceiverAdapter.sol';
 
 contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
   // The connectHandler contract on this domain
-  address public connext;
+  IConnext public connext;
   // The origin domain ID
-  uint32 public immutable origin;
+  uint32 public immutable originDomain;
   // The DAO that's expected as the xcaller
-  address public immutable dao;
+  address public immutable source;
 
   constructor(
     IDataReceiver _dataReceiver,
-    address _dao,
-    uint32 _origin,
-    address _connext
+    address _source,
+    uint32 _originDomain,
+    IConnext _connext
   ) BridgeReceiverAdapter(_dataReceiver) {
-    dao = _dao;
-    origin = _origin;
+    source = _source;
+    originDomain = _originDomain;
     connext = _connext;
   }
 
-  modifier onlyExecutor(address _originSender, uint32 _origin) {
-    if (msg.sender != connext || _originSender != dao || _origin != origin) revert UnauthorizedCaller();
+  modifier onlyExecutor(address _originSender, uint32 _originDomain) {
+    if (msg.sender != address(connext) || _originSender != source || _originDomain != originDomain) revert UnauthorizedCaller();
     _;
   }
 

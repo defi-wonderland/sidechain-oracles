@@ -27,6 +27,10 @@ describe('@skip-on-coverage Fixture', () => {
 
   let poolSalt: string;
 
+  const NONE_TRIGGER = 0;
+  const TIME_TRIGGER = 1;
+  const TWAP_TRIGGER = 2;
+
   beforeEach(async () => {
     ({ deployer } = await getNamedAccounts());
 
@@ -87,7 +91,7 @@ describe('@skip-on-coverage Fixture', () => {
         });
 
         it('should be able to fetch observations', async () => {
-          await expect(dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0)).not.to.be.reverted;
+          await expect(dataFeedKeeper['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER)).not.to.be.reverted;
         });
 
         context('when dummy adapter is setup', () => {
@@ -97,7 +101,7 @@ describe('@skip-on-coverage Fixture', () => {
           });
 
           it('should be able to fetch and send observations', async () => {
-            const tx = await dataFeedKeeper['work(bytes32,uint8)'](poolSalt, 0);
+            const tx = await dataFeedKeeper['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
             const txReceipt = await tx.wait();
             const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
 

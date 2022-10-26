@@ -33,8 +33,9 @@ describe('DataFeedKeeper.sol', () => {
   const randomSalt = VALID_POOL_SALT;
   const randomNonce = 2;
 
-  const TIME_TRIGGER = 0;
-  const TWAP_TRIGGER = 1;
+  const NONE_TRIGGER = 0;
+  const TIME_TRIGGER = 1;
+  const TWAP_TRIGGER = 2;
 
   before(async () => {
     [, governor, keeper] = await ethers.getSigners();
@@ -204,6 +205,8 @@ describe('DataFeedKeeper.sol', () => {
   });
 
   describe('work(bytes32,uint8)', () => {
+    let now: number;
+
     it('should revert if the keeper is not valid', async () => {
       keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
       await expect(dataFeedKeeper.connect(governor)['work(bytes32,uint8)'](randomSalt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
@@ -211,7 +214,6 @@ describe('DataFeedKeeper.sol', () => {
     });
 
     context('when the trigger reason is TIME', () => {
-      let now: number;
       const lastBlockTimestampObserved = 0;
 
       beforeEach(async () => {
@@ -239,7 +241,6 @@ describe('DataFeedKeeper.sol', () => {
     });
 
     context('when the trigger reason is TWAP', () => {
-      let secondsNow: number;
       let twapLength = 30;
       let secondsAgos = [twapLength, 0];
       let tickCumulative = 3000;
@@ -260,7 +261,7 @@ describe('DataFeedKeeper.sol', () => {
 
       beforeEach(async () => {
         await dataFeedKeeper.connect(governor).setTwapLength(twapLength);
-        secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 2;
+        now = (await ethers.provider.getBlock('latest')).timestamp + 2;
       });
 
       // arithmeticMeanTick = tickCumulativesDelta / delta
@@ -270,7 +271,7 @@ describe('DataFeedKeeper.sol', () => {
           tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
           poolArithmeticMeanTick = Math.trunc(tickCumulativesDelta / twapLength);
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-          lastBlockTimestampObserved = secondsNow - oracleDelta;
+          lastBlockTimestampObserved = now - oracleDelta;
           lastTickCumulativeObserved = 2000;
           oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
           oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
@@ -317,6 +318,7 @@ describe('DataFeedKeeper.sol', () => {
           tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
           poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+          lastBlockTimestampObserved = now - oracleDelta;
           lastTickCumulativeObserved = -2001;
           oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
           oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
@@ -584,7 +586,145 @@ describe('DataFeedKeeper.sol', () => {
     });
   });
 
+  describe('workable(bytes32)', () => {
+    let now: number;
+    let twapLength = 30;
+    let secondsAgos = [twapLength, 0];
+    let tickCumulative = 3000;
+    let tickCumulativesDelta: number;
+    let tickCumulatives: number[];
+    let poolArithmeticMeanTick: number;
+    let lastBlockTimestampObserved: number;
+    let lastTickCumulativeObserved: number;
+    let lastArithmeticMeanTickObserved = 200;
+    let oracleDelta = 10;
+    let oracleTickCumulative: number;
+    let oracleTickCumulativesDelta: number;
+    let oracleArithmeticMeanTick: number;
+    let upperIsSurpassed = 25;
+    let upperIsNotSurpassed = 50;
+    let lowerIsSurpassed = 50;
+    let lowerIsNotSurpassed = 25;
+    let reason: number;
+
+    it('should return NONE if the pool is not whitelisted', async () => {
+      dataFeed.isWhitelistedPool.whenCalledWith(randomSalt).returns(false);
+      reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+      expect(reason).to.eq(NONE_TRIGGER);
+    });
+
+    context('when the pool is whitelisted', () => {
+      beforeEach(async () => {
+        dataFeed.isWhitelistedPool.whenCalledWith(randomSalt).returns(true);
+      });
+
+      it('should return TIME if jobCooldown is 0', async () => {
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
+        reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+        expect(reason).to.eq(TIME_TRIGGER);
+      });
+
+      context('when jobCooldown has expired', () => {
+        beforeEach(async () => {
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialJobCooldown, 0, 0]);
+        });
+
+        it('should return TIME', async () => {
+          reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+          expect(reason).to.eq(TIME_TRIGGER);
+        });
+      });
+
+      context('when jobCooldown has not expired', () => {
+        beforeEach(async () => {
+          await dataFeedKeeper.connect(governor).setTwapLength(twapLength);
+          now = (await ethers.provider.getBlock('latest')).timestamp + 1;
+        });
+
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean ticks are truncated', () => {
+          beforeEach(async () => {
+            tickCumulativesDelta = 2000;
+            tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
+            poolArithmeticMeanTick = Math.trunc(tickCumulativesDelta / twapLength);
+            uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+            lastBlockTimestampObserved = now - oracleDelta;
+            lastTickCumulativeObserved = 2000;
+            oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
+            oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
+            oracleArithmeticMeanTick = Math.trunc(oracleTickCumulativesDelta / twapLength);
+            dataFeed.lastPoolStateObserved
+              .whenCalledWith(randomSalt)
+              .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
+          });
+
+          it('should return TWAP if only the upper threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+
+            reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+            expect(reason).to.eq(TWAP_TRIGGER);
+          });
+
+          it('should return TWAP if only the lower threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+
+            reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+            expect(reason).to.eq(TWAP_TRIGGER);
+          });
+
+          it('should return NONE if no thresholds are surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+
+            reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+            expect(reason).to.eq(NONE_TRIGGER);
+          });
+        });
+
+        // arithmeticMeanTick = tickCumulativesDelta / delta
+        context('when the arithmetic mean ticks are rounded to negative infinity', () => {
+          beforeEach(async () => {
+            tickCumulativesDelta = -2001;
+            tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
+            poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
+            uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+            lastBlockTimestampObserved = now - oracleDelta;
+            lastTickCumulativeObserved = -2001;
+            oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
+            oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
+            oracleArithmeticMeanTick = Math.floor(oracleTickCumulativesDelta / twapLength);
+            dataFeed.lastPoolStateObserved
+              .whenCalledWith(randomSalt)
+              .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
+          });
+
+          it('should return TWAP if only the upper threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+
+            reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+            expect(reason).to.eq(TWAP_TRIGGER);
+          });
+
+          it('should return TWAP if only the lower threshold is surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+
+            reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+            expect(reason).to.eq(TWAP_TRIGGER);
+          });
+
+          it('should return NONE if no thresholds are surpassed', async () => {
+            await dataFeedKeeper.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+
+            reason = await dataFeedKeeper['workable(bytes32)'](randomSalt);
+            expect(reason).to.eq(NONE_TRIGGER);
+          });
+        });
+      });
+    });
+  });
+
   describe('workable(bytes32,uint8)', () => {
+    let now: number;
     let isWorkable: boolean;
 
     it('should return false if the pool is not whitelisted', async () => {
@@ -601,8 +741,6 @@ describe('DataFeedKeeper.sol', () => {
       });
 
       context('when the trigger reason is TIME', () => {
-        let now: number;
-
         beforeEach(async () => {
           now = (await ethers.provider.getBlock('latest')).timestamp;
         });
@@ -627,7 +765,6 @@ describe('DataFeedKeeper.sol', () => {
       });
 
       context('when the trigger reason is TWAP', () => {
-        let secondsNow: number;
         let twapLength = 30;
         let secondsAgos = [twapLength, 0];
         let tickCumulative = 3000;
@@ -648,7 +785,7 @@ describe('DataFeedKeeper.sol', () => {
 
         beforeEach(async () => {
           await dataFeedKeeper.connect(governor).setTwapLength(twapLength);
-          secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 1;
+          now = (await ethers.provider.getBlock('latest')).timestamp + 1;
         });
 
         // arithmeticMeanTick = tickCumulativesDelta / delta
@@ -658,7 +795,7 @@ describe('DataFeedKeeper.sol', () => {
             tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
             poolArithmeticMeanTick = Math.trunc(tickCumulativesDelta / twapLength);
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-            lastBlockTimestampObserved = secondsNow - oracleDelta;
+            lastBlockTimestampObserved = now - oracleDelta;
             lastTickCumulativeObserved = 2000;
             oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
             oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
@@ -697,6 +834,7 @@ describe('DataFeedKeeper.sol', () => {
             tickCumulatives = [tickCumulative, tickCumulative + tickCumulativesDelta];
             poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+            lastBlockTimestampObserved = now - oracleDelta;
             lastTickCumulativeObserved = -2001;
             oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
             oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;

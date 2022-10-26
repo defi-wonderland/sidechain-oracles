@@ -112,6 +112,11 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
   }
 
   /// @inheritdoc IDataFeedKeeper
+  function workable(bytes32 _poolSalt) external view returns (TriggerReason _reason) {
+    if (dataFeed.isWhitelistedPool(_poolSalt)) return _workable(_poolSalt);
+  }
+
+  /// @inheritdoc IDataFeedKeeper
   function workable(bytes32 _poolSalt, TriggerReason _reason) public view returns (bool _isWorkable) {
     if (dataFeed.isWhitelistedPool(_poolSalt)) return _workable(_poolSalt, _reason);
   }
@@ -154,10 +159,40 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
     }
   }
 
+  function _workable(bytes32 _poolSalt) internal view returns (TriggerReason _reason) {
+    uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
+    (, uint32 _lastBlockTimestampObserved, int56 _lastTickCumulativeObserved, int24 _lastArithmeticMeanTickObserved) = dataFeed
+      .lastPoolStateObserved(_poolSalt);
+
+    if (_secondsNow >= _lastBlockTimestampObserved + jobCooldown) return TriggerReason.TIME;
+
+    uint32 _twapLength = twapLength;
+
+    uint32[] memory _secondsAgos = new uint32[](2);
+    _secondsAgos[0] = _twapLength;
+    _secondsAgos[1] = 0;
+
+    IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
+    (int56[] memory _poolTickCumulatives, ) = _pool.observe(_secondsAgos);
+
+    int24 _poolArithmeticMeanTick = _computeTwap(_poolTickCumulatives[0], _poolTickCumulatives[1], _twapLength);
+
+    uint32 _oracleDelta = _secondsNow - _lastBlockTimestampObserved;
+    int56 _oracleTickCumulative = _lastTickCumulativeObserved + _lastArithmeticMeanTickObserved * int32(_oracleDelta);
+
+    int24 _oracleArithmeticMeanTick = _computeTwap(_poolTickCumulatives[0], _oracleTickCumulative, _twapLength);
+
+    if (
+      _poolArithmeticMeanTick > _oracleArithmeticMeanTick + upperTwapThreshold ||
+      _poolArithmeticMeanTick < _oracleArithmeticMeanTick + lowerTwapThreshold
+    ) return TriggerReason.TWAP;
+  }
+
   function _workable(bytes32 _poolSalt, TriggerReason _reason) internal view returns (bool _isWorkable) {
+    uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     if (_reason == TriggerReason.TIME) {
       (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
-      return block.timestamp >= _lastBlockTimestampObserved + jobCooldown; // TODO: should we truncate block.timestamp?
+      return _secondsNow >= _lastBlockTimestampObserved + jobCooldown;
     } else if (_reason == TriggerReason.TWAP) {
       uint32 _twapLength = twapLength;
 
@@ -173,7 +208,6 @@ contract DataFeedKeeper is IDataFeedKeeper, Keep3rJob {
       (, uint32 _lastBlockTimestampObserved, int56 _lastTickCumulativeObserved, int24 _lastArithmeticMeanTickObserved) = dataFeed
         .lastPoolStateObserved(_poolSalt);
 
-      uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
       uint32 _oracleDelta = _secondsNow - _lastBlockTimestampObserved;
       int56 _oracleTickCumulative = _lastTickCumulativeObserved + _lastArithmeticMeanTickObserved * int32(_oracleDelta);
 

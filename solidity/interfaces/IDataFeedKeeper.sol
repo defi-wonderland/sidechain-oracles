@@ -14,6 +14,7 @@ interface IDataFeedKeeper is IKeep3rJob {
   // ENUMS
 
   enum TriggerReason {
+    NONE,
     TIME,
     TWAP
   }
@@ -120,6 +121,12 @@ interface IDataFeedKeeper is IKeep3rJob {
 
   /// @notice Returns if the job can be worked
   /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @return _reason The reason why the job can be worked
+  function workable(bytes32 _poolSalt) external view returns (TriggerReason _reason);
+
+  /// @notice Returns if the job can be worked
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _reason The reason why the job can be worked
   /// @return _isWorkable Whether the job is workable or not
   function workable(bytes32 _poolSalt, TriggerReason _reason) external view returns (bool _isWorkable);
 

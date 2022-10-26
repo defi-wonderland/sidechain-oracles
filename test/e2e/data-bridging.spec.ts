@@ -50,8 +50,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   const destinationDomain = 420;
   const nonce = 1;
 
-  const TIME_TRIGGER = 0;
-  const TWAP_TRIGGER = 1;
+  const NONE_TRIGGER = 0;
+  const TIME_TRIGGER = 1;
+  const TWAP_TRIGGER = 2;
 
   before(async () => {
     await evm.reset({

@@ -2,8 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './Governable.sol';
-import {IKeep3r} from '@defi-wonderland/keep3r-v2/solidity/interfaces/IKeep3r.sol';
-import {IKeep3rJob} from '../../interfaces/peripherals/IKeep3rJob.sol';
+import {IKeep3rJob, IKeep3r} from '../../interfaces/peripherals/IKeep3rJob.sol';
 
 abstract contract Keep3rJob is IKeep3rJob, Governable {
   /// @inheritdoc IKeep3rJob

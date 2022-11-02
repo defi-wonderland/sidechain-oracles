@@ -35,7 +35,7 @@ describe('Governable.sol', () => {
     });
 
     it('should set governor', async () => {
-      await expect(await governable.governor()).to.equal(governor.address);
+      expect(await governable.governor()).to.eq(governor.address);
     });
   });
 
@@ -53,7 +53,7 @@ describe('Governable.sol', () => {
 
     it('should save given governor', async () => {
       await governable.connect(governor).setPendingGovernor(pendingGovernor.address);
-      expect(await governable.pendingGovernor()).to.equal(pendingGovernor.address);
+      expect(await governable.pendingGovernor()).to.eq(pendingGovernor.address);
     });
 
     it('should emit event', async () => {
@@ -77,12 +77,12 @@ describe('Governable.sol', () => {
 
     it('should set pending governor as governor', async () => {
       await governable.connect(pendingGovernor).acceptPendingGovernor();
-      expect(await governable.governor()).to.equal(pendingGovernor.address);
+      expect(await governable.governor()).to.eq(pendingGovernor.address);
     });
 
     it('should reset pending governor', async () => {
       await governable.connect(pendingGovernor).acceptPendingGovernor();
-      expect(await governable.pendingGovernor()).to.equal(ZERO_ADDRESS);
+      expect(await governable.pendingGovernor()).to.eq(ZERO_ADDRESS);
     });
 
     it('should emit event', async () => {

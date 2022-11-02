@@ -5,7 +5,7 @@ import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wo
 import { evm, wallet } from '@utils';
 import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
-import { onlyGovernor, onlyKeeper } from '@utils/behaviours';
+import { onlyGovernor, onlyStrategy } from '@utils/behaviours';
 import { getCreate2Address, getObservedHash } from '@utils/misc';
 import chai, { expect } from 'chai';
 
@@ -13,7 +13,7 @@ chai.use(smock.matchers);
 
 describe('DataFeed.sol', () => {
   let governor: SignerWithAddress;
-  let keeper: SignerWithAddress;
+  let strategy: SignerWithAddress;
   let dataFeed: MockContract<DataFeed>;
   let dataFeedFactory: MockContractFactory<DataFeed__factory>;
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
@@ -30,7 +30,7 @@ describe('DataFeed.sol', () => {
   const nonce = 1;
 
   before(async () => {
-    [, governor, keeper] = await ethers.getSigners();
+    [, governor, strategy] = await ethers.getSigners();
 
     connextSenderAdapter = await smock.fake('IConnextSenderAdapter');
 
@@ -45,7 +45,7 @@ describe('DataFeed.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address, strategy.address);
   });
 
   describe('constructor(...)', () => {
@@ -53,8 +53,8 @@ describe('DataFeed.sol', () => {
       expect(await dataFeed.governor()).to.eq(governor.address);
     });
 
-    it('should set the keeper', async () => {
-      expect(await dataFeed.keeper()).to.eq(keeper.address);
+    it('should set the strategy', async () => {
+      expect(await dataFeed.strategy()).to.eq(strategy.address);
     });
   });
 
@@ -143,15 +143,15 @@ describe('DataFeed.sol', () => {
     let observationData2: number[];
     let observationsData: number[][];
 
-    onlyKeeper(
+    onlyStrategy(
       () => dataFeed,
       'fetchObservations',
-      () => keeper,
+      () => strategy,
       () => [randomSalt, secondsAgos]
     );
 
     it('should revert if the pool is not whitelisted', async () => {
-      await expect(dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('UnallowedPool()');
+      await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('UnallowedPool()');
     });
 
     context('when the pool is whitelisted', () => {
@@ -163,7 +163,7 @@ describe('DataFeed.sol', () => {
         let secondsAgos = [secondsAgo - (delta1 + delta2), secondsAgo - delta1, secondsAgo];
         let tickCumulatives = [0, 0, 0];
         uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-        await expect(dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
+        await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
           'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
         );
       });
@@ -172,7 +172,7 @@ describe('DataFeed.sol', () => {
         let secondsAgos = [secondsAgo, secondsAgo];
         let tickCumulatives = [0, 0];
         uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-        await expect(dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
+        await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
           'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
         );
       });
@@ -190,7 +190,7 @@ describe('DataFeed.sol', () => {
           let secondsAgos = [secondsAgo];
           let tickCumulatives = [0];
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-          await expect(dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InvalidSecondsAgos()');
+          await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InvalidSecondsAgos()');
         });
 
         // arithmeticMeanTick = tickCumulativesDelta / delta
@@ -209,7 +209,7 @@ describe('DataFeed.sol', () => {
           });
 
           it('should update lastPoolStateObserved', async () => {
-            await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
             let lastBlockTimestampObserved = secondsNow - secondsAgos[2];
             let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
@@ -221,7 +221,7 @@ describe('DataFeed.sol', () => {
           });
 
           it('should update _observedKeccak', async () => {
-            await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
             observationData1 = [blockTimestamp1, arithmeticMeanTick1];
             observationData2 = [blockTimestamp2, arithmeticMeanTick2];
@@ -238,7 +238,7 @@ describe('DataFeed.sol', () => {
             observationData2 = [blockTimestamp2, arithmeticMeanTick2];
             observationsData = [observationData1, observationData2];
 
-            const tx = await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
             let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
             let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
             let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
@@ -265,7 +265,7 @@ describe('DataFeed.sol', () => {
           });
 
           it('should update lastPoolStateObserved', async () => {
-            await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
             let lastBlockTimestampObserved = secondsNow - secondsAgos[2];
             let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
@@ -277,7 +277,7 @@ describe('DataFeed.sol', () => {
           });
 
           it('should update _observedKeccak', async () => {
-            await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
             observationData1 = [blockTimestamp1, arithmeticMeanTick1];
             observationData2 = [blockTimestamp2, arithmeticMeanTick2];
@@ -294,7 +294,7 @@ describe('DataFeed.sol', () => {
             observationData2 = [blockTimestamp2, arithmeticMeanTick2];
             observationsData = [observationData1, observationData2];
 
-            const tx = await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
             let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
             let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
             let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
@@ -341,7 +341,7 @@ describe('DataFeed.sol', () => {
           });
 
           it('should revert', async () => {
-            await expect(dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
+            await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
               'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
             );
           });
@@ -356,7 +356,7 @@ describe('DataFeed.sol', () => {
           });
 
           it('should revert', async () => {
-            await expect(dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
+            await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
               'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
             );
           });
@@ -373,7 +373,7 @@ describe('DataFeed.sol', () => {
             let tickCumulatives = [tickCumulative];
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
-            const tx = await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+            const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
             observationsData = (await readArgFromEvent(tx, 'PoolObserved', '_observationsData'))!;
             expect(observationsData.length).to.eq(1);
           });
@@ -396,7 +396,7 @@ describe('DataFeed.sol', () => {
             });
 
             it('should update lastPoolStateObserved', async () => {
-              await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
               lastBlockTimestampObserved = secondsNow - secondsAgos[2];
               let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
@@ -408,7 +408,7 @@ describe('DataFeed.sol', () => {
             });
 
             it('should update _observedKeccak', async () => {
-              await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
               observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
               observationData1 = [blockTimestamp1, arithmeticMeanTick1];
@@ -427,7 +427,7 @@ describe('DataFeed.sol', () => {
               observationData2 = [blockTimestamp2, arithmeticMeanTick2];
               observationsData = [observationData0, observationData1, observationData2];
 
-              const tx = await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+              const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
               let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
               let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
               let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
@@ -456,7 +456,7 @@ describe('DataFeed.sol', () => {
             });
 
             it('should update lastPoolStateObserved', async () => {
-              await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
               lastBlockTimestampObserved = secondsNow - secondsAgos[2];
               let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
@@ -468,7 +468,7 @@ describe('DataFeed.sol', () => {
             });
 
             it('should update _observedKeccak', async () => {
-              await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
               observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
               observationData1 = [blockTimestamp1, arithmeticMeanTick1];
@@ -487,7 +487,7 @@ describe('DataFeed.sol', () => {
               observationData2 = [blockTimestamp2, arithmeticMeanTick2];
               observationsData = [observationData0, observationData1, observationData2];
 
-              const tx = await dataFeed.connect(keeper).fetchObservations(randomSalt, secondsAgos);
+              const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
               let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
               let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
               let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
@@ -575,22 +575,21 @@ describe('DataFeed.sol', () => {
     });
   });
 
-  describe('setKeeper(...)', () => {
+  describe('setStrategy(...)', () => {
     onlyGovernor(
       () => dataFeed,
-      'setKeeper',
+      'setStrategy',
       () => governor,
       () => [randomAddress]
     );
 
-    it('should update the keeper', async () => {
-      await dataFeed.connect(governor).setKeeper(randomAddress);
-      let keeper = await dataFeed.keeper();
-      expect(keeper).to.eq(randomAddress);
+    it('should update the strategy', async () => {
+      await dataFeed.connect(governor).setStrategy(randomAddress);
+      expect(await dataFeed.strategy()).to.eq(randomAddress);
     });
 
-    it('should emit KeeperUpdated', async () => {
-      await expect(dataFeed.connect(governor).setKeeper(randomAddress)).to.emit(dataFeed, 'KeeperUpdated').withArgs(randomAddress);
+    it('should emit StrategyUpdated', async () => {
+      await expect(dataFeed.connect(governor).setStrategy(randomAddress)).to.emit(dataFeed, 'StrategyUpdated').withArgs(randomAddress);
     });
   });
 });

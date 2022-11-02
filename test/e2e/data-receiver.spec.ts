@@ -1,10 +1,10 @@
+import { ContractTransaction } from 'ethers';
 import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, ERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
-import { readArgFromEvent } from '@utils/event-utils';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
@@ -18,11 +18,12 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let oracleSidechain: OracleSidechain;
   let oracleFactory: OracleFactory;
-  let snapshotId: string;
   let tokenA: ERC20;
   let tokenB: ERC20;
   let fee: number;
   let salt: string;
+  let tx: ContractTransaction;
+  let snapshotId: string;
 
   const nonce = 1;
 
@@ -48,8 +49,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
-      let ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
-      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
+      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 
@@ -71,7 +71,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
     context('when the observations are writable', () => {
       it('should add the observations', async () => {
-        let tx = await dataReceiver.addObservations(observationsData, salt, nonce);
+        tx = await dataReceiver.addObservations(observationsData, salt, nonce);
 
         ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 

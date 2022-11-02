@@ -22,7 +22,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const TIME_TRIGGER = 1;
   const FETCH_OBSERVATION_ARGS = [salt, TIME_TRIGGER];
-  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
+  const fetchTx = await hre.deployments.execute('DataFeedStrategy', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',
@@ -30,7 +30,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   );
 
   const SEND_OBSERVATION_ARGS = [DUMMY_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
-  await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
+  await hre.deployments.execute('DataFeedStrategy', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
 
   const IS_FIRST_OBSERVATION = fetchData._poolNonce == 1;
   if (IS_FIRST_OBSERVATION) {

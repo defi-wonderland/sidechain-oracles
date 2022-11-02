@@ -5,7 +5,7 @@ import { ZERO_ADDRESS } from '@utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, keep3r, kp3rV1 } = await hre.getNamedAccounts();
-  const dataFeedKeeper = await hre.deployments.get('DataFeedKeeper');
+  const dataFeedStrategy = await hre.deployments.get('DataFeedStrategy');
 
   const txSettings = {
     from: deployer,
@@ -18,8 +18,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   });
 
   const SET_KEEPER = await hre.deployments.read('DataFeed', 'keeper');
-  if (dataFeedKeeper.address != SET_KEEPER) {
-    await hre.deployments.execute('DataFeed', txSettings, 'setKeeper', dataFeedKeeper.address);
+  if (dataFeedStrategy.address != SET_KEEPER) {
+    await hre.deployments.execute('DataFeed', txSettings, 'setKeeper', dataFeedStrategy.address);
   }
 
   const IS_KEEPER = await hre.deployments.read('Keep3r', 'isKeeper', deployer);
@@ -34,12 +34,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('Keep3r', txSettings, 'activate', kp3rV1);
   }
 
-  const JOB_OWNER = await hre.deployments.read('Keep3r', 'jobOwner', dataFeedKeeper.address);
+  const JOB_OWNER = await hre.deployments.read('Keep3r', 'jobOwner', dataFeedStrategy.address);
   if (ZERO_ADDRESS == JOB_OWNER) {
-    await hre.deployments.execute('Keep3r', txSettings, 'addJob', dataFeedKeeper.address);
+    await hre.deployments.execute('Keep3r', txSettings, 'addJob', dataFeedStrategy.address);
   }
 };
 
-deployFunction.dependencies = ['setup-data-feed-keeper'];
+deployFunction.dependencies = ['setup-data-feed-strategy'];
 deployFunction.tags = ['setup-keeper'];
 export default deployFunction;

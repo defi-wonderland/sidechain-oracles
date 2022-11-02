@@ -4,7 +4,8 @@ import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   DataFeed,
-  DataFeedKeeper,
+  DataFeedStrategy,
+  StrategyJob,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
   DummyAdapterForTest,
@@ -31,7 +32,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let keeper: JsonRpcSigner;
   let kp3rProxyGovernor: JsonRpcSigner;
   let dataFeed: DataFeed;
-  let dataFeedKeeper: DataFeedKeeper;
+  let dataFeedStrategy: DataFeedStrategy;
+  let strategyJob: StrategyJob;
   let uniswapV3Factory: UniswapV3Factory;
   let uniV3Pool: UniswapV3Pool;
   let tokenA: ERC20;
@@ -64,7 +66,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
-    ({ deployer, governor, dataFeed, dataFeedKeeper, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } =
+    ({ deployer, governor, dataFeed, dataFeedStrategy, strategyJob, connextSenderAdapter, connextReceiverAdapter, dataReceiver, oracleFactory } =
       await setupContracts());
 
     ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
@@ -78,13 +80,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
-      let ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
-      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
+      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 
   describe('observation bridging flow', () => {
-    let dataFeedKeeperSigner: JsonRpcSigner;
+    let dataFeedStrategySigner: JsonRpcSigner;
     let secondsAgos = [30, 10, 0];
     let blockTimestamps: number[];
     let tickCumulatives: BigNumber[];
@@ -96,8 +97,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     const hours = 10_000;
 
     beforeEach(async () => {
-      dataFeedKeeperSigner = await wallet.impersonate(dataFeedKeeper.address);
-      await wallet.setBalance(dataFeedKeeper.address, toUnit(10));
+      dataFeedStrategySigner = await wallet.impersonate(dataFeedStrategy.address);
+      await wallet.setBalance(dataFeedStrategy.address, toUnit(10));
     });
 
     context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
@@ -123,7 +124,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
+          tx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
 
           const observationsFetched = (await readArgFromEvent(
             tx,
@@ -229,7 +230,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
+          tx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
 
           const observationsFetched = (await readArgFromEvent(
             tx,
@@ -250,7 +251,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-            tx = await dataFeed.connect(dataFeedKeeperSigner).fetchObservations(salt, secondsAgos);
+            tx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
 
             const observationsFetched = (await readArgFromEvent(
               tx,
@@ -370,8 +371,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       await keep3rV2.connect(keeper).bond(tokenB.address, 0);
       await evm.advanceTimeAndBlock(bondTime.toNumber());
       await keep3rV2.connect(keeper).activate(tokenB.address);
-      await keep3rV2.addJob(dataFeedKeeper.address);
-      await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
+      await keep3rV2.addJob(strategyJob.address);
+      await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(strategyJob.address, toUnit(10));
     });
 
     context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
@@ -380,19 +381,18 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
         await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
-
         await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(dataFeedKeeper.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
+        await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
         await expect(
-          dataFeedKeeper.connect(governor)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
+          strategyJob.connect(governor)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
         ).to.be.revertedWith('KeeperNotValid()');
       });
 
       it('should work the job', async () => {
-        tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+        tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
         const eventPoolObserved = (await tx.wait()).events![1];
         const observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -400,12 +400,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         await expect(tx).to.emit(dataFeed, 'PoolObserved');
         await expect(
-          dataFeedKeeper.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
+          strategyJob.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
         ).to.emit(dataFeed, 'DataSent');
       });
 
       it('should pay the keeper', async () => {
-        tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+        tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
         const eventPoolObserved = (await tx.wait()).events![1];
         const observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -413,7 +413,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         await expect(tx).to.emit(keep3rV2, 'KeeperWork');
         await expect(
-          dataFeedKeeper.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
+          strategyJob.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
         ).to.emit(keep3rV2, 'KeeperWork');
       });
     });
@@ -441,12 +441,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await keep3rV2.connect(keeper).bond(tokenB.address, 0);
         await evm.advanceTimeAndBlock(bondTime.toNumber());
         await keep3rV2.connect(keeper).activate(tokenB.address);
-        await keep3rV2.addJob(dataFeedKeeper.address);
-        await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(dataFeedKeeper.address, toUnit(10));
+        await keep3rV2.addJob(strategyJob.address);
+        await keep3rV2.connect(kp3rProxyGovernor).forceLiquidityCreditsToJob(strategyJob.address, toUnit(10));
 
         // setup dummy adapter
         await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
-        await dataFeedKeeper.connect(governor).setDefaultBridgeSenderAdapter(dummyAdapter.address);
+        await strategyJob.connect(governor).setDefaultBridgeSenderAdapter(dummyAdapter.address);
         await dataFeed.connect(governor).whitelistAdapter(dummyAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(dummyAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
         await dataFeed.connect(governor).setReceiver(dummyAdapter.address, destinationDomain, dataReceiver.address);
@@ -462,7 +462,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when the bridge ignores a message', () => {
           beforeEach(async () => {
-            tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+            tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
             const eventPoolObserved = (await tx.wait()).events![1];
             observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -471,7 +471,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             initialTimestamp = observationsFetched[0].blockTimestamp;
 
             await dummyAdapter.setIgnoreTxs(true);
-            tx = await dataFeedKeeper
+            tx = await strategyJob
               .connect(keeper)
               ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
             await dummyAdapter.setIgnoreTxs(false);
@@ -513,7 +513,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
-          tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+          tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
           const eventPoolObserved = (await tx.wait()).events![1];
           observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
@@ -521,24 +521,22 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           initialTimestamp = observationsFetched[0].blockTimestamp;
 
-          await dataFeedKeeper
-            .connect(keeper)
-            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+          await strategyJob.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
 
-          const jobCooldown = await dataFeedKeeper.jobCooldown();
-          await evm.advanceTimeAndBlock(jobCooldown);
+          const strategyCooldown = await dataFeedStrategy.strategyCooldown();
+          await evm.advanceTimeAndBlock(strategyCooldown);
         });
 
         context('when the bridge ignores a message', () => {
           beforeEach(async () => {
-            tx = await dataFeedKeeper.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+            tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
             const eventPoolObserved = (await tx.wait()).events![1];
             observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
               ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
 
             await dummyAdapter.setIgnoreTxs(true);
-            tx = await dataFeedKeeper
+            tx = await strategyJob
               .connect(keeper)
               ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce + 1, observationsFetched);
             await dummyAdapter.setIgnoreTxs(false);

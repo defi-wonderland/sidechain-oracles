@@ -36,14 +36,14 @@ describe('Keep3rJob.sol', () => {
 
   describe('default values', () => {
     it('should return the default address for keep3r', async () => {
-      expect(await keep3rJob.keep3r()).to.equal(KEEP3R);
+      expect(await keep3rJob.keep3r()).to.eq(KEEP3R);
     });
   });
 
   describe('setKeep3r(...)', () => {
     it('should set the keep3r', async () => {
       await keep3rJob.connect(governor).setKeep3r(randomAddress);
-      expect(await keep3rJob.keep3r()).to.equal(randomAddress);
+      expect(await keep3rJob.keep3r()).to.eq(randomAddress);
     });
 
     it('should emit event', async () => {

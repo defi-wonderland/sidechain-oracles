@@ -1,16 +1,16 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IGovernable} from './peripherals/IGovernable.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
-import {IKeep3rJob} from './peripherals/IKeep3rJob.sol';
 import {IDataFeed} from './IDataFeed.sol';
 import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
 import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
 
-/// @title The DataFeedKeeper interface
+/// @title The DataFeedStrategy interface
 /// @author 0xJabberwock (from DeFi Wonderland)
-/// @notice Contains state variables, events, custom errors and functions used in DataFeedKeeper
-interface IDataFeedKeeper is IKeep3rJob {
+/// @notice Contains state variables, events, custom errors and functions used in DataFeedStrategy
+interface IDataFeedStrategy is IGovernable {
   // ENUMS
 
   enum TriggerReason {
@@ -25,13 +25,9 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @return _dataFeed The address of the DataFeed contract
   function dataFeed() external view returns (IDataFeed _dataFeed);
 
-  function defaultBridgeSenderAdapter() external view returns (IBridgeSenderAdapter _defaultBridgeSenderAdapter);
-
-  function lastPoolNonceBridged(uint16 _chainId, bytes32 _poolSalt) external view returns (uint24 _lastPoolNonceBridged);
-
   /// @notice Gets the job cooldown
-  /// @return _jobCooldown The cooldown of the job, in seconds
-  function jobCooldown() external view returns (uint32 _jobCooldown);
+  /// @return _strategyCooldown The cooldown of the job, in seconds
+  function strategyCooldown() external view returns (uint32 _strategyCooldown);
 
   /// @notice Gets the length of the bridged periods
   /// @return _periodLength The resolution of the bridged datapoints
@@ -45,11 +41,9 @@ interface IDataFeedKeeper is IKeep3rJob {
 
   // EVENTS
 
-  event DefaultBridgeSenderAdapterUpdated(IBridgeSenderAdapter _defaultBridgeSenderAdapter);
-
   /// @notice Emitted when the owner updates the job cooldown
-  /// @param _jobCooldown The new job cooldown
-  event JobCooldownUpdated(uint32 _jobCooldown);
+  /// @param _strategyCooldown The new job cooldown
+  event StrategyCooldownUpdated(uint32 _strategyCooldown);
 
   /// @notice Emitted when the owner updates the job period length
   /// @param _periodLength The new length of reading resolution periods
@@ -66,34 +60,21 @@ interface IDataFeedKeeper is IKeep3rJob {
 
   // ERRORS
 
-  /// @notice Thrown if the job is not workable
-  error NotWorkable();
+  /// @notice Thrown if the tx is not strategic
+  error NotStrategic();
 
-  /// @notice Thrown if governor tries to set a periodLength >= jobCooldown
+  /// @notice Thrown if governor tries to set a periodLength >= strategyCooldown
   error WrongSetting();
 
   // FUNCTIONS
 
-  /// @notice Calls to send observations in the DataFeed contract
-  /// @param _chainId The Ethereum chain identification
-  /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @param _poolNonce The nonce of the observations fetched by pool
-  function work(
-    uint16 _chainId,
-    bytes32 _poolSalt,
-    uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] memory _observationsData
-  ) external;
+  function strategicFetchObservations(bytes32 _poolSalt, TriggerReason _reason) external;
 
-  function work(bytes32 _poolSalt, TriggerReason _reason) external;
-
-  function forceWork(bytes32 _poolSalt, uint32 _fromTimestamp) external;
-
-  function setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) external;
+  function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external;
 
   /// @notice Sets the job cooldown
-  /// @param _jobCooldown The job cooldown to be set
-  function setJobCooldown(uint32 _jobCooldown) external;
+  /// @param _strategyCooldown The job cooldown to be set
+  function setStrategyCooldown(uint32 _strategyCooldown) external;
 
   /// @notice Sets the job period length
   /// @param _periodLength The new length of reading resolution periods
@@ -108,27 +89,16 @@ interface IDataFeedKeeper is IKeep3rJob {
   /// @param _lowerTwapThreshold The lower twap difference threshold used to trigger an update of the oracle
   function setTwapThresholds(int24 _upperTwapThreshold, int24 _lowerTwapThreshold) external;
 
-  /// @notice Returns if the job can be worked
-  /// @param _chainId The destination chain ID
+  /// @notice Returns if the strategy can be executed
   /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @param _poolNonce The nonce of the observations fetched by pool
-  /// @return _isWorkable Whether the job is workable or not
-  function workable(
-    uint16 _chainId,
-    bytes32 _poolSalt,
-    uint24 _poolNonce
-  ) external view returns (bool _isWorkable);
+  /// @return _reason The reason why the strategy can be executed
+  function isStrategic(bytes32 _poolSalt) external view returns (TriggerReason _reason);
 
-  /// @notice Returns if the job can be worked
+  /// @notice Returns if the strategy can be executed
   /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @return _reason The reason why the job can be worked
-  function workable(bytes32 _poolSalt) external view returns (TriggerReason _reason);
-
-  /// @notice Returns if the job can be worked
-  /// @param _poolSalt The pool salt defined by token0 token1 and fee
-  /// @param _reason The reason why the job can be worked
-  /// @return _isWorkable Whether the job is workable or not
-  function workable(bytes32 _poolSalt, TriggerReason _reason) external view returns (bool _isWorkable);
+  /// @param _reason The reason why the strategy can be executed
+  /// @return _isStrategic Whether the tx is strategic or not
+  function isStrategic(bytes32 _poolSalt, TriggerReason _reason) external view returns (bool _isStrategic);
 
   /// @notice Builds the secondsAgos array with periodLength between each datapoint
   /// @param _periodLength The resolution of the bridged datapoints

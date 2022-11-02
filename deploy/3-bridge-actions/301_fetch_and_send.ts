@@ -19,7 +19,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const TIME_TRIGGER = 1;
   const FETCH_OBSERVATION_ARGS = [salt, TIME_TRIGGER];
-  const fetchTx = await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
+  const fetchTx = await hre.deployments.execute('DataFeedStrategy', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',
@@ -27,7 +27,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   );
 
   const SEND_OBSERVATION_ARGS = [RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
-  await hre.deployments.execute('DataFeedKeeper', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
+  await hre.deployments.execute('DataFeedStrategy', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
 
   // TODO: read event and log bridge txID for tracking
   // XCalled topic = 0x9ff13ab44d4ea07af1c3b3ffb93494b9e0e32bb1564d8ba56e62e7ee9b7489d3

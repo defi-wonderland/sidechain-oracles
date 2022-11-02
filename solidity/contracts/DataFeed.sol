@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {PipelineManagement, Governable} from './peripherals/PipelineManagement.sol';
-import {IDataFeed, IDataFeedKeeper, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
+import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 import {OracleFork} from '../libraries/OracleFork.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
@@ -11,15 +11,15 @@ contract DataFeed is IDataFeed, PipelineManagement {
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
   /// @inheritdoc IDataFeed
-  IDataFeedKeeper public keeper;
+  IDataFeedStrategy public strategy;
 
   /// @inheritdoc IDataFeed
   mapping(bytes32 => PoolState) public lastPoolStateObserved;
 
   mapping(bytes32 => bool) internal _observedKeccak;
 
-  constructor(address _governor, IDataFeedKeeper _keeper) Governable(_governor) {
-    _setKeeper(_keeper);
+  constructor(address _governor, IDataFeedStrategy _strategy) Governable(_governor) {
+    _setStrategy(_strategy);
   }
 
   /// @inheritdoc IDataFeed
@@ -43,7 +43,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
   }
 
   /// @inheritdoc IDataFeed
-  function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external onlyKeeper validatePool(_poolSalt) {
+  function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external onlyStrategy validatePool(_poolSalt) {
     IOracleSidechain.ObservationData[] memory _observationsData;
     PoolState memory _lastPoolStateObserved = lastPoolStateObserved[_poolSalt];
 
@@ -131,17 +131,17 @@ contract DataFeed is IDataFeed, PipelineManagement {
   }
 
   /// @inheritdoc IDataFeed
-  function setKeeper(IDataFeedKeeper _keeper) external onlyGovernor {
-    _setKeeper(_keeper);
+  function setStrategy(IDataFeedStrategy _strategy) external onlyGovernor {
+    _setStrategy(_strategy);
   }
 
-  function _setKeeper(IDataFeedKeeper _keeper) private {
-    keeper = _keeper;
-    emit KeeperUpdated(_keeper);
+  function _setStrategy(IDataFeedStrategy _strategy) private {
+    strategy = _strategy;
+    emit StrategyUpdated(_strategy);
   }
 
-  modifier onlyKeeper() {
-    if (msg.sender != address(keeper)) revert OnlyKeeper();
+  modifier onlyStrategy() {
+    if (msg.sender != address(strategy)) revert OnlyStrategy();
     _;
   }
 }

@@ -21,7 +21,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const fetchTx = await (await hre.ethers.provider.getTransaction(FETCH_TX_HASH)).wait();
 
-  // if is not manual tx (dataFeedKeeper) read logIndex 1
+  // if is not manual tx (dataFeedStrategy) read logIndex 1
   const SET_KEEPER = await hre.deployments.read('DataFeed', 'keeper');
   let logIndex = 0;
   if (SET_KEEPER != deployer) logIndex++;

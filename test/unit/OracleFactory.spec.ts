@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { OracleFactory, OracleFactory__factory, IDataReceiver } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
@@ -17,7 +16,6 @@ describe('OracleFactory.sol', () => {
   let oracleFactory: MockContract<OracleFactory>;
   let oracleFactoryFactory: MockContractFactory<OracleFactory__factory>;
   let dataReceiver: FakeContract<IDataReceiver>;
-  let tx: ContractTransaction;
   let snapshotId: string;
 
   const randomAddress = wallet.generateRandomAddress();
@@ -77,8 +75,9 @@ describe('OracleFactory.sol', () => {
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
-      await expect(tx).to.emit(oracleFactory, 'OracleDeployed').withArgs(precalculatedOracleAddress, salt, CARDINALITY);
+      await expect(await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce))
+        .to.emit(oracleFactory, 'OracleDeployed')
+        .withArgs(precalculatedOracleAddress, salt, CARDINALITY);
     });
   });
 
@@ -128,8 +127,9 @@ describe('OracleFactory.sol', () => {
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(governor).setDataReceiver(randomAddress);
-      await expect(tx).to.emit(oracleFactory, 'DataReceiverSet').withArgs(randomAddress);
+      await expect(await oracleFactory.connect(governor).setDataReceiver(randomAddress))
+        .to.emit(oracleFactory, 'DataReceiverSet')
+        .withArgs(randomAddress);
     });
   });
 
@@ -147,8 +147,9 @@ describe('OracleFactory.sol', () => {
     });
 
     it('should emit an event', async () => {
-      tx = await oracleFactory.connect(governor).setInitialCardinality(randomCardinality);
-      await expect(tx).to.emit(oracleFactory, 'InitialCardinalitySet').withArgs(randomCardinality);
+      await expect(await oracleFactory.connect(governor).setInitialCardinality(randomCardinality))
+        .to.emit(oracleFactory, 'InitialCardinalitySet')
+        .withArgs(randomCardinality);
     });
   });
 });

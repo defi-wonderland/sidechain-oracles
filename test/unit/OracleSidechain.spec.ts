@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumber } from 'ethers';
+import { BigNumber, ContractTransaction } from 'ethers';
 import { OracleSidechain, OracleSidechain__factory, IOracleSidechain, OracleFactory, DataReceiver } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
@@ -16,6 +16,7 @@ describe('OracleSidechain.sol', () => {
   let oracleSidechainFactory: MockContractFactory<OracleSidechain__factory>;
   let oracleFactory: FakeContract<OracleFactory>;
   let dataReceiver: FakeContract<DataReceiver>;
+  let tx: ContractTransaction;
   let snapshotId: string;
 
   const randomTokenA = wallet.generateRandomAddress();
@@ -298,7 +299,7 @@ describe('OracleSidechain.sol', () => {
         });
 
         it('should emit ObservationWritten', async () => {
-          let tx = await oracleSidechain.connect(dataReceiver.wallet).write(observationsData, randomNonce);
+          tx = await oracleSidechain.connect(dataReceiver.wallet).write(observationsData, randomNonce);
           await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
           await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
         });

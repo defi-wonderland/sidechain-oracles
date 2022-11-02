@@ -11,11 +11,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const connextSenderAdapter = await hre.deployments.get('ConnextSenderAdapter');
 
-  const DATA_FEED_KEEPER = await hre.deployments.getOrNull('DataFeedKeeper');
+  const DATA_FEED_KEEPER = await hre.deployments.getOrNull('DataFeedStrategy');
   if (DATA_FEED_KEEPER) {
-    const SET_DEFAULT_ADAPTER = await hre.deployments.read('DataFeedKeeper', 'defaultBridgeSenderAdapter');
+    const SET_DEFAULT_ADAPTER = await hre.deployments.read('DataFeedStrategy', 'defaultBridgeSenderAdapter');
     if (connextSenderAdapter.address != SET_DEFAULT_ADAPTER) {
-      await hre.deployments.execute('DataFeedKeeper', txSettings, 'setDefaultBridgeSenderAdapter', connextSenderAdapter.address);
+      await hre.deployments.execute('DataFeedStrategy', txSettings, 'setDefaultBridgeSenderAdapter', connextSenderAdapter.address);
     }
   }
 };

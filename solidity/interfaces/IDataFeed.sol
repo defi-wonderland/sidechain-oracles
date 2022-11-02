@@ -3,7 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IPipelineManagement} from './peripherals/IPipelineManagement.sol';
-import {IDataFeedKeeper} from './IDataFeedKeeper.sol';
+import {IDataFeedStrategy} from './IDataFeedStrategy.sol';
 import {IConnextSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
 import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
 import {IOracleSidechain} from './IOracleSidechain.sol';
@@ -20,7 +20,7 @@ interface IDataFeed is IPipelineManagement {
 
   // STATE VARIABLES
 
-  function keeper() external view returns (IDataFeedKeeper _keeper);
+  function strategy() external view returns (IDataFeedStrategy _strategy);
 
   /// @notice Tracks the last observed pool state by salt
   /// @param _poolSalt The id of both the oracle and the pool
@@ -50,7 +50,7 @@ interface IDataFeed is IPipelineManagement {
 
   event PoolObserved(bytes32 _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
 
-  event KeeperUpdated(IDataFeedKeeper _keeper);
+  event StrategyUpdated(IDataFeedStrategy _strategy);
 
   // ERRORS
 
@@ -58,7 +58,7 @@ interface IDataFeed is IPipelineManagement {
 
   error UnknownHash();
 
-  error OnlyKeeper();
+  error OnlyStrategy();
 
   // FUNCTIONS
 
@@ -77,5 +77,5 @@ interface IDataFeed is IPipelineManagement {
     view
     returns (uint16[] memory _observationsIndices);
 
-  function setKeeper(IDataFeedKeeper _keeper) external;
+  function setStrategy(IDataFeedStrategy _strategy) external;
 }

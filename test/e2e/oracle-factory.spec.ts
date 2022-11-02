@@ -45,8 +45,7 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
 
   describe('salt code hash', () => {
     it('should be correctly set', async () => {
-      let ORACLE_INIT_CODE_HASH = await dataReceiver.ORACLE_INIT_CODE_HASH();
-      expect(ORACLE_INIT_CODE_HASH).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
+      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 

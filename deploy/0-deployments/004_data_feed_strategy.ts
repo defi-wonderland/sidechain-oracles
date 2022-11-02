@@ -14,20 +14,20 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     1200,
   ];
 
-  await hre.deployments.deploy('DataFeedKeeper', {
-    contract: 'solidity/contracts/DataFeedKeeper.sol:DataFeedKeeper',
+  await hre.deployments.deploy('DataFeedStrategy', {
+    contract: 'solidity/contracts/DataFeedStrategy.sol:DataFeedStrategy',
     from: deployer,
     log: true,
     args: CONSTRUCTOR_ARGS,
   });
 
   // NOTE: Mainnet Keep3r is hardcoded in Keep3rJob contract
-  const SET_KEEP3R = await hre.deployments.read('DataFeedKeeper', 'keep3r');
+  const SET_KEEP3R = await hre.deployments.read('DataFeedStrategy', 'keep3r');
   if (keep3r != SET_KEEP3R) {
-    await hre.deployments.execute('DataFeedKeeper', { from: deployer, log: true }, 'setKeep3r', keep3r);
+    await hre.deployments.execute('DataFeedStrategy', { from: deployer, log: true }, 'setKeep3r', keep3r);
   }
 };
 
-deployFunction.tags = ['data-feed-keeper'];
+deployFunction.tags = ['data-feed-strategy'];
 
 export default deployFunction;

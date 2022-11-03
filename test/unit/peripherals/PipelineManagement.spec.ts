@@ -46,20 +46,6 @@ describe('PipelineManagement.sol', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('isWhitelistedPool(...)', () => {
-    beforeEach(async () => {
-      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
-    });
-
-    it('should return true if the pool is whitelisted', async () => {
-      expect(await dataFeed.isWhitelistedPool(randomSalt)).to.eq(true);
-    });
-
-    it('should return false if the pool is not whitelisted', async () => {
-      expect(await dataFeed.isWhitelistedPool(randomSalt2)).to.eq(false);
-    });
-  });
-
   describe('whitelistPipeline(...)', () => {
     const lastPoolNonceObserved = 2;
 
@@ -391,6 +377,49 @@ describe('PipelineManagement.sol', () => {
         .withArgs(connextSenderAdapter.address, randomDestinationDomainId, randomDataReceiverAddress);
 
       await expect(tx).to.emit(dataFeed, 'ReceiverSet').withArgs(fakeAdapter.address, randomDestinationDomainId2, randomDataReceiverAddress2);
+    });
+  });
+
+  describe('whitelistedPools()', () => {
+    beforeEach(async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId2, randomSalt);
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt2);
+    });
+
+    it('should return the whitelisted pools', async () => {
+      let expectedWhitelistedPools = [randomSalt, randomSalt2];
+      expect(await dataFeed.whitelistedPools()).to.eql(expectedWhitelistedPools);
+    });
+  });
+
+  describe('isWhitelistedPool(...)', () => {
+    beforeEach(async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+    });
+
+    it('should return true if the pool is whitelisted', async () => {
+      expect(await dataFeed.isWhitelistedPool(randomSalt)).to.eq(true);
+    });
+
+    it('should return false if the pool is not whitelisted', async () => {
+      expect(await dataFeed.isWhitelistedPool(randomSalt2)).to.eq(false);
+    });
+  });
+
+  describe('isWhitelistedPipeline(...)', () => {
+    beforeEach(async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+    });
+
+    it('should return true if the pipeline is whitelisted', async () => {
+      expect(await dataFeed.isWhitelistedPipeline(randomChainId, randomSalt)).to.eq(true);
+    });
+
+    it('should return false if the pipeline is not whitelisted', async () => {
+      expect(await dataFeed.isWhitelistedPipeline(randomChainId2, randomSalt)).to.eq(false);
+      expect(await dataFeed.isWhitelistedPipeline(randomChainId, randomSalt2)).to.eq(false);
+      expect(await dataFeed.isWhitelistedPipeline(randomChainId2, randomSalt2)).to.eq(false);
     });
   });
 

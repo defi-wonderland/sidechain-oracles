@@ -43,8 +43,6 @@ interface IPipelineManagement is IGovernable {
 
   // FUNCTIONS
 
-  function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted);
-
   function whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) external;
 
   function whitelistPipelines(uint16[] calldata _chainIds, bytes32[] calldata _poolSalts) external;
@@ -76,6 +74,12 @@ interface IPipelineManagement is IGovernable {
     uint32[] calldata _destinationDomainIds,
     address[] calldata _dataReceivers
   ) external;
+
+  function whitelistedPools() external view returns (bytes32[] memory);
+
+  function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted);
+
+  function isWhitelistedPipeline(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted);
 
   function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId)
     external

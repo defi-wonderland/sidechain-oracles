@@ -26,11 +26,6 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   mapping(IBridgeSenderAdapter => mapping(uint32 => address)) public receivers;
 
   /// @inheritdoc IPipelineManagement
-  function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
-    return _whitelistedPools.contains(_poolSalt);
-  }
-
-  /// @inheritdoc IPipelineManagement
   function whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) external onlyGovernor {
     _whitelistPipeline(_chainId, _poolSalt);
   }
@@ -109,6 +104,21 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
         _setReceiver(_bridgeSenderAdapters[_i], _destinationDomainIds[_i], _dataReceivers[_i]);
       }
     }
+  }
+
+  /// @inheritdoc IPipelineManagement
+  function whitelistedPools() external view returns (bytes32[] memory) {
+    return _whitelistedPools.values();
+  }
+
+  /// @inheritdoc IPipelineManagement
+  function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
+    return _whitelistedPools.contains(_poolSalt);
+  }
+
+  /// @inheritdoc IPipelineManagement
+  function isWhitelistedPipeline(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
+    return whitelistedNonces[_chainId][_poolSalt] != 0;
   }
 
   /// @inheritdoc IPipelineManagement

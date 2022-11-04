@@ -15,7 +15,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
   IBridgeSenderAdapter public defaultBridgeSenderAdapter;
 
   /// @inheritdoc IStrategyJob
-  mapping(uint16 => mapping(bytes32 => uint24)) public lastPoolNonceBridged;
+  mapping(uint32 => mapping(bytes32 => uint24)) public lastPoolNonceBridged;
 
   constructor(
     address _governor,
@@ -30,7 +30,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
 
   /// @inheritdoc IStrategyJob
   function work(
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
@@ -53,7 +53,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
 
   /// @inheritdoc IStrategyJob
   function workable(
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) public view returns (bool _isWorkable) {
@@ -72,7 +72,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
   }
 
   function _workable(
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) internal view returns (bool _isWorkable) {

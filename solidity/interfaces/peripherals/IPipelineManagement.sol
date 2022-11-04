@@ -7,21 +7,21 @@ import {IBridgeSenderAdapter} from '../bridges/IBridgeSenderAdapter.sol';
 interface IPipelineManagement is IGovernable {
   // STATE VARIABLES
 
-  function whitelistedNonces(uint16 _chainId, bytes32 _poolSalt) external view returns (uint24 _whitelistedNonce);
+  function whitelistedNonces(uint32 _chainId, bytes32 _poolSalt) external view returns (uint24 _whitelistedNonce);
 
   function whitelistedAdapters(IBridgeSenderAdapter _bridgeSenderAdapter) external view returns (bool _isWhitelisted);
 
-  function destinationDomainIds(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId) external view returns (uint32 _destinationDomainId);
+  function destinationDomainIds(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _chainId) external view returns (uint32 _destinationDomainId);
 
   function receivers(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId) external view returns (address _dataReceiver);
 
   // EVENTS
 
-  event PipelineWhitelisted(uint16 _chainId, bytes32 indexed _poolSalt, uint24 _whitelistedNonce);
+  event PipelineWhitelisted(uint32 _chainId, bytes32 indexed _poolSalt, uint24 _whitelistedNonce);
 
   event AdapterWhitelisted(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted);
 
-  event DestinationDomainIdSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId, uint32 _destinationDomainId);
+  event DestinationDomainIdSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _chainId, uint32 _destinationDomainId);
 
   event ReceiverSet(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _destinationDomainId, address _dataReceiver);
 
@@ -43,9 +43,9 @@ interface IPipelineManagement is IGovernable {
 
   // FUNCTIONS
 
-  function whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) external;
+  function whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) external;
 
-  function whitelistPipelines(uint16[] calldata _chainIds, bytes32[] calldata _poolSalts) external;
+  function whitelistPipelines(uint32[] calldata _chainIds, bytes32[] calldata _poolSalts) external;
 
   function whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) external;
 
@@ -53,13 +53,13 @@ interface IPipelineManagement is IGovernable {
 
   function setDestinationDomainId(
     IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
+    uint32 _chainId,
     uint32 _destinationDomainId
   ) external;
 
   function setDestinationDomainIds(
     IBridgeSenderAdapter[] calldata _bridgeSenderAdapter,
-    uint16[] calldata _chainId,
+    uint32[] calldata _chainId,
     uint32[] calldata _destinationDomainId
   ) external;
 
@@ -79,9 +79,9 @@ interface IPipelineManagement is IGovernable {
 
   function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted);
 
-  function isWhitelistedPipeline(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted);
+  function isWhitelistedPipeline(uint32 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted);
 
-  function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId)
+  function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _chainId)
     external
     view
     returns (uint32 _destinationDomainId, address _dataReceiver);

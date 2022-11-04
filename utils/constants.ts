@@ -1,4 +1,4 @@
-import { IDomainIDRecord } from './types';
+import { IDomainIDRecord, IStrategySettingsRecord } from './types';
 
 export const TEST_FEE = 10_000;
 
@@ -40,4 +40,21 @@ export const domainId: IDomainIDRecord = {
   420: 1735356532,
   80001: 9991,
   42069: 42069,
+};
+
+export const strategySettings: IStrategySettingsRecord = {
+  5: {
+    cooldown: 43200, // half-day
+    periodLength: 3600, // 1hr
+    twapLength: 7200, // 2hs
+    upperTwapThreshold: 10,
+    lowerTwapThreshold: 10,
+  },
+  80001: {
+    cooldown: 3600, // 1hr
+    periodLength: 300, // 5min
+    twapLength: 300, // 5min
+    upperTwapThreshold: 10,
+    lowerTwapThreshold: 10,
+  },
 };

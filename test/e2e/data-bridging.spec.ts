@@ -387,7 +387,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       it('should revert if the keeper is not valid', async () => {
         await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
         await expect(
-          strategyJob.connect(governor)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
+          strategyJob.connect(governor)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
         ).to.be.revertedWith('KeeperNotValid()');
       });
 
@@ -400,7 +400,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         await expect(tx).to.emit(dataFeed, 'PoolObserved');
         await expect(
-          strategyJob.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
+          strategyJob.connect(keeper)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
         ).to.emit(dataFeed, 'DataSent');
       });
 
@@ -413,7 +413,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         await expect(tx).to.emit(keep3rV2, 'KeeperWork');
         await expect(
-          strategyJob.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
+          strategyJob.connect(keeper)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
         ).to.emit(keep3rV2, 'KeeperWork');
       });
     });
@@ -473,7 +473,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             await dummyAdapter.setIgnoreTxs(true);
             tx = await strategyJob
               .connect(keeper)
-              ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+              ['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
             await dummyAdapter.setIgnoreTxs(false);
           });
 
@@ -521,7 +521,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           initialTimestamp = observationsFetched[0].blockTimestamp;
 
-          await strategyJob.connect(keeper)['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+          await strategyJob.connect(keeper)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
 
           const strategyCooldown = await dataFeedStrategy.strategyCooldown();
           await evm.advanceTimeAndBlock(strategyCooldown);
@@ -538,7 +538,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             await dummyAdapter.setIgnoreTxs(true);
             tx = await strategyJob
               .connect(keeper)
-              ['work(uint16,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce + 1, observationsFetched);
+              ['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce + 1, observationsFetched);
             await dummyAdapter.setIgnoreTxs(false);
           });
 

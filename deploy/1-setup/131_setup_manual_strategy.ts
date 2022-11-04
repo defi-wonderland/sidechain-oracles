@@ -9,11 +9,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  const SET_KEEPER = await hre.deployments.read('DataFeed', 'keeper');
-  if (deployer != SET_KEEPER) {
-    await hre.deployments.execute('DataFeed', txSettings, 'setKeeper', deployer);
+  const SET_STRATEGY = await hre.deployments.read('DataFeed', 'strategy');
+  if (deployer != SET_STRATEGY) {
+    await hre.deployments.execute('DataFeed', txSettings, 'setStrategy', deployer);
   }
 };
 
-deployFunction.tags = ['setup-manual-keeper', 'test'];
+deployFunction.tags = ['setup-manual-strategy', 'test'];
 export default deployFunction;

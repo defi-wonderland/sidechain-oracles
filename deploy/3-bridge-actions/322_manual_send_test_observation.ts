@@ -33,6 +33,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   // console.log(event.data.transferId)
 };
 
-deployFunction.dependencies = ['dummy-test-setup', 'setup-manual-keeper'];
+deployFunction.dependencies = ['dummy-test-setup', 'setup-manual-strategy'];
 deployFunction.tags = ['manual-send-test-observation'];
 export default deployFunction;

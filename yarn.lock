@@ -271,10 +271,10 @@
   dependencies:
     "@openzeppelin/contracts" "4.3.0"
 
-"@defi-wonderland/smock@0.0.0-108bf124":
-  version "0.0.0-108bf124"
-  resolved "https://registry.yarnpkg.com/@defi-wonderland/smock/-/smock-0.0.0-108bf124.tgz#58585d2af31fa96a5d0a060176a71174496baf6a"
-  integrity sha512-OJDwcBjc6XCEnsEkjEZwWFAg0ehpUOJVRtS6N5vVlaF76yqsIHzGdym/ThuvVt3cUz2WA+qTrx4mtNbVspUU1A==
+"@defi-wonderland/smock@2.3.3":
+  version "2.3.3"
+  resolved "https://registry.yarnpkg.com/@defi-wonderland/smock/-/smock-2.3.3.tgz#de0a7a399e8e33d776f89f5813ac1ba88ef30c31"
+  integrity sha512-tDAdr02pEhEFRs1cRvmXr/Fnj3tvHkjVI9r+oPHDKQb3tyDyJ4zYZHchWY2VZvA+Ep5yrbXImlSOA6BL53H5Zg==
   dependencies:
     "@nomicfoundation/ethereumjs-evm" "^1.0.0-rc.3"
     "@nomicfoundation/ethereumjs-util" "^8.0.0-rc.3"
@@ -1777,15 +1777,15 @@
     "@nomicfoundation/solidity-analyzer-win32-ia32-msvc" "0.1.0"
     "@nomicfoundation/solidity-analyzer-win32-x64-msvc" "0.1.0"
 
-"@nomiclabs/hardhat-ethers@2.1.0":
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.1.0.tgz#9b7dc94d669ad9dc286b94f6f2f1513118c7027b"
-  integrity sha512-vlW90etB3675QWG7tMrHaDoTa7ymMB7irM4DAQ98g8zJoe9YqEggeDnbO6v5b+BLth/ty4vN6Ko/kaqRN1krHw==
+"@nomiclabs/hardhat-ethers@2.2.1":
+  version "2.2.1"
+  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-ethers/-/hardhat-ethers-2.2.1.tgz#8057b43566a0e41abeb8142064a3c0d3f23dca86"
+  integrity sha512-RHWYwnxryWR8hzRmU4Jm/q4gzvXpetUOJ4OPlwH2YARcDB+j79+yAYCwO0lN1SUOb4++oOTJEe6AWLEc42LIvg==
 
-"@nomiclabs/hardhat-etherscan@3.1.1":
-  version "3.1.1"
-  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-etherscan/-/hardhat-etherscan-3.1.1.tgz#471590f25c8c12cd84ae80a4f4c92551eb249667"
-  integrity sha512-a6+fJlHTiPjzUYnvwkcduJN0rAKWagQsQNoHJP/9mJ1CZjIkGysGtvVAjNpnrYWocj/Hbi36XmZ0H2aIKlol7A==
+"@nomiclabs/hardhat-etherscan@3.1.2":
+  version "3.1.2"
+  resolved "https://registry.yarnpkg.com/@nomiclabs/hardhat-etherscan/-/hardhat-etherscan-3.1.2.tgz#1f9af26ce7db437eb705d46a99996811b43d0e4a"
+  integrity sha512-IEikeOVq0C/7CY6aD74d8L4BpGoc/FNiN6ldiPVg0QIFIUSu4FSGA1dmtJZJKk1tjpwgrfTLQNWnigtEaN9REg==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@ethersproject/address" "^5.0.2"

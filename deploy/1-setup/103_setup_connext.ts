@@ -40,13 +40,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('DataFeed', txSettings, 'setReceiver', ...SET_RECEIVER_ARGS);
   }
 
-  const SET_DESTINATION_DOMAIN_ID = await hre.deployments.read(
-    'DataFeed',
-    txSettings,
-    'destinationDomainIds',
-    senderAdapter.address,
-    DESTINATION_CHAIN_ID
-  );
+  const SET_DESTINATION_DOMAIN_ID = await hre.deployments.read('DataFeed', 'destinationDomainIds', senderAdapter.address, DESTINATION_CHAIN_ID);
   if (SET_DESTINATION_DOMAIN_ID !== DESTINATION_DOMAIN_ID) {
     const SET_DESTINATION_DOMAIN_ID_ARGS = [senderAdapter.address, DESTINATION_CHAIN_ID, DESTINATION_DOMAIN_ID];
     await hre.deployments.execute('DataFeed', txSettings, 'setDestinationDomainId', ...SET_DESTINATION_DOMAIN_ID_ARGS);

@@ -44,7 +44,13 @@ describe('DataFeedStrategy.sol', () => {
     });
 
     dataFeedStrategyFactory = await smock.mock('DataFeedStrategy');
-    dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, initialStrategyCooldown, initialPeriodLength);
+    dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, {
+      cooldown: initialStrategyCooldown,
+      periodLength: initialPeriodLength,
+      twapLength: initialTwapLength,
+      upperTwapThreshold: initialUpperTwapThreshold,
+      lowerTwapThreshold: initialLowerTwapThreshold,
+    });
 
     snapshotId = await evm.snapshot.take();
   });

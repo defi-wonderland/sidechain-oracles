@@ -16,7 +16,7 @@ interface IStrategyJob is IKeep3rJob {
 
   function defaultBridgeSenderAdapter() external view returns (IBridgeSenderAdapter _defaultBridgeSenderAdapter);
 
-  function lastPoolNonceBridged(uint16 _chainId, bytes32 _poolSalt) external view returns (uint24 _lastPoolNonceBridged);
+  function lastPoolNonceBridged(uint32 _chainId, bytes32 _poolSalt) external view returns (uint24 _lastPoolNonceBridged);
 
   // EVENTS
 
@@ -33,7 +33,7 @@ interface IStrategyJob is IKeep3rJob {
   /// @param _poolSalt The pool salt defined by token0 token1 and fee
   /// @param _poolNonce The nonce of the observations fetched by pool
   function work(
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
@@ -49,7 +49,7 @@ interface IStrategyJob is IKeep3rJob {
   /// @param _poolNonce The nonce of the observations fetched by pool
   /// @return _isWorkable Whether the job is workable or not
   function workable(
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external view returns (bool _isWorkable);

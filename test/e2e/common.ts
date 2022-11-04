@@ -35,6 +35,9 @@ const destinationDomain = 1111;
 
 const cooldown = 3600;
 const periodLength = 1200;
+const twapLength = 2400;
+const upperTwapThreshold = 10;
+const lowerTwapThreshold = 10;
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
@@ -72,9 +75,13 @@ export async function setupContracts(): Promise<{
   const precalculatedDataFeedStrategyAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
   const dataFeed = (await dataFeedFactory.connect(deployer).deploy(governor.address, precalculatedDataFeedStrategyAddress)) as DataFeed;
 
-  const dataFeedStrategy = (await dataFeedStrategyFactory
-    .connect(deployer)
-    .deploy(governor.address, dataFeed.address, cooldown, periodLength)) as DataFeedStrategy;
+  const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, {
+    cooldown,
+    periodLength,
+    twapLength,
+    upperTwapThreshold,
+    lowerTwapThreshold,
+  })) as DataFeedStrategy;
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);
   const precalculatedConnextSenderAdapterAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 2 });

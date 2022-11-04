@@ -30,13 +30,13 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   constructor(
     address _governor,
     IDataFeed _dataFeed,
-    uint32 _strategyCooldown,
-    uint32 _periodLength
+    StrategySettings memory _params
   ) Governable(_governor) {
     dataFeed = _dataFeed;
-    _setStrategyCooldown(_strategyCooldown);
-    _setPeriodLength(_periodLength);
-    // TODO: _setTwapLength(), _setTwapTriggers();
+    _setStrategyCooldown(_params.cooldown);
+    _setPeriodLength(_params.periodLength);
+    _setTwapLength(_params.twapLength);
+    _setTwapThresholds(_params.upperTwapThreshold, _params.lowerTwapThreshold);
   }
 
   /// @inheritdoc IDataFeedStrategy

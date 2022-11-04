@@ -35,13 +35,13 @@ const networks: NetworksUserConfig =
             receiver: 'goerli',
           },
         },
-        // setup: mumbai bridges to goerli and goerli uses dummy adapter
         goerli: {
           url: env.getNodeUrl('goerli'),
           accounts: env.getAccounts('test'),
           chainId: 5,
           companionNetworks: {
-            receiver: 'goerli',
+            receiver: 'optimisticGoerli',
+            sender: 'mumbai',
           },
         },
         mumbai: {
@@ -50,6 +50,14 @@ const networks: NetworksUserConfig =
           chainId: 80001,
           companionNetworks: {
             receiver: 'goerli',
+          },
+        },
+        optimisticGoerli: {
+          url: 'https://goerli.optimism.io/',
+          accounts: env.getAccounts('test'),
+          chainId: 420,
+          companionNetworks: {
+            sender: 'goerli',
           },
         },
       };
@@ -104,7 +112,7 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'goerli']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'goerli', 'mumbai', 'optimisticGoerli']),
   },
   typechain: {
     outDir: 'typechained',

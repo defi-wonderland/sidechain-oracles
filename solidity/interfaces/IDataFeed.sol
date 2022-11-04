@@ -64,7 +64,7 @@ interface IDataFeed is IPipelineManagement {
 
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData

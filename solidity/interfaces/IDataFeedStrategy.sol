@@ -19,6 +19,16 @@ interface IDataFeedStrategy is IGovernable {
     TWAP
   }
 
+  // STRUCTS
+
+  struct StrategySettings {
+    uint32 cooldown;
+    uint32 periodLength;
+    uint32 twapLength;
+    int24 upperTwapThreshold;
+    int24 lowerTwapThreshold;
+  }
+
   // STATE VARIABLES
 
   /// @notice Gets the address of the DataFeed contract

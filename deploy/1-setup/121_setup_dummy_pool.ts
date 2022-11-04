@@ -6,11 +6,6 @@ import { calculateSalt } from '../../test/utils/misc';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
 import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
 
-/* TODO:
- * - setup fee, tokens, and chain ID (destination)
- * - must depend on deployment chain ID
- */
-
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
   const DESTINATION_CHAIN_ID = await hre.getChainId();
@@ -38,6 +33,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const salt = calculateSalt(tokenA, tokenB, TEST_FEE);
 
+  // TODO: add isWhitelistedPipeline view KMC-135
   const IS_WHITELISTED_POOL = await hre.deployments.read('DataFeed', 'isWhitelistedPool', salt);
   if (!IS_WHITELISTED_POOL) {
     await hre.deployments.execute('DataFeed', txSettings, 'whitelistPipeline', DESTINATION_CHAIN_ID, salt);

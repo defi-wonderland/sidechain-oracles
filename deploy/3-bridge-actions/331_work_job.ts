@@ -17,23 +17,23 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeed = await hre.deployments.get('DataFeed');
 
-  const BLOCK_TIMESTAMP = (await hre.ethers.provider.getBlock('latest')).timestamp;
-  const FETCH_OBSERVATION_ARGS = [salt, BLOCK_TIMESTAMP - 86400];
-  const fetchTx = await hre.deployments.execute('DataFeedStrategy', txSettings, 'forceWork(bytes32,uint32)', ...FETCH_OBSERVATION_ARGS);
+  const TIME_TRIGGER = 1;
+  const FETCH_OBSERVATION_ARGS = [salt, TIME_TRIGGER];
+  const fetchTx = await hre.deployments.execute('StrategyJob', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
 
   const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
     'PoolObserved',
-    fetchTx.logs![0].data
+    fetchTx.logs![1].data
   );
 
   const SEND_OBSERVATION_ARGS = [RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
-  await hre.deployments.execute('DataFeedStrategy', txSettings, 'work(uint16,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
+  await hre.deployments.execute('StrategyJob', txSettings, 'work(uint32,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
 
   // TODO: read event and log bridge txID for tracking
   // XCalled topic = 0x9ff13ab44d4ea07af1c3b3ffb93494b9e0e32bb1564d8ba56e62e7ee9b7489d3
   // console.log(event.data.transferId)
 };
 
-deployFunction.dependencies = ['connext-setup', 'setup-keeper'];
-deployFunction.tags = ['force-fetch-observation'];
+deployFunction.dependencies = ['setup-connext-default', 'pool-whitelisting'];
+deployFunction.tags = ['work-job'];
 export default deployFunction;

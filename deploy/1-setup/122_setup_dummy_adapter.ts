@@ -21,12 +21,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     await hre.deployments.execute('DataFeed', txSettings, 'setReceiver', ...SET_RECEIVER_ARGS);
   }
 
-  const IS_WHITELISTED_RECEIVER_ADAPTER = await hre.companionNetworks['receiver'].deployments.read(
-    'DataReceiver',
-    txSettings,
-    'whitelistedAdapters',
-    dummyAdapter
-  );
+  const IS_WHITELISTED_RECEIVER_ADAPTER = await hre.deployments.read('DataReceiver', txSettings, 'whitelistedAdapters', dummyAdapter);
+
   const WHITELIST_ADAPTER_ARGS = [dummyAdapter, true];
   if (!IS_WHITELISTED_RECEIVER_ADAPTER) {
     await hre.deployments.execute('DataReceiver', txSettings, 'whitelistAdapter', ...WHITELIST_ADAPTER_ARGS);

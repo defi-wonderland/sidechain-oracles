@@ -12,26 +12,26 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   EnumerableSet.Bytes32Set private _whitelistedPools;
 
   /// @inheritdoc IPipelineManagement
-  mapping(uint16 => mapping(bytes32 => uint24)) public whitelistedNonces;
+  mapping(uint32 => mapping(bytes32 => uint24)) public whitelistedNonces;
 
   /// @inheritdoc IPipelineManagement
   mapping(IBridgeSenderAdapter => bool) public whitelistedAdapters;
 
   // adapter => chainId => destinationDomain
   /// @inheritdoc IPipelineManagement
-  mapping(IBridgeSenderAdapter => mapping(uint16 => uint32)) public destinationDomainIds;
+  mapping(IBridgeSenderAdapter => mapping(uint32 => uint32)) public destinationDomainIds;
 
   // adapter => destinationDomainId => dataReceiver
   /// @inheritdoc IPipelineManagement
   mapping(IBridgeSenderAdapter => mapping(uint32 => address)) public receivers;
 
   /// @inheritdoc IPipelineManagement
-  function whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) external onlyGovernor {
+  function whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) external onlyGovernor {
     _whitelistPipeline(_chainId, _poolSalt);
   }
 
   /// @inheritdoc IPipelineManagement
-  function whitelistPipelines(uint16[] calldata _chainIds, bytes32[] calldata _poolSalts) external onlyGovernor {
+  function whitelistPipelines(uint32[] calldata _chainIds, bytes32[] calldata _poolSalts) external onlyGovernor {
     uint256 _chainIdsLength = _chainIds.length;
     if (_chainIdsLength != _poolSalts.length) revert LengthMismatch();
     unchecked {
@@ -60,7 +60,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   /// @inheritdoc IPipelineManagement
   function setDestinationDomainId(
     IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
+    uint32 _chainId,
     uint32 _destinationDomainId
   ) external onlyGovernor {
     _setDestinationDomainId(_bridgeSenderAdapter, _chainId, _destinationDomainId);
@@ -69,7 +69,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   /// @inheritdoc IPipelineManagement
   function setDestinationDomainIds(
     IBridgeSenderAdapter[] calldata _bridgeSenderAdapters,
-    uint16[] calldata _chainIds,
+    uint32[] calldata _chainIds,
     uint32[] calldata _destinationDomainIds
   ) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
@@ -117,12 +117,12 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   }
 
   /// @inheritdoc IPipelineManagement
-  function isWhitelistedPipeline(uint16 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
+  function isWhitelistedPipeline(uint32 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
     return whitelistedNonces[_chainId][_poolSalt] != 0;
   }
 
   /// @inheritdoc IPipelineManagement
-  function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint16 _chainId)
+  function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _chainId)
     public
     view
     returns (uint32 _destinationDomainId, address _dataReceiver)
@@ -136,7 +136,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     if (_dataReceiver == address(0)) revert ReceiverNotSet();
   }
 
-  function _whitelistPipeline(uint16 _chainId, bytes32 _poolSalt) internal {
+  function _whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) internal {
     (uint24 _lastPoolNonceObserved, , , ) = IDataFeed(address(this)).lastPoolStateObserved(_poolSalt);
     whitelistedNonces[_chainId][_poolSalt] = _lastPoolNonceObserved + 1;
     _whitelistedPools.add(_poolSalt);
@@ -150,7 +150,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
 
   function _setDestinationDomainId(
     IBridgeSenderAdapter _bridgeSenderAdapter,
-    uint16 _chainId,
+    uint32 _chainId,
     uint32 _destinationDomainId
   ) internal {
     destinationDomainIds[_bridgeSenderAdapter][_chainId] = _destinationDomainId;
@@ -172,7 +172,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   }
 
   modifier validatePipeline(
-    uint16 _chainId,
+    uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) {

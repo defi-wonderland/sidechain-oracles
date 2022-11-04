@@ -11,12 +11,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeedStrategy = await hre.deployments.get('DataFeedStrategy');
 
-  const SET_DATA_FEED_KEEPER = await hre.deployments.read('DataFeed', 'keeper');
-  if (dataFeedStrategy.address.toLocaleLowerCase() !== SET_DATA_FEED_KEEPER.toLocaleLowerCase()) {
-    await hre.deployments.execute('DataFeed', txSettings, 'setKeeper', dataFeedStrategy.address);
+  const SET_DATA_FEED_STRATEGY = await hre.deployments.read('DataFeed', 'strategy');
+  if (dataFeedStrategy.address.toLocaleLowerCase() !== SET_DATA_FEED_STRATEGY.toLocaleLowerCase()) {
+    await hre.deployments.execute('DataFeed', txSettings, 'setStrategy', dataFeedStrategy.address);
   }
 };
 
-deployFunction.dependencies = ['data-feed', 'data-feed-strategy'];
-deployFunction.tags = ['setup-data-feed-strategy'];
+deployFunction.dependencies = ['data-feed-strategy'];
+deployFunction.tags = ['setup-strategy'];
 export default deployFunction;

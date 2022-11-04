@@ -8,6 +8,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeedStrategy = await hre.deployments.get('DataFeedStrategy');
   await verifyContract(hre, dataFeedStrategy);
+
+  const strategyJob = await hre.deployments.get('StrategyJob');
+  await verifyContract(hre, strategyJob);
 };
 
 deployFunction.tags = ['verify', 'verify-sender'];

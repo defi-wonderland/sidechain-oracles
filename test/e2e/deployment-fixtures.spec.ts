@@ -10,10 +10,11 @@ import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { expect } from 'chai';
 
-describe.skip('@skip-on-coverage Fixture', () => {
+describe('@skip-on-coverage Fixture', () => {
   let deployer: string;
   let dataFeed: Type.DataFeed;
   let dataFeedStrategy: Type.DataFeedStrategy;
+  let strategyJob: Type.StrategyJob;
   let dataReceiver: Type.DataReceiver;
   let oracleFactory: Type.OracleFactory;
   let oracleSidechain: Type.OracleSidechain;
@@ -40,7 +41,13 @@ describe.skip('@skip-on-coverage Fixture', () => {
     });
   });
 
-  describe('test setup', () => {
+  describe('deployments', () => {
+    it('should deploy base contracts', async () => {
+      await deployments.fixture(['oracle-factory']);
+    });
+  });
+
+  describe('cascade test setup', () => {
     beforeEach(async () => {
       await deployments.fixture(['dummy-test-setup']);
 
@@ -55,7 +62,7 @@ describe.skip('@skip-on-coverage Fixture', () => {
     it('should set correct test settings', async () => {
       expect(await oracleFactory.dataReceiver()).to.eq(dataReceiver.address);
       expect(await dataReceiver.oracleFactory()).to.eq(oracleFactory.address);
-      expect(await dataFeed.keeper()).to.eq(deployer);
+      expect(await dataFeed.strategy()).to.eq(deployer);
 
       expect(await dataFeed.whitelistedAdapters(senderAdapter.address)).to.be.true;
       expect(await dataReceiver.whitelistedAdapters(receiverAdapter.address)).to.be.true;
@@ -63,8 +70,7 @@ describe.skip('@skip-on-coverage Fixture', () => {
 
     describe('when pool is deployed', () => {
       beforeEach(async () => {
-        await deployments.fixture(['save-tokens'], { keepExistingDeployments: true });
-        await deployments.fixture(['pool-whitelisting'], { keepExistingDeployments: true });
+        await deployments.fixture(['save-tokens', 'pool-whitelisting'], { keepExistingDeployments: true });
 
         tokenA = (await getContractFromFixture('TokenA', 'ERC20ForTest')) as Type.IERC20;
         tokenB = (await getContractFromFixture('TokenB', 'ERC20ForTest')) as Type.IERC20;
@@ -73,57 +79,117 @@ describe.skip('@skip-on-coverage Fixture', () => {
         await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
       });
 
+      it('should work with manual-fetch-observation fixture', async () => {
+        await deployments.fixture(['manual-fetch-observation'], { keepExistingDeployments: true });
+      });
+
       it('should work with manual-send-test-observation fixture', async () => {
         await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
       });
 
-      describe('when the job is setup', () => {
+      describe('when the strategy is setup', () => {
         beforeEach(async () => {
-          await deployments.fixture(['setup-data-feed-keeper'], { keepExistingDeployments: true });
-          await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
-          dataFeedStrategy = (await getContractFromFixture('DataFeedStrategy')) as Type.DataFeedStrategy;
-          await addCreditsToJob(dataFeedStrategy.address);
+          await deployments.fixture(['setup-strategy'], { keepExistingDeployments: true });
         });
 
-        it('should set correct test settings', async () => {
-          expect(await dataFeed.keeper()).to.eq(dataFeedStrategy.address);
-          expect(await dataFeedStrategy.dataFeed()).to.eq(dataFeed.address);
+        it('should work with fetch-observation', async () => {
+          await deployments.fixture(['fetch-observation'], { keepExistingDeployments: true });
         });
 
-        it('should be able to fetch observations', async () => {
-          await expect(dataFeedStrategy['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER)).not.to.be.reverted;
+        it('should work with force-fetch-observation', async () => {
+          await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
         });
 
-        context('when dummy adapter is setup', () => {
+        describe('when an observation was fetched', () => {
           beforeEach(async () => {
-            await deployments.fixture(['dummy-keeper-setup'], { keepExistingDeployments: true });
-            await addCreditsToJob(dataFeedStrategy.address);
+            await deployments.fixture(['fetch-observation'], { keepExistingDeployments: true });
           });
 
-          it('should be able to fetch and send observations', async () => {
-            const tx = await dataFeedStrategy['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
-            const txReceipt = await tx.wait();
-            const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+          it('should work with dummy-bridge-observation', async () => {
+            await deployments.fixture(['dummy-bridge-observation'], { keepExistingDeployments: true });
+          });
+        });
 
-            const RANDOM_CHAIN_ID = 5;
-
-            await expect(
-              dataFeedStrategy['work(uint16,bytes32,uint24,(uint32,int24)[])'](
-                RANDOM_CHAIN_ID,
-                poolSalt,
-                fetchData._poolNonce,
-                fetchData._observationsData
-              )
-            ).not.to.be.reverted;
-
-            const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
-            oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
-
-            expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
+        describe('when the job is setup', () => {
+          beforeEach(async () => {
+            await deployments.fixture(['setup-keep3r-job'], { keepExistingDeployments: true });
+            dataFeedStrategy = (await getContractFromFixture('DataFeedStrategy')) as Type.DataFeedStrategy;
+            strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
+            await addCreditsToJob(strategyJob.address);
           });
 
-          it('should work with send-test-observation fixture', async () => {
-            await deployments.fixture(['send-test-observation'], { keepExistingDeployments: true });
+          it('should set correct test settings', async () => {
+            expect(await dataFeed.strategy()).to.eq(dataFeedStrategy.address);
+            expect(await dataFeedStrategy.dataFeed()).to.eq(dataFeed.address);
+          });
+
+          it('should be able to work-fetch observations', async () => {
+            await expect(strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER)).not.to.be.reverted;
+          });
+
+          describe('when dummy adapter is default', () => {
+            beforeEach(async () => {
+              await deployments.fixture(['setup-dummy-default'], { keepExistingDeployments: true });
+            });
+
+            it('should be able to fetch and send observations', async () => {
+              const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
+              const txReceipt = await tx.wait();
+              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+
+              const RANDOM_CHAIN_ID = 5;
+
+              await expect(
+                strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
+                  RANDOM_CHAIN_ID,
+                  poolSalt,
+                  fetchData._poolNonce,
+                  fetchData._observationsData
+                )
+              ).not.to.be.reverted;
+
+              const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
+              oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
+
+              expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
+            });
+
+            it('should work with send-test-observation fixture', async () => {
+              await deployments.fixture(['send-test-observation'], { keepExistingDeployments: true });
+            });
+          });
+
+          describe('when connext adapter is default', () => {
+            beforeEach(async () => {
+              await deployments.fixture(['setup-connext-default'], { keepExistingDeployments: true });
+            });
+
+            // TODO: fix after KMC-135, UnallowedPipeline()
+            it.skip('should be able to fetch and send observations', async () => {
+              const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
+              const txReceipt = await tx.wait();
+              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+
+              const REAL_CHAIN_ID = 420;
+
+              await expect(
+                strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
+                  REAL_CHAIN_ID,
+                  poolSalt,
+                  fetchData._poolNonce,
+                  fetchData._observationsData
+                )
+              ).not.to.be.reverted;
+
+              const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
+              oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
+
+              expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
+            });
+
+            it('should work with send-observation fixture', async () => {
+              await deployments.fixture(['send-observation'], { keepExistingDeployments: true });
+            });
           });
         });
       });
@@ -133,20 +199,34 @@ describe.skip('@skip-on-coverage Fixture', () => {
   describe('production setup', () => {
     beforeEach(async () => {
       await deployments.fixture(['base-contracts']);
-      await deployments.fixture(['setup-keeper', 'connext-setup'], { keepExistingDeployments: true });
+      await deployments.fixture(['setup-keep3r-job', 'connext-setup'], { keepExistingDeployments: true });
 
-      dataFeedStrategy = (await getContractFromFixture('DataFeedStrategy')) as Type.DataFeedStrategy;
+      strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
 
       await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
-      await addCreditsToJob(dataFeedStrategy.address);
-    });
-
-    it('should work with send-observation', async () => {
-      await deployments.fixture(['send-observation'], { keepExistingDeployments: true });
+      await addCreditsToJob(strategyJob.address);
     });
 
     it('should work with force-fetch-observation', async () => {
       await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
+    });
+
+    it('should work with work-job', async () => {
+      await deployments.fixture(['work-job'], { keepExistingDeployments: true });
+    });
+
+    it('should work with dummy-work-job', async () => {
+      await deployments.fixture(['dummy-work-job'], { keepExistingDeployments: true });
+    });
+
+    describe('after observation was fetched', () => {
+      beforeEach(async () => {
+        await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
+      });
+
+      it('should work with bridge-observation', async () => {
+        await deployments.fixture(['bridge-observation'], { keepExistingDeployments: true });
+      });
     });
   });
 });

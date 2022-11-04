@@ -65,7 +65,7 @@ describe('StrategyJob.sol', () => {
     });
   });
 
-  describe('work(uint16,bytes32,uint24,(uint32,int24)[])', () => {
+  describe('work(uint32,bytes32,uint24,(uint32,int24)[])', () => {
     let observationData0 = [500000, 50];
     let observationData1 = [1000000, 100];
     let observationData2 = [3000000, 300];
@@ -74,7 +74,7 @@ describe('StrategyJob.sol', () => {
     it('should revert if the keeper is not valid', async () => {
       keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
       await expect(
-        strategyJob.connect(governor)['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData)
+        strategyJob.connect(governor)['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData)
       ).to.be.revertedWith('KeeperNotValid()');
     });
 
@@ -87,19 +87,19 @@ describe('StrategyJob.sol', () => {
         await expect(
           strategyJob
             .connect(keeper)
-            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
+            ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
         ).to.be.revertedWith('NotWorkable()');
         await expect(
           strategyJob
             .connect(keeper)
-            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
+            ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
         ).to.be.revertedWith('NotWorkable()');
       });
 
       it('should update lastPoolNonceBridged', async () => {
         await strategyJob
           .connect(keeper)
-          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
         let lastPoolNonceBridged = await strategyJob.lastPoolNonceBridged(randomChainId, randomSalt);
         expect(lastPoolNonceBridged).to.eq(randomNonce);
       });
@@ -108,7 +108,7 @@ describe('StrategyJob.sol', () => {
         dataFeed.sendObservations.reset();
         await strategyJob
           .connect(keeper)
-          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
         expect(dataFeed.sendObservations).to.have.been.calledOnceWith(
           defaultSenderAdapterAddress,
           randomChainId,
@@ -122,7 +122,7 @@ describe('StrategyJob.sol', () => {
         keep3r.worked.reset();
         await strategyJob
           .connect(keeper)
-          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
         expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
       });
     });
@@ -136,19 +136,19 @@ describe('StrategyJob.sol', () => {
         await expect(
           strategyJob
             .connect(keeper)
-            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
+            ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
         ).to.be.revertedWith('NotWorkable()');
         await expect(
           strategyJob
             .connect(keeper)
-            ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
+            ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
         ).to.be.revertedWith('NotWorkable()');
       });
 
       it('should update lastPoolNonceBridged', async () => {
         await strategyJob
           .connect(keeper)
-          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
         let lastPoolNonceBridged = await strategyJob.lastPoolNonceBridged(randomChainId, randomSalt);
         expect(lastPoolNonceBridged).to.eq(randomNonce);
       });
@@ -157,7 +157,7 @@ describe('StrategyJob.sol', () => {
         dataFeed.sendObservations.reset();
         await strategyJob
           .connect(keeper)
-          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
         expect(dataFeed.sendObservations).to.have.been.calledOnceWith(
           defaultSenderAdapterAddress,
           randomChainId,
@@ -171,7 +171,7 @@ describe('StrategyJob.sol', () => {
         keep3r.worked.reset();
         await strategyJob
           .connect(keeper)
-          ['work(uint16,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData);
         expect(keep3r.worked).to.have.been.calledOnceWith(keeper.address);
       });
     });
@@ -216,12 +216,12 @@ describe('StrategyJob.sol', () => {
     });
   });
 
-  describe('workable(uint16,bytes32,uint24)', () => {
+  describe('workable(uint32,bytes32,uint24)', () => {
     let isWorkable: boolean;
 
     it('should return false if the pipeline is not whitelisted', async () => {
       dataFeed.whitelistedNonces.whenCalledWith(randomChainId, randomSalt).returns(0);
-      isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+      isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
       expect(isWorkable).to.eq(false);
     });
 
@@ -231,7 +231,7 @@ describe('StrategyJob.sol', () => {
       });
 
       it('should return false if the nonce is lower than the whitelisted nonce', async () => {
-        isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+        isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
         expect(isWorkable).to.eq(false);
       });
 
@@ -241,14 +241,14 @@ describe('StrategyJob.sol', () => {
         });
 
         it('should return true if the nonce equals the last pool nonce observed', async () => {
-          isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+          isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
           expect(isWorkable).to.eq(true);
         });
 
         it('should return false if the nonce is different than the last pool nonce observed', async () => {
-          isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+          isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
           expect(isWorkable).to.eq(false);
-          isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
+          isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
           expect(isWorkable).to.eq(false);
         });
       });
@@ -259,14 +259,14 @@ describe('StrategyJob.sol', () => {
         });
 
         it('should return true if the nonce is one higher than lastPoolNonceBridged', async () => {
-          isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
+          isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce);
           expect(isWorkable).to.eq(true);
         });
 
         it('should return false if the nonce is not one higher than lastPoolNonceBridged', async () => {
-          isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
+          isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce - 1);
           expect(isWorkable).to.eq(false);
-          isWorkable = await strategyJob['workable(uint16,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
+          isWorkable = await strategyJob['workable(uint32,bytes32,uint24)'](randomChainId, randomSalt, randomNonce + 1);
           expect(isWorkable).to.eq(false);
         });
       });

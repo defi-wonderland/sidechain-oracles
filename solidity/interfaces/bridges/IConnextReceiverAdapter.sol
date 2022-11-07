@@ -1,9 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IBridgeReceiverAdapter, IOracleSidechain} from './IBridgeReceiverAdapter.sol';
 import {IConnext} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnext.sol';
-import {IDataReceiver} from '../IDataReceiver.sol';
+import {IBridgeReceiverAdapter, IDataReceiver, IOracleSidechain} from './IBridgeReceiverAdapter.sol';
 
 interface IConnextReceiverAdapter is IBridgeReceiverAdapter {
   // STATE VARIABLES

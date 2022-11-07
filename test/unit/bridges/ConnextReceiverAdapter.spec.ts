@@ -27,6 +27,7 @@ describe('ConnextReceiverAdapter.sol', () => {
   const rinkebyOriginId = 1111;
 
   const randomSalt = VALID_POOL_SALT;
+  const randomNonce = 420;
 
   before(async () => {
     [, randomUser] = await ethers.getSigners();
@@ -74,7 +75,6 @@ describe('ConnextReceiverAdapter.sol', () => {
     let tick2 = 300;
     let observationData2 = [blockTimestamp2, tick2];
     let observationsData = [observationData1, observationData2];
-    let randomNonce = 420;
     let xReceiveParams: any[];
 
     xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, ZERO_ADDRESS, rinkebyOriginId];

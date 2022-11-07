@@ -45,11 +45,11 @@ describe('OracleFactory.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should initialize governor to the provided address', async () => {
+    it('should set the governor', async () => {
       expect(await oracleFactory.governor()).to.eq(governor.address);
     });
 
-    it('should initialize data receiver to the provided address', async () => {
+    it('should initialize dataReceiver interface', async () => {
       expect(await oracleFactory.dataReceiver()).to.eq(dataReceiver.address);
     });
   });
@@ -78,38 +78,6 @@ describe('OracleFactory.sol', () => {
       await expect(await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce))
         .to.emit(oracleFactory, 'OracleDeployed')
         .withArgs(precalculatedOracleAddress, salt, CARDINALITY);
-    });
-  });
-
-  describe('getPool(...)', () => {
-    let precalculatedOracleAddress: string;
-
-    beforeEach(async () => {
-      precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
-
-    it('should return zero address when oracle is not deployed', async () => {
-      expect(await oracleFactory.getPool(token0, token1, randomFee)).to.eq(ZERO_ADDRESS);
-    });
-
-    it('should return oracle address when tokens are sorted', async () => {
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
-      expect(await oracleFactory.getPool(token0, token1, randomFee)).to.eq(precalculatedOracleAddress);
-    });
-
-    it('should return oracle address when tokens are unsorted', async () => {
-      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
-      expect(await oracleFactory.getPool(token1, token0, randomFee)).to.eq(precalculatedOracleAddress);
-    });
-  });
-
-  describe('getPoolSalt(...)', () => {
-    it('should return the correct salt when tokens are sorted', async () => {
-      expect(await oracleFactory.getPoolSalt(token0, token1, randomFee)).to.eq(salt);
-    });
-
-    it('should return the correct salt when tokens are unsorted', async () => {
-      expect(await oracleFactory.getPoolSalt(token1, token0, randomFee)).to.eq(salt);
     });
   });
 
@@ -150,6 +118,58 @@ describe('OracleFactory.sol', () => {
       await expect(await oracleFactory.connect(governor).setInitialCardinality(randomCardinality))
         .to.emit(oracleFactory, 'InitialCardinalitySet')
         .withArgs(randomCardinality);
+    });
+  });
+
+  describe('getPool(address,address,uint24)', () => {
+    it('should return zero address when oracle is not deployed', async () => {
+      expect(await oracleFactory['getPool(address,address,uint24)'](token0, token1, randomFee)).to.eq(ZERO_ADDRESS);
+    });
+
+    context('when oracle is deployed', () => {
+      let precalculatedOracleAddress: string;
+
+      beforeEach(async () => {
+        precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
+        await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
+      });
+
+      it('should return oracle address when tokens are sorted', async () => {
+        expect(await oracleFactory['getPool(address,address,uint24)'](token0, token1, randomFee)).to.eq(precalculatedOracleAddress);
+      });
+
+      it('should return oracle address when tokens are unsorted', async () => {
+        expect(await oracleFactory['getPool(address,address,uint24)'](token1, token0, randomFee)).to.eq(precalculatedOracleAddress);
+      });
+    });
+  });
+
+  describe('getPool(bytes32)', () => {
+    it('should return zero address when oracle is not deployed', async () => {
+      expect(await oracleFactory['getPool(bytes32)'](salt)).to.eq(ZERO_ADDRESS);
+    });
+
+    context('when oracle is deployed', () => {
+      let precalculatedOracleAddress: string;
+
+      beforeEach(async () => {
+        precalculatedOracleAddress = getCreate2Address(oracleFactory.address, salt, getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
+        await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
+      });
+
+      it('should return oracle address', async () => {
+        expect(await oracleFactory['getPool(bytes32)'](salt)).to.eq(precalculatedOracleAddress);
+      });
+    });
+  });
+
+  describe('getPoolSalt(...)', () => {
+    it('should return the correct salt when tokens are sorted', async () => {
+      expect(await oracleFactory.getPoolSalt(token0, token1, randomFee)).to.eq(salt);
+    });
+
+    it('should return the correct salt when tokens are unsorted', async () => {
+      expect(await oracleFactory.getPoolSalt(token1, token0, randomFee)).to.eq(salt);
     });
   });
 });

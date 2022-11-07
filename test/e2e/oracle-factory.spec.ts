@@ -65,27 +65,35 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
       expect((await ethers.provider.getCode(oracleSidechain.address)).length).to.be.gt(100);
     });
 
-    it('should add the deployed oracle to the getPool method with the sorted tokens and fee as keys', async () => {
-      expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
-      await oracleFactory.deployOracle(salt, nonce);
-      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
-
-      expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(oracleSidechain.address);
-    });
-
-    it('should add the deployed oracle to the getPool method with the unsorted tokens and fee as keys', async () => {
-      expect(await oracleFactory.getPool(tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
-      await oracleFactory.deployOracle(salt, nonce);
-      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
-
-      expect(await oracleFactory.getPool(tokenB.address, tokenA.address, fee)).to.eq(oracleSidechain.address);
-    });
-
     it('should return the same address as the precalculated one', async () => {
       ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
       const trueOracleAddress = await oracleFactory.callStatic.deployOracle(salt, nonce);
       expect(trueOracleAddress).to.be.eq(oracleSidechain.address);
+    });
+
+    it('should add the deployed oracle to the getPool method with the pool salt as key', async () => {
+      expect(await oracleFactory['getPool(bytes32)'](salt)).to.eq(ZERO_ADDRESS);
+      await oracleFactory.deployOracle(salt, nonce);
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+
+      expect(await oracleFactory['getPool(bytes32)'](salt)).to.eq(oracleSidechain.address);
+    });
+
+    it('should add the deployed oracle to the getPool method with the sorted tokens and fee as keys', async () => {
+      expect(await oracleFactory['getPool(address,address,uint24)'](tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
+      await oracleFactory.deployOracle(salt, nonce);
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+
+      expect(await oracleFactory['getPool(address,address,uint24)'](tokenA.address, tokenB.address, fee)).to.eq(oracleSidechain.address);
+    });
+
+    it('should add the deployed oracle to the getPool method with the unsorted tokens and fee as keys', async () => {
+      expect(await oracleFactory['getPool(address,address,uint24)'](tokenA.address, tokenB.address, fee)).to.eq(ZERO_ADDRESS);
+      await oracleFactory.deployOracle(salt, nonce);
+      ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+
+      expect(await oracleFactory['getPool(address,address,uint24)'](tokenB.address, tokenA.address, fee)).to.eq(oracleSidechain.address);
     });
 
     after(async () => {

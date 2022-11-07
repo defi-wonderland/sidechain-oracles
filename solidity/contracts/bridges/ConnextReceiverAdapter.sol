@@ -1,9 +1,9 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
-import {IConnext, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
 import {BridgeReceiverAdapter} from './BridgeReceiverAdapter.sol';
+import {IConnext, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
+import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
 
 contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
   // The connectHandler contract on this domain

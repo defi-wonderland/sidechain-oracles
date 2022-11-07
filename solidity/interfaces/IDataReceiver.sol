@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IGovernable} from './peripherals/IGovernable.sol';
 import {IOracleFactory} from './IOracleFactory.sol';
 import {IOracleSidechain} from './IOracleSidechain.sol';
 import {IBridgeReceiverAdapter} from './bridges/IBridgeReceiverAdapter.sol';
-import {IGovernable} from './peripherals/IGovernable.sol';
 
 /// @title The DataReceiver interface
 /// @author 0xJabberwock (from DeFi Wonderland)
@@ -14,10 +14,12 @@ interface IDataReceiver is IGovernable {
 
   function oracleFactory() external view returns (IOracleFactory _oracleFactory);
 
-  //solhint-disable-next-line func-name-mixedcase
-  function ORACLE_INIT_CODE_HASH() external view returns (bytes32 _oracleInitCodeHash);
+  function deployedOracles(bytes32 _poolSalt) external view returns (IOracleSidechain _deployedOracle);
 
   function whitelistedAdapters(IBridgeReceiverAdapter _adapter) external view returns (bool _isAllowed);
+
+  //solhint-disable-next-line func-name-mixedcase
+  function ORACLE_INIT_CODE_HASH() external view returns (bytes32 _oracleInitCodeHash);
 
   // EVENTS
 

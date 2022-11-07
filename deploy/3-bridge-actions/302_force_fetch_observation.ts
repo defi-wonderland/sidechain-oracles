@@ -9,7 +9,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const salt = calculateSalt(tokenA, tokenB, TEST_FEE);
 
   const chainId = Number(await hre.getChainId());
-  const deploymentSettings = strategySettings[Number(chainId)];
+  const deploymentSettings = strategySettings[chainId];
 
   const txSettings = {
     from: deployer,

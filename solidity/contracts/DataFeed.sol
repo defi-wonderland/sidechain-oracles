@@ -7,9 +7,6 @@ import {OracleFork} from '../libraries/OracleFork.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
 contract DataFeed is IDataFeed, PipelineManagement {
-  address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
-  bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
-
   /// @inheritdoc IDataFeed
   IDataFeedStrategy public strategy;
 
@@ -17,6 +14,9 @@ contract DataFeed is IDataFeed, PipelineManagement {
   mapping(bytes32 => PoolState) public lastPoolStateObserved;
 
   mapping(bytes32 => bool) internal _observedKeccak;
+
+  address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+  bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
   constructor(address _governor, IDataFeedStrategy _strategy) Governable(_governor) {
     _setStrategy(_strategy);

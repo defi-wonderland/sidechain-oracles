@@ -8,7 +8,7 @@ import {IDataFeed} from '../IDataFeed.sol';
 interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // STATE VARIABLES
 
-  function connext() external view returns (address _connext);
+  function connext() external view returns (IConnext _connext);
 
   function dataFeed() external view returns (IDataFeed _dataFeed);
 }

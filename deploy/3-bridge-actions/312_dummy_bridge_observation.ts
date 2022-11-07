@@ -38,7 +38,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const DUMMY_ORACLE_SIDECHAIN = await hre.deployments.getOrNull('DummyOracleSidechain');
   if (DUMMY_ORACLE_SIDECHAIN == null) {
-    const DUMMY_ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool', tokenA, tokenB, TEST_FEE);
+    const DUMMY_ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool(address,address,uint24)', tokenA, tokenB, TEST_FEE);
     await hre.deployments.save('DummyOracleSidechain', {
       abi: OracleSidechain.abi,
       address: DUMMY_ORACLE_ADDRESS,

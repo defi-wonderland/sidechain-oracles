@@ -1,9 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IOracleSidechain, IOracleFactory} from '../interfaces/IOracleSidechain.sol';
 import {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';
-import {IOracleSidechain} from '../interfaces/IOracleSidechain.sol';
-import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
 
 /// @title A sidechain oracle contract
 /// @author 0xJabberwock (from DeFi Wonderland)

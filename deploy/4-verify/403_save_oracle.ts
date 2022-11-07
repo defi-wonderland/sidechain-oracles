@@ -12,7 +12,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  const ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool', tokenA, tokenB, TEST_FEE);
+  const ORACLE_ADDRESS = await hre.deployments.read('OracleFactory', 'getPool(address,address,uint24)', tokenA, tokenB, TEST_FEE);
   await hre.deployments.save('OracleSidechain', {
     abi: OracleSidechain.abi,
     address: ORACLE_ADDRESS,

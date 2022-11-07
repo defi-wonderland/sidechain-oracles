@@ -1,8 +1,8 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IOracleSidechain} from '../IOracleSidechain.sol';
 import {IDataReceiver} from '../IDataReceiver.sol';
+import {IOracleSidechain} from '../IOracleSidechain.sol';
 
 interface IBridgeReceiverAdapter {
   // FUNCTIONS

@@ -24,7 +24,7 @@ describe('StrategyJob.sol', () => {
   const randomSenderAdapterAddress = wallet.generateRandomAddress();
   const randomChainId = 32;
   const randomSalt = VALID_POOL_SALT;
-  const randomNonce = 2;
+  const randomNonce = 420;
   const randomTrigger = 1;
 
   const NONE_TRIGGER = 0;

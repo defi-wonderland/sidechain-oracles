@@ -1,8 +1,7 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IBridgeReceiverAdapter, IOracleSidechain} from '../../interfaces/bridges/IBridgeReceiverAdapter.sol';
-import {IDataReceiver} from '../../interfaces/IDataReceiver.sol';
+import {IBridgeReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IBridgeReceiverAdapter.sol';
 
 abstract contract BridgeReceiverAdapter is IBridgeReceiverAdapter {
   /// @inheritdoc IBridgeReceiverAdapter

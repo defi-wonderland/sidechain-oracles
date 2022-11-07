@@ -1,35 +1,25 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity >=0.8.8 <0.9.0;
 
-import {OracleSidechain} from './OracleSidechain.sol';
 import {Governable} from './peripherals/Governable.sol';
-import {IDataReceiver, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
-import {IOracleFactory} from '../interfaces/IOracleFactory.sol';
-import {Create2Address} from '../libraries/Create2Address.sol';
+import {OracleSidechain} from './OracleSidechain.sol';
+import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
 contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   IOracleFactory public oracleFactory;
 
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x3e18d4b938652a57468c33dc4c258bb737e09aa77bfb1b11ee92e6dad97685dc;
+  /// @inheritdoc IDataReceiver
+  mapping(bytes32 => IOracleSidechain) public deployedOracles;
 
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
+  /// @inheritdoc IDataReceiver
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x056d3616ffdd9158501fe22611024ba326bcf811060af2060f37502a91cbb7db;
+
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
     oracleFactory = _oracleFactory;
-  }
-
-  function _writeObservations(
-    IOracleSidechain _oracle,
-    IOracleSidechain.ObservationData[] memory _observationsData,
-    uint24 _poolNonce
-  ) internal {
-    if (_oracle.write(_observationsData, _poolNonce)) {
-      emit ObservationsAdded(msg.sender, _observationsData);
-    } else {
-      revert ObservationsNotWritable();
-    }
   }
 
   function addObservations(
@@ -45,15 +35,27 @@ contract DataReceiver is IDataReceiver, Governable {
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) internal {
-    IOracleSidechain _resultingAddress = IOracleSidechain(
-      Create2Address.computeAddress(address(oracleFactory), _poolSalt, ORACLE_INIT_CODE_HASH)
-    );
-    bool _isDeployed = address(_resultingAddress).code.length > 0;
-    if (_isDeployed) {
-      return _writeObservations(_resultingAddress, _observationsData, _poolNonce);
+    IOracleSidechain _oracle = deployedOracles[_poolSalt];
+    if (address(_oracle) == address(0)) {
+      _oracle = oracleFactory.getPool(_poolSalt);
+      if (address(_oracle) == address(0)) {
+        _oracle = oracleFactory.deployOracle(_poolSalt, _poolNonce);
+      }
+      deployedOracles[_poolSalt] = _oracle;
     }
-    address _deployedOracle = oracleFactory.deployOracle(_poolSalt, _poolNonce);
-    _writeObservations(IOracleSidechain(_deployedOracle), _observationsData, _poolNonce);
+    _writeObservations(_oracle, _observationsData, _poolNonce);
+  }
+
+  function _writeObservations(
+    IOracleSidechain _oracle,
+    IOracleSidechain.ObservationData[] memory _observationsData,
+    uint24 _poolNonce
+  ) internal {
+    if (_oracle.write(_observationsData, _poolNonce)) {
+      emit ObservationsAdded(msg.sender, _observationsData);
+    } else {
+      revert ObservationsNotWritable();
+    }
   }
 
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {

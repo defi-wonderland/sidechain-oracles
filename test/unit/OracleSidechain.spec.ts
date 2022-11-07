@@ -23,6 +23,7 @@ describe('OracleSidechain.sol', () => {
   const randomTokenB = wallet.generateRandomAddress();
   const randomFee = 3000;
   const randomNonce = 420;
+
   const salt = calculateSalt(randomTokenA, randomTokenB, randomFee);
 
   before(async () => {

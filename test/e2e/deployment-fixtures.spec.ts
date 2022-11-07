@@ -148,7 +148,7 @@ describe('@skip-on-coverage Fixture', () => {
                 )
               ).not.to.be.reverted;
 
-              const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
+              const oracleAddress = await oracleFactory['getPool(address,address,uint24)'](tokenA.address, tokenB.address, TEST_FEE);
               oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
 
               expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
@@ -181,7 +181,7 @@ describe('@skip-on-coverage Fixture', () => {
                 )
               ).not.to.be.reverted;
 
-              const oracleAddress = await oracleFactory.getPool(tokenA.address, tokenB.address, TEST_FEE);
+              const oracleAddress = await oracleFactory['getPool(address,address,uint24)'](tokenA.address, tokenB.address, TEST_FEE);
               oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
 
               expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);

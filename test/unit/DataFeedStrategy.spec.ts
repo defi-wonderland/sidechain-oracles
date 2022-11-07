@@ -25,10 +25,7 @@ describe('DataFeedStrategy.sol', () => {
   const initialUpperTwapThreshold = toBN(953); // log_{1.0001}(1.1) = log(1.1)/log(1.0001) = 953 ===> (+10 %)
   const initialLowerTwapThreshold = toBN(-1053); // log_{1.0001}(0.9) = log(0.9)/log(1.0001) = -1053 ===> (-10 %)
 
-  const randomSenderAdapterAddress = wallet.generateRandomAddress();
-  const randomChainId = 32;
   const randomSalt = VALID_POOL_SALT;
-  const randomNonce = 2;
 
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;

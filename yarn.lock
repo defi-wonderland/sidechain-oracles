@@ -264,6 +264,13 @@
   dependencies:
     "@cspotcode/source-map-consumer" "0.8.0"
 
+"@defi-wonderland/crypto-husky-checks@1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@defi-wonderland/crypto-husky-checks/-/crypto-husky-checks-1.1.1.tgz#f3863008e22bee89c8bd634462630369f780fe17"
+  integrity sha512-6f3Z6n+2gUnG1SAK1ATRNG1ObOKvqhhoUpC3q+tgpFOmCKRJIQwrIYiPCCvVfZWBguIZdmWfbfiL1sHxqsEUSA==
+  dependencies:
+    fs-extra "10.1.0"
+
 "@defi-wonderland/keep3r-v2@0.0.0-ba0f8872":
   version "0.0.0-ba0f8872"
   resolved "https://registry.yarnpkg.com/@defi-wonderland/keep3r-v2/-/keep3r-v2-0.0.0-ba0f8872.tgz#a851baefea251f425dd7348237da9fc9088bb177"
@@ -6940,6 +6947,15 @@ fs-access@^1.0.1:
   dependencies:
     null-check "^1.0.0"
 
+fs-extra@10.1.0, fs-extra@^10.0.0:
+  version "10.1.0"
+  resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.1.0.tgz#02873cfbc4084dde127eaa5f9905eef2325d1abf"
+  integrity sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==
+  dependencies:
+    graceful-fs "^4.2.0"
+    jsonfile "^6.0.1"
+    universalify "^2.0.0"
+
 fs-extra@^0.30.0:
   version "0.30.0"
   resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-0.30.0.tgz#f233ffcc08d4da7d432daa449776989db1df93f0"
@@ -6950,15 +6966,6 @@ fs-extra@^0.30.0:
     klaw "^1.0.0"
     path-is-absolute "^1.0.0"
     rimraf "^2.2.8"
-
-fs-extra@^10.0.0:
-  version "10.1.0"
-  resolved "https://registry.yarnpkg.com/fs-extra/-/fs-extra-10.1.0.tgz#02873cfbc4084dde127eaa5f9905eef2325d1abf"
-  integrity sha512-oRXApq54ETRj4eMiFzGnHWGy+zo5raudjuxN0b8H7s/RU2oW0Wvsx9O0ACRN/kRq9E8Vu/ReskGB5o3ji+FzHQ==
-  dependencies:
-    graceful-fs "^4.2.0"
-    jsonfile "^6.0.1"
-    universalify "^2.0.0"
 
 fs-extra@^4.0.2, fs-extra@^4.0.3:
   version "4.0.3"

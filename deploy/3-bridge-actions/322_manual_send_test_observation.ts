@@ -21,10 +21,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const FETCH_OBSERVATION_ARGS = [salt, SECONDS_AGOS];
   const fetchTx = await hre.deployments.execute('DataFeed', txSettings, 'fetchObservations(bytes32,uint32[])', ...FETCH_OBSERVATION_ARGS);
 
-  const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
-    'PoolObserved',
-    fetchTx.logs![0].data
-  );
+  const dataFeedContract = await hre.ethers.getContractAt('DataFeed', dataFeed.address);
+  const fetchData = dataFeedContract.interface.decodeEventLog('PoolObserved', fetchTx.logs![0].data);
   const SEND_OBSERVATION_ARGS = [dummyAdapter.address, DUMMY_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
   await hre.deployments.execute('DataFeed', txSettings, 'sendObservations', ...SEND_OBSERVATION_ARGS);
 

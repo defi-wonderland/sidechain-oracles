@@ -108,19 +108,19 @@ describe('DataFeed.sol', () => {
         );
       });
 
-      it('should emit DataSent', async () => {
+      it('should emit DataBroadcast', async () => {
         const tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, nonce, observationsData);
-        let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataSent', '_bridgeSenderAdapter');
-        let eventDataReceiver = await readArgFromEvent(tx, 'DataSent', '_dataReceiver');
-        let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
-        let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-        let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
+        let eventPoolSalt = await readArgFromEvent(tx, 'DataBroadcast', '_poolSalt');
+        let eventPoolNonce = await readArgFromEvent(tx, 'DataBroadcast', '_poolNonce');
+        let eventChainId = await readArgFromEvent(tx, 'DataBroadcast', '_chainId');
+        let eventDataReceiver = await readArgFromEvent(tx, 'DataBroadcast', '_dataReceiver');
+        let eventBridgeSenderAdapter = await readArgFromEvent(tx, 'DataBroadcast', '_bridgeSenderAdapter');
 
-        expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
-        expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
-        expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
-        expect(eventObservationsData).to.eql(observationsData);
         expect(eventPoolSalt).to.eq(randomSalt);
+        expect(eventPoolNonce).to.eq(nonce);
+        expect(eventChainId).to.eq(randomChainId);
+        expect(eventDataReceiver).to.eq(randomDataReceiverAddress);
+        expect(eventBridgeSenderAdapter).to.eq(connextSenderAdapter.address);
       });
     });
   });

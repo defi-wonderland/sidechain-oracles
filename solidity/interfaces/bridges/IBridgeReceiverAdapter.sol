@@ -11,10 +11,6 @@ interface IBridgeReceiverAdapter {
 
   /* NOTE: callback methods should be here declared */
 
-  // EVENTS
-
-  event DataSent(IOracleSidechain.ObservationData[] _observationsData, bytes32 _poolSalt);
-
   // ERRORS
 
   error UnauthorizedCaller();

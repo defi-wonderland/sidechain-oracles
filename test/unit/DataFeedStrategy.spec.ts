@@ -8,6 +8,7 @@ import { toBN } from '@utils/bn';
 import { onlyGovernor } from '@utils/behaviours';
 import { getCreate2Address } from '@utils/misc';
 import chai, { expect } from 'chai';
+import { readArgFromEvent } from '@utils/event-utils';
 
 chai.use(smock.matchers);
 
@@ -96,6 +97,15 @@ describe('DataFeedStrategy.sol', () => {
         const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
         expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
       });
+
+      it('should emit StrategicFetch', async () => {
+        const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TIME_TRIGGER);
+        let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+        let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
+
+        expect(eventPoolSalt).to.eq(randomSalt);
+        expect(eventReason).to.eq(TIME_TRIGGER);
+      });
     });
 
     context('when the trigger reason is TWAP', () => {
@@ -159,6 +169,15 @@ describe('DataFeedStrategy.sol', () => {
             await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
             const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
             expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+          });
+
+          it('should emit StrategicFetch', async () => {
+            const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+            let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+            let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
+
+            expect(eventPoolSalt).to.eq(randomSalt);
+            expect(eventReason).to.eq(TWAP_TRIGGER);
           });
         });
       });

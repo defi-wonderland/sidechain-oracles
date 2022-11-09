@@ -16,7 +16,7 @@ contract DataReceiver is IDataReceiver, Governable {
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
   /// @inheritdoc IDataReceiver
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x056d3616ffdd9158501fe22611024ba326bcf811060af2060f37502a91cbb7db;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x066d4e0ee68408129381c41878c708895d421fdf04c51a09dac507e0cba4abe8;
 
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
     oracleFactory = _oracleFactory;
@@ -35,6 +35,7 @@ contract DataReceiver is IDataReceiver, Governable {
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) internal {
+    // Read, store or deploy oracle given poolSalt
     IOracleSidechain _oracle = deployedOracles[_poolSalt];
     if (address(_oracle) == address(0)) {
       _oracle = oracleFactory.getPool(_poolSalt);
@@ -43,16 +44,9 @@ contract DataReceiver is IDataReceiver, Governable {
       }
       deployedOracles[_poolSalt] = _oracle;
     }
-    _writeObservations(_oracle, _observationsData, _poolNonce);
-  }
-
-  function _writeObservations(
-    IOracleSidechain _oracle,
-    IOracleSidechain.ObservationData[] memory _observationsData,
-    uint24 _poolNonce
-  ) internal {
+    // Try to write observations data into oracle
     if (_oracle.write(_observationsData, _poolNonce)) {
-      emit ObservationsAdded(msg.sender, _observationsData);
+      emit ObservationsAdded(msg.sender, _poolSalt, _poolNonce, _observationsData);
     } else {
       revert ObservationsNotWritable();
     }

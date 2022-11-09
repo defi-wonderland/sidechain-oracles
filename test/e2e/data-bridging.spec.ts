@@ -47,6 +47,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
   let tx: ContractTransaction;
+  let fetchTx: ContractTransaction;
+  let broadcastTx: ContractTransaction;
   let snapshotId: string;
 
   const destinationDomain = 420;
@@ -102,6 +104,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     });
 
     context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
+      let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
+
       beforeEach(async () => {
         await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
@@ -124,26 +128,20 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
+          fetchTx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
 
-          const observationsFetched = (await readArgFromEvent(
-            tx,
+          observationsFetched = (await readArgFromEvent(
+            fetchTx,
             'PoolObserved',
             '_observationsData'
           )) as IOracleSidechain.ObservationDataStructOutput[];
 
-          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+          broadcastTx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
         });
 
-        it('should bridge an amount of observations 1 lesser than amount of secondsAgos', async () => {
-          const observationsBridged = (await readArgFromEvent(
-            tx,
-            'DataSent',
-            '_observationsData'
-          )) as IOracleSidechain.ObservationDataStructOutput[];
-
-          expect(observationsBridged.length).to.eq(secondsAgos.length - 1);
-          expect(observationsBridged[observationsBridged.length - 1].blockTimestamp).not.to.eq(0);
+        it('should fetch an amount of observations 1 lesser than amount of secondsAgos', async () => {
+          expect(observationsFetched.length).to.eq(secondsAgos.length - 1);
+          expect(observationsFetched[observationsFetched.length - 1].blockTimestamp).not.to.eq(0);
         });
 
         it('should bridge the data and add the observations correctly', async () => {
@@ -230,15 +228,21 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-          tx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
+          fetchTx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
 
-          const observationsFetched = (await readArgFromEvent(
-            tx,
+          observationsFetched = (await readArgFromEvent(
+            fetchTx,
             'PoolObserved',
             '_observationsData'
           )) as IOracleSidechain.ObservationDataStructOutput[];
 
-          tx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, lastPoolNonceObserved, observationsFetched);
+          broadcastTx = await dataFeed.sendObservations(
+            connextSenderAdapter.address,
+            RANDOM_CHAIN_ID,
+            salt,
+            lastPoolNonceObserved,
+            observationsFetched
+          );
 
           await evm.advanceTimeAndBlock(4 * hours);
         });
@@ -251,15 +255,15 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
-            tx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
+            fetchTx = await dataFeed.connect(dataFeedStrategySigner).fetchObservations(salt, secondsAgos);
 
-            const observationsFetched = (await readArgFromEvent(
-              tx,
+            observationsFetched = (await readArgFromEvent(
+              fetchTx,
               'PoolObserved',
               '_observationsData'
             )) as IOracleSidechain.ObservationDataStructOutput[];
 
-            tx = await dataFeed.sendObservations(
+            broadcastTx = await dataFeed.sendObservations(
               connextSenderAdapter.address,
               RANDOM_CHAIN_ID,
               salt,
@@ -268,15 +272,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
             );
           });
 
-          it('should bridge an amount of observations equal to the amount of secondsAgos', async () => {
-            const observationsBridged = (await readArgFromEvent(
-              tx,
-              'DataSent',
-              '_observationsData'
-            )) as IOracleSidechain.ObservationDataStructOutput[];
-
-            expect(observationsBridged.length).to.eq(secondsAgos.length);
-            expect(observationsBridged[observationsBridged.length - 1].blockTimestamp).not.to.eq(0);
+          it('should fetch an amount of observations equal to the amount of secondsAgos', async () => {
+            expect(observationsFetched.length).to.eq(secondsAgos.length);
+            expect(observationsFetched[observationsFetched.length - 1].blockTimestamp).not.to.eq(0);
           });
 
           it('should bridge the data and add the observations correctly', async () => {
@@ -401,7 +399,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         await expect(tx).to.emit(dataFeed, 'PoolObserved');
         await expect(
           strategyJob.connect(keeper)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
-        ).to.emit(dataFeed, 'DataSent');
+        ).to.emit(dataFeed, 'DataBroadcast');
       });
 
       it('should pay the keeper', async () => {
@@ -478,9 +476,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           });
 
           it('should have ignored a tx', async () => {
-            await expect(tx).to.emit(dataFeed, 'DataSent');
+            await expect(tx).to.emit(dataFeed, 'DataBroadcast');
 
-            await expect(tx).not.to.emit(oracleSidechain, 'ObservationWritten');
+            await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
           });
 
           context('when the data is sent', () => {
@@ -543,9 +541,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           });
 
           it('should have ignored a tx', async () => {
-            await expect(tx).to.emit(dataFeed, 'DataSent');
+            await expect(tx).to.emit(dataFeed, 'DataBroadcast');
 
-            await expect(tx).not.to.emit(oracleSidechain, 'ObservationWritten');
+            await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
           });
 
           context('when the data is sent', () => {

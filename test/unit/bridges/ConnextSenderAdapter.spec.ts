@@ -70,24 +70,6 @@ describe('ConnextSenderAdapter.sol', () => {
       expect(connextHandler.xcall).to.have.been.calledOnceWith(...xcallArgs);
     });
 
-    // TODO: review event emission
-    it.skip('should emit an event', async () => {
-      const tx = await connextSenderAdapter
-        .connect(randomFeed)
-        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce);
-      let eventTo = await readArgFromEvent(tx, 'DataSent', '_to');
-      let eventOriginDomainId = await readArgFromEvent(tx, 'DataSent', '_originDomainId');
-      let eventDestinationDomainId = await readArgFromEvent(tx, 'DataSent', '_destinationDomainId');
-      let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-      let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
-
-      expect(eventTo).to.eq(randomReceiverAdapterAddress);
-      expect(eventOriginDomainId).to.eq(rinkebyOriginId);
-      expect(eventDestinationDomainId).to.eq(randomDestinationDomainId);
-      expect(eventObservationsData).to.eql(observationsData);
-      expect(eventPoolSalt).to.eq(randomSalt);
-    });
-
     onlyDataFeed(
       () => connextSenderAdapter,
       'bridgeObservations',

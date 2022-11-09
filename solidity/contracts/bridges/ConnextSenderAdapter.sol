@@ -34,8 +34,6 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
       _slippage: 0, // slippage in bps
       _callData: _callData // to be executed on _to on the destination domain
     });
-
-    // emit DataSent(_to, _originDomainId, _destinationDomainId, _observationsData, _poolSalt);
   }
 
   modifier onlyDataFeed() {

@@ -38,7 +38,7 @@ interface IOracleFactory is IGovernable {
 
   // EVENTS
 
-  event OracleDeployed(IOracleSidechain _oracle, bytes32 _poolSalt, uint16 _cardinality);
+  event OracleDeployed(bytes32 indexed _poolSalt, address indexed _oracle, uint24 _initialNonce);
 
   event DataReceiverSet(IDataReceiver _dataReceiver);
 

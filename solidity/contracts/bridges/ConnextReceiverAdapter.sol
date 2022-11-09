@@ -30,9 +30,9 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
   }
 
   function xReceive(
-    bytes32 _transferId,
-    uint256 _amount,
-    address _asset,
+    bytes32, // _transferId
+    uint256, // _amount
+    address, // _asset
     address _originSender,
     uint32 _origin,
     bytes memory _callData
@@ -43,6 +43,6 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
     );
 
     _addObservations(_observationsData, _poolSalt, _poolNonce);
-    return bytes(abi.encode('random'));
+    return bytes(abi.encode(''));
   }
 }

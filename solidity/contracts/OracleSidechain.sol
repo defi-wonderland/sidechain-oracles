@@ -3,6 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleSidechain, IOracleFactory} from '../interfaces/IOracleSidechain.sol';
 import {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';
+import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
 /// @title A sidechain oracle contract
 /// @author 0xJabberwock (from DeFi Wonderland)
@@ -109,6 +110,10 @@ contract OracleSidechain is IOracleSidechain {
     for (uint256 _i; _i < _observationsDataLength; ++_i) {
       _write(_observationsData[_i]);
     }
+    slot0.sqrtPriceX96 = TickMath.getSqrtRatioAtTick(slot0.tick);
+
+    // emits UniV3 Swap event topic with minimal data
+    emit Swap(address(0), address(0), 0, 0, slot0.sqrtPriceX96, 0, slot0.tick);
     return true;
   }
 
@@ -123,7 +128,6 @@ contract OracleSidechain is IOracleSidechain {
     );
     (slot0.observationIndex, slot0.observationCardinality) = (_indexUpdated, _cardinalityUpdated);
     slot0.tick = _observationData.tick;
-    emit ObservationWritten(msg.sender, _observationData);
   }
 
   modifier onlyDataReceiver() {

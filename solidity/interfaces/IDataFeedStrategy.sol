@@ -51,6 +51,11 @@ interface IDataFeedStrategy is IGovernable {
 
   // EVENTS
 
+  /// @notice Emitted when a data fetch is triggered
+  /// @param _poolSalt Identifier of the pool to fetch
+  /// @param _reason Identifier number of the reason that triggered the fetch request
+  event StrategicFetch(bytes32 indexed _poolSalt, TriggerReason _reason);
+
   /// @notice Emitted when the owner updates the job cooldown
   /// @param _strategyCooldown The new job cooldown
   event StrategyCooldownUpdated(uint32 _strategyCooldown);

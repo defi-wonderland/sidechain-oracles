@@ -30,8 +30,9 @@ contract OracleFactory is IOracleFactory, Governable {
       cardinality: initialCardinality
     });
     _oracle = new OracleSidechain{salt: _poolSalt}();
+
     delete oracleParameters;
-    emit OracleDeployed(_oracle, _poolSalt, initialCardinality);
+    emit OracleDeployed(_poolSalt, address(_oracle), _initialNonce);
   }
 
   /// @inheritdoc IOracleFactory

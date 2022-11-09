@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { OracleFactory, OracleFactory__factory, IDataReceiver } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { CARDINALITY, ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
+import { ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { onlyGovernor, onlyDataReceiver } from '@utils/behaviours';
 import { sortTokens, calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
@@ -77,7 +77,7 @@ describe('OracleFactory.sol', () => {
     it('should emit an event', async () => {
       await expect(await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce))
         .to.emit(oracleFactory, 'OracleDeployed')
-        .withArgs(precalculatedOracleAddress, salt, CARDINALITY);
+        .withArgs(salt, precalculatedOracleAddress, randomNonce);
     });
   });
 

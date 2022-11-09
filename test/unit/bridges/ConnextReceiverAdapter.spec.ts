@@ -118,15 +118,6 @@ describe('ConnextReceiverAdapter.sol', () => {
         await connextReceiverAdapter.connect(connextHandler.wallet).xReceive(...xReceiveParams, callData);
         expect(dataReceiver.addObservations).to.have.been.calledOnceWith(observationsData, randomSalt, randomNonce);
       });
-
-      it('should emit an event', async () => {
-        const tx = await connextReceiverAdapter.connect(connextHandler.wallet).xReceive(...xReceiveParams, callData);
-        let eventObservationsData = await readArgFromEvent(tx, 'DataSent', '_observationsData');
-        let eventPoolSalt = await readArgFromEvent(tx, 'DataSent', '_poolSalt');
-
-        expect(eventObservationsData).to.eql(observationsData);
-        expect(eventPoolSalt).to.eq(randomSalt);
-      });
     });
   });
 });

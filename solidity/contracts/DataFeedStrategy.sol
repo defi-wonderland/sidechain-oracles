@@ -46,6 +46,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
     uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastBlockTimestampObserved);
     dataFeed.fetchObservations(_poolSalt, _secondsAgos);
+    emit StrategicFetch(_poolSalt, _reason);
   }
 
   /// @inheritdoc IDataFeedStrategy

@@ -72,8 +72,13 @@ interface IOracleSidechain {
 
   // EVENTS
 
-  event PoolInfoInitialized(bytes32 _poolSalt, address _token0, address _token1, uint24 _fee);
-  event ObservationWritten(address _user, ObservationData _observationData);
+  event PoolInfoInitialized(bytes32 indexed _poolSalt, address _token0, address _token1, uint24 _fee);
+
+  /// @notice Emitted by the oracle to hint indexers that the pool state has changed
+  /// @dev Imported from IUniswapV3PoolEvents (semi-compatible)
+  /// @param _sqrtPriceX96 The sqrt(price) of the pool after the swap, as a Q64.96
+  /// @param _tick The log base 1.0001 of price of the pool after the swap
+  event Swap(address indexed, address indexed, int256, int256, uint160 _sqrtPriceX96, uint128, int24 _tick);
 
   // ERRORS
 

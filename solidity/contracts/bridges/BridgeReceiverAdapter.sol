@@ -17,6 +17,5 @@ abstract contract BridgeReceiverAdapter is IBridgeReceiverAdapter {
     uint24 _poolNonce
   ) internal {
     dataReceiver.addObservations(_observationsData, _poolSalt, _poolNonce);
-    emit DataSent(_observationsData, _poolSalt); // TODO: review event emission
   }
 }

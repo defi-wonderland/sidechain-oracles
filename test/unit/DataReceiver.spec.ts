@@ -98,11 +98,15 @@ describe('DataReceiver.sol', () => {
       });
 
       it('should emit ObservationsAdded', async () => {
-        tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
-        let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
+        const tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+        let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
+        let eventSalt = await readArgFromEvent(tx, 'ObservationsAdded', '_poolSalt');
+        let eventNonce = await readArgFromEvent(tx, 'ObservationsAdded', '_poolNonce');
         let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
-        expect(eventUser).to.eq(fakeAdapter.address);
+        expect(eventAdapter).to.eq(fakeAdapter.address);
+        expect(eventSalt).to.eq(randomSalt);
+        expect(eventNonce).to.eq(randomNonce);
         expect(eventObservationsData).to.eql(observationsData);
       });
     });
@@ -129,10 +133,10 @@ describe('DataReceiver.sol', () => {
 
         it('should emit ObservationsAdded', async () => {
           tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
-          let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
+          let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
           let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
-          expect(eventUser).to.eq(fakeAdapter.address);
+          expect(eventAdapter).to.eq(fakeAdapter.address);
           expect(eventObservationsData).to.eql(observationsData);
         });
       });
@@ -158,10 +162,10 @@ describe('DataReceiver.sol', () => {
 
         it('should emit ObservationsAdded', async () => {
           tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
-          let eventUser = await readArgFromEvent(tx, 'ObservationsAdded', '_user');
+          let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
           let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
-          expect(eventUser).to.eq(fakeAdapter.address);
+          expect(eventAdapter).to.eq(fakeAdapter.address);
           expect(eventObservationsData).to.eql(observationsData);
         });
       });

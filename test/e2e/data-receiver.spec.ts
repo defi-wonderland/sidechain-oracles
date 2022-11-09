@@ -3,7 +3,8 @@ import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, ERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
-import { ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { readArgFromEvent } from '@utils/event-utils';
+import { ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
@@ -82,9 +83,16 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
         tx = await dataReceiver.addObservations(observationsData, salt, nonce);
 
         ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
+        const slot0 = await oracleSidechain.slot0();
 
-        await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
-        await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
+        const SWAP_EVENT_ARGS = [ZERO_ADDRESS, ZERO_ADDRESS, 0, 0, slot0.sqrtPriceX96, 0, slot0.tick];
+        await expect(tx)
+          .to.emit(oracleSidechain, 'Swap')
+          .withArgs(...SWAP_EVENT_ARGS);
+
+        await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(connextReceiverAdapter.address, salt, nonce, observationsData);
+        let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+        expect(observationsData).to.eql(eventData);
       });
     });
 
@@ -99,8 +107,10 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
           ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-          await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
-          await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
+          // TODO: fix event params with withNamedArgs (ethereum-waffle ^4.0.0)
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(connextReceiverAdapter.address, salt, nonce, observationsData);
+          let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+          expect(observationsData).to.eql(eventData);
         });
       });
 
@@ -110,9 +120,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
           ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-          expect(tx)
-            .to.emit(oracleFactory, 'OracleDeployed')
-            .withArgs(oracleSidechain.address, salt, await oracleFactory.initialCardinality());
+          await expect(tx).to.emit(oracleFactory, 'OracleDeployed').withArgs(salt, oracleSidechain.address, nonce);
         });
 
         it('should add the observations', async () => {
@@ -120,8 +128,9 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
           ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-          await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData1);
-          await expect(tx).to.emit(oracleSidechain, 'ObservationWritten').withArgs(dataReceiver.address, observationData2);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(connextReceiverAdapter.address, salt, nonce, observationsData);
+          let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+          expect(observationsData).to.eql(eventData);
         });
       });
     });

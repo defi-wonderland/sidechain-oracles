@@ -40,15 +40,25 @@ interface IDataFeed is IPipelineManagement {
 
   // EVENTS
 
-  event DataSent(
-    IBridgeSenderAdapter _bridgeSenderAdapter,
+  /// @notice Emitted when a data batch is broadcast
+  /// @param _bridgeSenderAdapter Address of the bridge sender adapter
+  /// @param _dataReceiver Address of the targetted contract receiving the data
+  /// @param _chainId Identifier number of the targetted chain
+  /// @param _poolSalt Identifier of the pool to which the data corresponds
+  /// @param _poolNonce Identifier number of time period to which the data corresponds
+  event DataBroadcast(
+    bytes32 indexed _poolSalt,
+    uint24 _poolNonce,
+    uint32 _chainId,
     address _dataReceiver,
-    uint32 _destinationDomainId,
-    IOracleSidechain.ObservationData[] _observationsData,
-    bytes32 _poolSalt
+    IBridgeSenderAdapter _bridgeSenderAdapter
   );
 
-  event PoolObserved(bytes32 _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
+  /// @notice Emitted when a data batch is observed
+  /// @param _poolSalt Identifier of the pool to which the data corresponds
+  /// @param _poolNonce Identifier number of time period to which the data corresponds
+  /// @param _observationsData Timestamp and tick data of the broadcast nonce
+  event PoolObserved(bytes32 indexed _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
 
   event StrategyUpdated(IDataFeedStrategy _strategy);
 

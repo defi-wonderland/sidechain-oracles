@@ -23,7 +23,12 @@ interface IDataReceiver is IGovernable {
 
   // EVENTS
 
-  event ObservationsAdded(address _user, IOracleSidechain.ObservationData[] _observationsData);
+  event ObservationsAdded(
+    address indexed _receiverAdapter,
+    bytes32 indexed _poolSalt,
+    uint24 _poolNonce,
+    IOracleSidechain.ObservationData[] _observationsData
+  );
 
   event AdapterWhitelisted(IBridgeReceiverAdapter _adapter, bool _isAllowed);
 

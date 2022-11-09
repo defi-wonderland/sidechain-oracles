@@ -38,8 +38,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
     }
 
     _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
-    // TODO: review event emissions KMC-86
-    emit DataSent(_bridgeSenderAdapter, _dataReceiver, _destinationDomainId, _observationsData, _poolSalt);
+    emit DataBroadcast(_poolSalt, _poolNonce, _chainId, _dataReceiver, _bridgeSenderAdapter);
   }
 
   /// @inheritdoc IDataFeed

@@ -1,9 +1,9 @@
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { OracleFactory, OracleFactory__factory, IDataReceiver } from '@typechained';
+import { OracleFactory, OracleFactory__factory, IDataReceiver, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
+import { ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS, VALID_POOL_SALT } from '@utils/constants';
 import { toUnit } from '@utils/bn';
 import { onlyGovernor, onlyDataReceiver } from '@utils/behaviours';
 import { sortTokens, calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
@@ -16,6 +16,7 @@ describe('OracleFactory.sol', () => {
   let oracleFactory: MockContract<OracleFactory>;
   let oracleFactoryFactory: MockContractFactory<OracleFactory__factory>;
   let dataReceiver: FakeContract<IDataReceiver>;
+  let oracleSidechain: FakeContract<IOracleSidechain>;
   let snapshotId: string;
 
   const randomAddress = wallet.generateRandomAddress();
@@ -118,6 +119,33 @@ describe('OracleFactory.sol', () => {
       await expect(await oracleFactory.connect(governor).setInitialCardinality(randomCardinality))
         .to.emit(oracleFactory, 'InitialCardinalitySet')
         .withArgs(randomCardinality);
+    });
+  });
+
+  describe('increaseOracleCardinality(...)', () => {
+    const CARDINALITY_NEXT = 512;
+
+    beforeEach(async () => {
+      await oracleFactory.connect(dataReceiver.wallet).deployOracle(salt, randomNonce);
+      const oracleAddress = await oracleFactory['getPool(bytes32)'](salt);
+      oracleSidechain = await smock.fake('OracleSidechain', { address: oracleAddress });
+    });
+    onlyGovernor(
+      () => oracleFactory,
+      'increaseOracleCardinality',
+      () => governor.address,
+      () => [salt, CARDINALITY_NEXT]
+    );
+
+    it('should revert if oracle is unexistent', async () => {
+      await expect(oracleFactory.connect(governor).increaseOracleCardinality(VALID_POOL_SALT, CARDINALITY_NEXT)).to.be.revertedWith(
+        'Transaction reverted: function call to a non-contract account'
+      );
+    });
+    it('should call oracle increaseObservationCardinalityNext', async () => {
+      await oracleFactory.connect(governor).increaseOracleCardinality(salt, CARDINALITY_NEXT);
+
+      expect(oracleSidechain.increaseObservationCardinalityNext).to.have.been.calledWith(CARDINALITY_NEXT);
     });
   });
 

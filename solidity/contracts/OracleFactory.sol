@@ -47,6 +47,11 @@ contract OracleFactory is IOracleFactory, Governable {
     emit InitialCardinalitySet(_initialCardinality);
   }
 
+  function increaseOracleCardinality(bytes32 _poolSalt, uint16 _observationCardinalityNext) external onlyGovernor {
+    IOracleSidechain _oracle = getPool(_poolSalt);
+    _oracle.increaseObservationCardinalityNext(_observationCardinalityNext);
+  }
+
   /// @inheritdoc IOracleFactory
   function getPool(
     address _tokenA,

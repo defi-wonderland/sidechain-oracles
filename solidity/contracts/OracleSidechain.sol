@@ -117,6 +117,13 @@ contract OracleSidechain is IOracleSidechain {
     return true;
   }
 
+  function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external onlyFactory {
+    uint16 _observationCardinalityNextOld = slot0.observationCardinalityNext;
+    if (_observationCardinalityNext <= _observationCardinalityNextOld) return;
+    slot0.observationCardinalityNext = _observationCardinalityNext;
+    emit IncreaseObservationCardinalityNext(_observationCardinalityNextOld, _observationCardinalityNext);
+  }
+
   function _write(ObservationData memory _observationData) private {
     (uint16 _indexUpdated, uint16 _cardinalityUpdated) = observations.write(
       slot0.observationIndex,
@@ -132,6 +139,11 @@ contract OracleSidechain is IOracleSidechain {
 
   modifier onlyDataReceiver() {
     if (msg.sender != address(factory.dataReceiver())) revert OnlyDataReceiver();
+    _;
+  }
+
+  modifier onlyFactory() {
+    if (msg.sender != address(factory)) revert OnlyFactory();
     _;
   }
 }

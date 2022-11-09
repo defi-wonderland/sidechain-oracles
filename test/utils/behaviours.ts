@@ -16,6 +16,7 @@ export const onlyStrategy = createOnlyCallableCheck(['strategy'], 'OnlyStrategy(
 export const onlyDataFeed = createOnlyCallableCheck(['data feed'], 'OnlyDataFeed()');
 export const onlyWhitelistedAdapter = createOnlyCallableCheck(['whitelisted adapter'], 'UnallowedAdapter()');
 export const onlyDataReceiver = createOnlyCallableCheck(['data receiver'], 'OnlyDataReceiver()');
+export const onlyFactory = createOnlyCallableCheck(['oracle factory'], 'OnlyFactory()');
 
 export function createOnlyCallableCheck(allowedLabels: string[], error: string) {
   return (

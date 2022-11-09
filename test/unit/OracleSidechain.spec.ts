@@ -6,7 +6,7 @@ import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wo
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, CARDINALITY } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
-import { onlyDataReceiver } from '@utils/behaviours';
+import { onlyDataReceiver, onlyFactory } from '@utils/behaviours';
 import { sortTokens, calculateSalt } from '@utils/misc';
 import chai, { expect } from 'chai';
 
@@ -89,7 +89,7 @@ describe('OracleSidechain.sol', () => {
     });
   });
 
-  describe('initializePoolInfo(...)', async () => {
+  describe('initializePoolInfo(...)', () => {
     it('should revert if pool info is incorrect', async () => {
       await expect(oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, 0)).to.be.revertedWith('InvalidPool()');
       await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, randomTokenB, randomFee)).to.be.revertedWith('InvalidPool()');
@@ -332,6 +332,36 @@ describe('OracleSidechain.sol', () => {
           expect(written).to.eq(false);
         });
       });
+    });
+  });
+
+  describe('increaseObservationCardinalityNext(...)', () => {
+    const CARDINALITY_NEXT = 512;
+
+    onlyFactory(
+      () => oracleSidechain,
+      'increaseObservationCardinalityNext',
+      () => oracleFactory.wallet,
+      () => [CARDINALITY_NEXT]
+    );
+
+    it('should ignore lesser than actual cardinality', async () => {
+      const prevCardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
+      const tx = await oracleSidechain.increaseObservationCardinalityNext(prevCardinalityNext - 1);
+      expect(tx).not.to.emit(oracleSidechain, 'IncreaseObservationCardinalityNext');
+    });
+
+    it('should update the slot0', async () => {
+      await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY_NEXT);
+      const cardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
+      expect(cardinalityNext).to.eq(CARDINALITY_NEXT);
+    });
+
+    it('should emit event', async () => {
+      const prevCardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
+      const tx = await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY_NEXT);
+
+      await expect(tx).to.emit(oracleSidechain, 'IncreaseObservationCardinalityNext').withArgs(prevCardinalityNext, CARDINALITY_NEXT);
     });
   });
 });

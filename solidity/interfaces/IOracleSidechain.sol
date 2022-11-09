@@ -80,11 +80,18 @@ interface IOracleSidechain {
   /// @param _tick The log base 1.0001 of price of the pool after the swap
   event Swap(address indexed, address indexed, int256, int256, uint160 _sqrtPriceX96, uint128, int24 _tick);
 
+  /// @notice Emitted by the oracle for increases to the number of observations that can be stored
+  /// @dev Imported from IUniswapV3PoolEvents (fully-compatible)
+  /// @param _observationCardinalityNextOld The previous value of the next observation cardinality
+  /// @param _observationCardinalityNextNew The updated value of the next observation cardinality
+  event IncreaseObservationCardinalityNext(uint16 _observationCardinalityNextOld, uint16 _observationCardinalityNextNew);
+
   // ERRORS
 
   error AI();
   error InvalidPool();
   error OnlyDataReceiver();
+  error OnlyFactory();
 
   // FUNCTIONS
 
@@ -110,4 +117,6 @@ interface IOracleSidechain {
     returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);
 
   function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external returns (bool _written);
+
+  function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external;
 }

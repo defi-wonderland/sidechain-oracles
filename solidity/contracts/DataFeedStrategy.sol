@@ -34,8 +34,8 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   ) Governable(_governor) {
     dataFeed = _dataFeed;
     _setStrategyCooldown(_params.cooldown);
-    _setPeriodLength(_params.periodLength);
     _setTwapLength(_params.twapLength);
+    _setPeriodLength(_params.periodLength);
     _setTwapThresholds(_params.upperTwapThreshold, _params.lowerTwapThreshold);
   }
 
@@ -170,29 +170,27 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   function _setStrategyCooldown(uint32 _strategyCooldown) private {
-    if (
-      (_strategyCooldown <= periodLength)
-      // TODO: define settings requirements with @particle
-      // || (_strategyCooldown >= twapLength)
-    ) revert WrongSetting();
+    if (_strategyCooldown < twapLength) revert WrongSetting();
+
     strategyCooldown = _strategyCooldown;
     emit StrategyCooldownUpdated(_strategyCooldown);
   }
 
   function _setPeriodLength(uint32 _periodLength) private {
-    if (_periodLength >= strategyCooldown) revert WrongSetting();
+    if (_periodLength > twapLength) revert WrongSetting();
+
     periodLength = _periodLength;
     emit PeriodLengthUpdated(_periodLength);
   }
 
   function _setTwapLength(uint32 _twapLength) private {
-    //if (_twapLength <= strategyCooldown) revert WrongSetting();
+    if ((_twapLength > strategyCooldown) || (_twapLength < periodLength)) revert WrongSetting();
+
     twapLength = _twapLength;
     emit TwapLengthUpdated(_twapLength);
   }
 
   function _setTwapThresholds(int24 _upperTwapThreshold, int24 _lowerTwapThreshold) private {
-    // TODO: define settings requirements KMC-130
     upperTwapThreshold = _upperTwapThreshold;
     lowerTwapThreshold = _lowerTwapThreshold;
     emit TwapThresholdsUpdated(_upperTwapThreshold, _lowerTwapThreshold);

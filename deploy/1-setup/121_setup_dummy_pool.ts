@@ -33,9 +33,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const salt = calculateSalt(tokenA, tokenB, TEST_FEE);
 
-  // TODO: add isWhitelistedPipeline view KMC-135
-  const IS_WHITELISTED_POOL = await hre.deployments.read('DataFeed', 'isWhitelistedPool', salt);
-  if (!IS_WHITELISTED_POOL) {
+  const IS_WHITELISTED_PIPELINE = await hre.deployments.read('DataFeed', 'isWhitelistedPipeline', DESTINATION_CHAIN_ID, salt);
+  if (!IS_WHITELISTED_PIPELINE) {
     await hre.deployments.execute('DataFeed', txSettings, 'whitelistPipeline', DESTINATION_CHAIN_ID, salt);
   }
 };

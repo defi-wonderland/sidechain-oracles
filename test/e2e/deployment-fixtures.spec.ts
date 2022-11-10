@@ -164,8 +164,7 @@ describe('@skip-on-coverage Fixture', () => {
               await deployments.fixture(['setup-connext-default'], { keepExistingDeployments: true });
             });
 
-            // TODO: fix after KMC-135, UnallowedPipeline()
-            it.skip('should be able to fetch and send observations', async () => {
+            it('should be able to fetch and send observations', async () => {
               const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
               const txReceipt = await tx.wait();
               const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
@@ -180,11 +179,6 @@ describe('@skip-on-coverage Fixture', () => {
                   fetchData._observationsData
                 )
               ).not.to.be.reverted;
-
-              const oracleAddress = await oracleFactory['getPool(address,address,uint24)'](tokenA.address, tokenB.address, TEST_FEE);
-              oracleSidechain = (await ethers.getContractAt('OracleSidechain', oracleAddress)) as Type.OracleSidechain;
-
-              expect((await oracleSidechain.slot0()).observationCardinality).to.eq(144);
             });
 
             it('should work with send-observation fixture', async () => {

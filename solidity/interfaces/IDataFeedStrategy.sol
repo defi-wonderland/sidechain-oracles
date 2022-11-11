@@ -116,7 +116,6 @@ interface IDataFeedStrategy is IGovernable {
   function isStrategic(bytes32 _poolSalt, TriggerReason _reason) external view returns (bool _isStrategic);
 
   /// @notice Builds the secondsAgos array with periodLength between each datapoint
-  /// @param _periodLength The resolution of the bridged datapoints
   /// @param _fromTimestamp Last observed timestamp
-  function calculateSecondsAgos(uint32 _periodLength, uint32 _fromTimestamp) external view returns (uint32[] memory _secondsAgos);
+  function calculateSecondsAgos(uint32 _fromTimestamp) external view returns (uint32[] memory _secondsAgos);
 }

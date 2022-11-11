@@ -94,7 +94,7 @@ describe('DataFeedStrategy.sol', () => {
       it('should call to fetch observations (having calculated secondsAgos)', async () => {
         dataFeed.fetchObservations.reset();
         await dataFeedStrategy.strategicFetchObservations(randomSalt, TIME_TRIGGER);
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(lastBlockTimestampObserved);
         expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
       });
 
@@ -167,7 +167,7 @@ describe('DataFeedStrategy.sol', () => {
           it('should call to fetch observations (having calculated secondsAgos)', async () => {
             dataFeed.fetchObservations.reset();
             await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
+            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(lastBlockTimestampObserved);
             expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
           });
 
@@ -217,7 +217,7 @@ describe('DataFeedStrategy.sol', () => {
           it('should call to fetch observations (having calculated secondsAgos)', async () => {
             dataFeed.fetchObservations.reset();
             await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(initialPeriodLength, lastBlockTimestampObserved);
+            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(lastBlockTimestampObserved);
             expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
           });
         });
@@ -230,7 +230,7 @@ describe('DataFeedStrategy.sol', () => {
     const fromTimestamp = 0;
 
     beforeEach(async () => {
-      secondsAgos = await dataFeedStrategy.calculateSecondsAgos(initialPeriodLength, fromTimestamp);
+      secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
     });
 
     onlyGovernor(
@@ -628,19 +628,18 @@ describe('DataFeedStrategy.sol', () => {
   describe('calculateSecondsAgos(...)', () => {
     let fromTimestamp: number;
     let now: number;
-    let unknownTime: number;
+    let timeSinceLastObservation: number;
     let periods: number;
     let remainder: number;
-    const periodLength = 1_000;
 
     context('when less than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
         fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + periodLength / 2);
+        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodLength / 2);
       });
 
       it('should return a single datapoint array with 0', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos).to.eql([0]);
       });
     });
@@ -648,16 +647,16 @@ describe('DataFeedStrategy.sol', () => {
     context('when more than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
         fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + periodLength * 3.14);
+        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodLength * 3.14);
         now = (await ethers.provider.getBlock('latest')).timestamp;
-        unknownTime = now - fromTimestamp;
-        periods = Math.trunc(unknownTime / periodLength);
-        remainder = unknownTime % periodLength;
+        timeSinceLastObservation = now - fromTimestamp;
+        periods = Math.trunc(timeSinceLastObservation / initialPeriodLength);
+        remainder = timeSinceLastObservation % initialPeriodLength;
         periods++; // adds the bridged remainder
       });
 
       it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos.length).to.eq(periods);
       });
 
@@ -665,15 +664,15 @@ describe('DataFeedStrategy.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = unknownTime - remainder - i * periodLength;
+          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodLength;
         }
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });
@@ -681,14 +680,14 @@ describe('DataFeedStrategy.sol', () => {
     context('when exactly n periods have passed since fromTimestamp', () => {
       beforeEach(async () => {
         fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + periodLength * 3);
+        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodLength * 3);
         now = (await ethers.provider.getBlock('latest')).timestamp;
-        unknownTime = now - fromTimestamp;
-        periods = Math.trunc(unknownTime / periodLength);
+        timeSinceLastObservation = now - fromTimestamp;
+        periods = Math.trunc(timeSinceLastObservation / initialPeriodLength);
       });
 
       it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos.length).to.eq(periods);
       });
 
@@ -696,15 +695,15 @@ describe('DataFeedStrategy.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = unknownTime - (i + 1) * periodLength;
+          expectedSecondsAgos[i] = timeSinceLastObservation - (i + 1) * initialPeriodLength;
         }
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });
@@ -713,14 +712,14 @@ describe('DataFeedStrategy.sol', () => {
       beforeEach(async () => {
         fromTimestamp = 0;
         now = (await ethers.provider.getBlock('latest')).timestamp;
-        unknownTime = now - (now - (periodLength + 1));
-        periods = Math.trunc(unknownTime / periodLength);
-        remainder = unknownTime % periodLength;
+        timeSinceLastObservation = now - (now - (initialPeriodLength + 1));
+        periods = Math.trunc(timeSinceLastObservation / initialPeriodLength);
+        remainder = timeSinceLastObservation % initialPeriodLength;
         periods++; // adds the bridged remainder
       });
 
       it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos.length).to.eq(periods);
       });
 
@@ -728,15 +727,15 @@ describe('DataFeedStrategy.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = unknownTime - remainder - i * periodLength;
+          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodLength;
         }
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(periodLength, fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });

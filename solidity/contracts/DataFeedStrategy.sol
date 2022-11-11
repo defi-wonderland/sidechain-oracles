@@ -44,7 +44,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     if (!isStrategic(_poolSalt, _reason)) revert NotStrategic();
     // TODO: review if the external call can be avoided
     (, uint32 _lastBlockTimestampObserved, , ) = dataFeed.lastPoolStateObserved(_poolSalt);
-    uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _lastBlockTimestampObserved);
+    uint32[] memory _secondsAgos = calculateSecondsAgos(_lastBlockTimestampObserved);
     dataFeed.fetchObservations(_poolSalt, _secondsAgos);
     emit StrategicFetch(_poolSalt, _reason);
   }
@@ -52,7 +52,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   /// @inheritdoc IDataFeedStrategy
   /// @dev Allows governor to choose a timestamp from which to send data (overcome !OLD error)
   function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external onlyGovernor {
-    uint32[] memory _secondsAgos = calculateSecondsAgos(periodLength, _fromTimestamp);
+    uint32[] memory _secondsAgos = calculateSecondsAgos(_fromTimestamp);
     dataFeed.fetchObservations(_poolSalt, _secondsAgos);
   }
 
@@ -107,26 +107,26 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function calculateSecondsAgos(uint32 _periodLength, uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
+  function calculateSecondsAgos(uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
+    if (_fromTimestamp == 0) return _initializeSecondsAgos();
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
-    // TODO: define initialization of _fromTimestamp
-    _fromTimestamp = _fromTimestamp == 0 ? _secondsNow - (_periodLength + 1) : _fromTimestamp;
-    uint32 _unknownTime = _secondsNow - _fromTimestamp;
-    uint32 _periods = _unknownTime / _periodLength;
-    uint32 _remainder = _unknownTime % _periodLength;
+    uint32 _timeSinceLastObservation = _secondsNow - _fromTimestamp;
+    uint32 _periodLength = periodLength;
+    uint32 _periods = _timeSinceLastObservation / _periodLength;
+    uint32 _remainder = _timeSinceLastObservation % _periodLength;
     uint32 _i;
 
     if (_remainder != 0) {
       _secondsAgos = new uint32[](++_periods);
-      _unknownTime -= _remainder;
-      _secondsAgos[_i++] = _unknownTime;
+      _timeSinceLastObservation -= _remainder;
+      _secondsAgos[_i++] = _timeSinceLastObservation;
     } else {
       _secondsAgos = new uint32[](_periods);
     }
 
     for (_i; _i < _periods; ) {
-      _unknownTime -= _periodLength;
-      _secondsAgos[_i++] = _unknownTime;
+      _timeSinceLastObservation -= _periodLength;
+      _secondsAgos[_i++] = _timeSinceLastObservation;
     }
   }
 
@@ -167,6 +167,13 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
     // Always round to negative infinity
     if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
+  }
+
+  function _initializeSecondsAgos() internal view returns (uint32[] memory _secondsAgos) {
+    // TODO: define initialization of _secondsAgos
+    _secondsAgos = new uint32[](2);
+    _secondsAgos[0] = periodLength;
+    _secondsAgos[1] = 0; // as if _fromTimestamp = _secondsNow - (periodLength + 1)
   }
 
   function _setStrategyCooldown(uint32 _strategyCooldown) private {

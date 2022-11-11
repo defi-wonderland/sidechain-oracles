@@ -46,7 +46,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let dataReceiver: DataReceiver;
   let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
-  let tx: ContractTransaction;
   let fetchTx: ContractTransaction;
   let broadcastTx: ContractTransaction;
   let snapshotId: string;
@@ -92,9 +91,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     let blockTimestamps: number[];
     let tickCumulatives: BigNumber[];
     let arithmeticMeanTicks: BigNumber[];
+    let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
     let observationsIndex: number;
     let secondsPerLiquidityCumulativeX128s: BigNumber[];
-    let swapAmount = toUnit(10);
+    let swapAmount = toUnit(100);
     let now: number;
     const hours = 10_000;
 
@@ -104,8 +104,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     });
 
     context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
-      let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
-
       beforeEach(async () => {
         await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
@@ -357,6 +355,70 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     });
   });
 
+  describe('twap triggering', () => {
+    let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
+    let swapAmount = toUnit(100);
+    const hours = 10_000;
+
+    context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
+      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
+        await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
+      });
+
+      context('when the oracle has data', () => {
+        beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+
+          fetchTx = await dataFeedStrategy.strategicFetchObservations(salt, TIME_TRIGGER);
+
+          const eventPoolObserved = (await fetchTx.wait()).events![0];
+          observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
+            ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
+
+          broadcastTx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+
+          await evm.advanceTimeAndBlock(4 * hours);
+        });
+
+        context('when no thresholds are surpassed', () => {
+          it('should revert', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
+          });
+        });
+
+        context('when the upper threshold is surpassed', () => {
+          beforeEach(async () => {
+            /// @notice: creates a swap to move twap out of thresholds
+            await uniswapV3Swap(tokenA.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenB.address, fee);
+            await evm.advanceTimeAndBlock(1.5 * hours);
+          });
+
+          it('should trigger a strategic fetch', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
+          });
+        });
+
+        context('when the lower threshold is surpassed', () => {
+          beforeEach(async () => {
+            /// @notice: creates a swap to move twap out of thresholds
+            await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
+            await evm.advanceTimeAndBlock(1.5 * hours);
+          });
+
+          it('should trigger a strategic fetch', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
+          });
+        });
+      });
+    });
+  });
+
   describe('keep3r job', () => {
     let bondTime: BigNumber;
     let observationData0 = [500000, 50] as IOracleSidechain.ObservationDataStructOutput;
@@ -390,29 +452,33 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should work the job', async () => {
-        tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+        fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
-        const eventPoolObserved = (await tx.wait()).events![1];
+        const eventPoolObserved = (await fetchTx.wait()).events![1];
         const observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
           ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
 
-        await expect(tx).to.emit(dataFeed, 'PoolObserved');
-        await expect(
-          strategyJob.connect(keeper)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
-        ).to.emit(dataFeed, 'DataBroadcast');
+        broadcastTx = await strategyJob
+          .connect(keeper)
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+
+        await expect(fetchTx).to.emit(dataFeed, 'PoolObserved');
+        await expect(broadcastTx).to.emit(dataFeed, 'DataBroadcast');
       });
 
       it('should pay the keeper', async () => {
-        tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+        fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
-        const eventPoolObserved = (await tx.wait()).events![1];
+        const eventPoolObserved = (await fetchTx.wait()).events![1];
         const observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
           ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
 
-        await expect(tx).to.emit(keep3rV2, 'KeeperWork');
-        await expect(
-          strategyJob.connect(keeper)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched)
-        ).to.emit(keep3rV2, 'KeeperWork');
+        broadcastTx = await strategyJob
+          .connect(keeper)
+          ['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+
+        await expect(fetchTx).to.emit(keep3rV2, 'KeeperWork');
+        await expect(broadcastTx).to.emit(keep3rV2, 'KeeperWork');
       });
     });
   });
@@ -420,7 +486,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   describe('censorship-resistant behaviour', () => {
     let dummyAdapter: DummyAdapterForTest;
     let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
-    let swapAmount = toUnit(10);
+    let swapAmount = toUnit(100);
     let now: number;
     let initialTimestamp: number;
     const hours = 10_000;
@@ -460,25 +526,25 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when the bridge ignores a message', () => {
           beforeEach(async () => {
-            tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+            fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
-            const eventPoolObserved = (await tx.wait()).events![1];
+            const eventPoolObserved = (await fetchTx.wait()).events![1];
             observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
               ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
 
             initialTimestamp = observationsFetched[0].blockTimestamp;
 
             await dummyAdapter.setIgnoreTxs(true);
-            tx = await strategyJob
+            broadcastTx = await strategyJob
               .connect(keeper)
               ['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
             await dummyAdapter.setIgnoreTxs(false);
           });
 
-          it('should have ignored a tx', async () => {
-            await expect(tx).to.emit(dataFeed, 'DataBroadcast');
+          it('should have ignored a broadcast tx', async () => {
+            await expect(broadcastTx).to.emit(dataFeed, 'DataBroadcast');
 
-            await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
+            await expect(broadcastTx).not.to.emit(dataReceiver, 'ObservationsAdded');
           });
 
           context('when the data is sent', () => {
@@ -511,9 +577,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
-          tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+          fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
-          const eventPoolObserved = (await tx.wait()).events![1];
+          const eventPoolObserved = (await fetchTx.wait()).events![1];
           observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
             ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
 
@@ -527,23 +593,23 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when the bridge ignores a message', () => {
           beforeEach(async () => {
-            tx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
+            fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
 
-            const eventPoolObserved = (await tx.wait()).events![1];
+            const eventPoolObserved = (await fetchTx.wait()).events![1];
             observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
               ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
 
             await dummyAdapter.setIgnoreTxs(true);
-            tx = await strategyJob
+            broadcastTx = await strategyJob
               .connect(keeper)
               ['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce + 1, observationsFetched);
             await dummyAdapter.setIgnoreTxs(false);
           });
 
-          it('should have ignored a tx', async () => {
-            await expect(tx).to.emit(dataFeed, 'DataBroadcast');
+          it('should have ignored a broadcast tx', async () => {
+            await expect(broadcastTx).to.emit(dataFeed, 'DataBroadcast');
 
-            await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
+            await expect(broadcastTx).not.to.emit(dataReceiver, 'ObservationsAdded');
           });
 
           context('when the data is sent', () => {

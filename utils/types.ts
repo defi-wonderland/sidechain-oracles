@@ -8,8 +8,7 @@ export interface IStrategySettingsRecord {
 
 export interface DataFeedStrategySettings {
   cooldown: number;
-  periodLength: number;
   twapLength: number;
-  upperTwapThreshold: number;
-  lowerTwapThreshold: number;
+  twapThreshold: number;
+  periodLength: number;
 }

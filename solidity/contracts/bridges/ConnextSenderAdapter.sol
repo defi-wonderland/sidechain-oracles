@@ -7,6 +7,7 @@ import {IConnext, IConnextSenderAdapter, IDataFeed, IBridgeSenderAdapter, IOracl
 contract ConnextSenderAdapter is IConnextSenderAdapter {
   /// @inheritdoc IConnextSenderAdapter
   IConnext public immutable connext;
+
   /// @inheritdoc IConnextSenderAdapter
   IDataFeed public immutable dataFeed;
 

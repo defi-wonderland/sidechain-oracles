@@ -130,6 +130,7 @@ describe('OracleFactory.sol', () => {
       const oracleAddress = await oracleFactory['getPool(bytes32)'](salt);
       oracleSidechain = await smock.fake('OracleSidechain', { address: oracleAddress });
     });
+
     onlyGovernor(
       () => oracleFactory,
       'increaseOracleCardinality',
@@ -142,6 +143,7 @@ describe('OracleFactory.sol', () => {
         'Transaction reverted: function call to a non-contract account'
       );
     });
+
     it('should call oracle increaseObservationCardinalityNext', async () => {
       await oracleFactory.connect(governor).increaseOracleCardinality(salt, CARDINALITY_NEXT);
 

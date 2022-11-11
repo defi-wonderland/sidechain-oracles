@@ -6,6 +6,7 @@ import {IGovernable} from '../../interfaces/peripherals/IGovernable.sol';
 abstract contract Governable is IGovernable {
   /// @inheritdoc IGovernable
   address public governor;
+
   /// @inheritdoc IGovernable
   address public pendingGovernor;
 

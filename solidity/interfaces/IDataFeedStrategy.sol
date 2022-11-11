@@ -23,10 +23,9 @@ interface IDataFeedStrategy is IGovernable {
 
   struct StrategySettings {
     uint32 cooldown;
-    uint32 periodLength;
     uint32 twapLength;
-    int24 upperTwapThreshold;
-    int24 lowerTwapThreshold;
+    uint24 twapThreshold;
+    uint32 periodLength;
   }
 
   // STATE VARIABLES
@@ -39,15 +38,13 @@ interface IDataFeedStrategy is IGovernable {
   /// @return _strategyCooldown The cooldown of the job, in seconds
   function strategyCooldown() external view returns (uint32 _strategyCooldown);
 
+  function twapLength() external view returns (uint32 _twapLength);
+
+  function twapThreshold() external view returns (uint24 _twapThreshold);
+
   /// @notice Gets the length of the bridged periods
   /// @return _periodLength The resolution of the bridged datapoints
   function periodLength() external view returns (uint32 _periodLength);
-
-  function twapLength() external view returns (uint32 _twapLength);
-
-  function upperTwapThreshold() external view returns (int24 _upperTwapThreshold);
-
-  function lowerTwapThreshold() external view returns (int24 _lowerTwapThreshold);
 
   // EVENTS
 
@@ -60,18 +57,17 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _strategyCooldown The new job cooldown
   event StrategyCooldownUpdated(uint32 _strategyCooldown);
 
-  /// @notice Emitted when the owner updates the job period length
-  /// @param _periodLength The new length of reading resolution periods
-  event PeriodLengthUpdated(uint32 _periodLength);
-
   /// @notice Emitted when the owner updates the job twap length
   /// @param _twapLength The new length of the twap used to trigger an update of the oracle
   event TwapLengthUpdated(uint32 _twapLength);
 
   /// @notice Emitted when the owner updates the job twap threshold percentage
-  /// @param _upperTwapThreshold The upper twap difference threshold used to trigger an update of the oracle
-  /// @param _lowerTwapThreshold The lower twap difference threshold used to trigger an update of the oracle
-  event TwapThresholdsUpdated(int24 _upperTwapThreshold, int24 _lowerTwapThreshold);
+  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
+  event TwapThresholdUpdated(uint24 _twapThreshold);
+
+  /// @notice Emitted when the owner updates the job period length
+  /// @param _periodLength The new length of reading resolution periods
+  event PeriodLengthUpdated(uint32 _periodLength);
 
   // ERRORS
 
@@ -91,18 +87,17 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _strategyCooldown The job cooldown to be set
   function setStrategyCooldown(uint32 _strategyCooldown) external;
 
-  /// @notice Sets the job period length
-  /// @param _periodLength The new length of reading resolution periods
-  function setPeriodLength(uint32 _periodLength) external;
-
   /// @notice Sets the job twap length
   /// @param _twapLength The new length of the twap used to trigger an update of the oracle
   function setTwapLength(uint32 _twapLength) external;
 
   /// @notice Sets the job twap threshold percentage
-  /// @param _upperTwapThreshold The upper twap difference threshold used to trigger an update of the oracle
-  /// @param _lowerTwapThreshold The lower twap difference threshold used to trigger an update of the oracle
-  function setTwapThresholds(int24 _upperTwapThreshold, int24 _lowerTwapThreshold) external;
+  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
+  function setTwapThreshold(uint24 _twapThreshold) external;
+
+  /// @notice Sets the job period length
+  /// @param _periodLength The new length of reading resolution periods
+  function setPeriodLength(uint32 _periodLength) external;
 
   /// @notice Returns if the strategy can be executed
   /// @param _poolSalt The pool salt defined by token0 token1 and fee

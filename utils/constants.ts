@@ -45,16 +45,14 @@ export const domainId: IDomainIDRecord = {
 export const strategySettings: IStrategySettingsRecord = {
   5: {
     cooldown: 43200, // half-day
-    periodLength: 3600, // 1hr
     twapLength: 7200, // 2hs
-    upperTwapThreshold: 10,
-    lowerTwapThreshold: 10,
+    twapThreshold: 500, // ~5%
+    periodLength: 3600, // 1hr
   },
   80001: {
     cooldown: 3600, // 1hr
-    periodLength: 300, // 5min
     twapLength: 300, // 5min
-    upperTwapThreshold: 10,
-    lowerTwapThreshold: 10,
+    twapThreshold: 500, // ~5%
+    periodLength: 300, // 5min
   },
 };

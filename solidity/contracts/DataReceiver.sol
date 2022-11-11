@@ -7,7 +7,7 @@ import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter}
 
 contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
-  IOracleFactory public oracleFactory;
+  IOracleFactory public immutable oracleFactory;
 
   /// @inheritdoc IDataReceiver
   mapping(bytes32 => IOracleSidechain) public deployedOracles;

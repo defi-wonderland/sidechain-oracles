@@ -2,13 +2,12 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeedStrategy, DataFeedStrategy__factory, IDataFeed, IUniswapV3Pool } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
-import { evm, wallet } from '@utils';
+import { evm } from '@utils';
 import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
-import { toBN } from '@utils/bn';
+import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor } from '@utils/behaviours';
 import { getCreate2Address } from '@utils/misc';
 import chai, { expect } from 'chai';
-import { readArgFromEvent } from '@utils/event-utils';
 
 chai.use(smock.matchers);
 
@@ -20,11 +19,10 @@ describe('DataFeedStrategy.sol', () => {
   let uniswapV3Pool: FakeContract<IUniswapV3Pool>;
   let snapshotId: string;
 
-  const initialStrategyCooldown = 4 * 60 * 60;
-  const initialPeriodLength = 1 * 60 * 60;
-  const initialTwapLength = 4 * 60 * 60;
-  const initialUpperTwapThreshold = toBN(953); // log_{1.0001}(1.1) = log(1.1)/log(1.0001) = 953 ===> (+10 %)
-  const initialLowerTwapThreshold = toBN(-1053); // log_{1.0001}(0.9) = log(0.9)/log(1.0001) = -1053 ===> (-10 %)
+  const initialStrategyCooldown = 3600;
+  const initialTwapLength = 2400;
+  const initialTwapThreshold = 500;
+  const initialPeriodLength = 1200;
 
   const randomSalt = VALID_POOL_SALT;
 
@@ -44,10 +42,9 @@ describe('DataFeedStrategy.sol', () => {
     dataFeedStrategyFactory = await smock.mock('DataFeedStrategy');
     dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, {
       cooldown: initialStrategyCooldown,
-      periodLength: initialPeriodLength,
       twapLength: initialTwapLength,
-      upperTwapThreshold: initialUpperTwapThreshold,
-      lowerTwapThreshold: initialLowerTwapThreshold,
+      twapThreshold: initialTwapThreshold,
+      periodLength: initialPeriodLength,
     });
 
     snapshotId = await evm.snapshot.take();
@@ -108,8 +105,9 @@ describe('DataFeedStrategy.sol', () => {
       });
     });
 
-    context.skip('when the trigger reason is TWAP', () => {
+    context('when the trigger reason is TWAP', () => {
       let twapLength = 30;
+      let periodLength = twapLength / 2;
       let secondsAgos = [twapLength, 0];
       let tickCumulative = 3000;
       let tickCumulativesDelta: number;
@@ -122,12 +120,11 @@ describe('DataFeedStrategy.sol', () => {
       let oracleTickCumulative: number;
       let oracleTickCumulativesDelta: number;
       let oracleArithmeticMeanTick: number;
-      let upperIsSurpassed = 25;
-      let upperIsNotSurpassed = 50;
-      let lowerIsSurpassed = 50;
-      let lowerIsNotSurpassed = 25;
+      let thresholdIsSurpassed = 25;
+      let thresholdIsNotSurpassed = 50;
 
       beforeEach(async () => {
+        await dataFeedStrategy.connect(governor).setPeriodLength(periodLength);
         await dataFeedStrategy.connect(governor).setTwapLength(twapLength);
         now = (await ethers.provider.getBlock('latest')).timestamp + 2;
       });
@@ -151,7 +148,7 @@ describe('DataFeedStrategy.sol', () => {
 
         context('when no thresholds are surpassed', () => {
           beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
           });
 
           it('should revert', async () => {
@@ -159,9 +156,9 @@ describe('DataFeedStrategy.sol', () => {
           });
         });
 
-        context('when a threshold is surpassed', () => {
+        context('when the upper threshold is surpassed', () => {
           beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
           });
 
           it('should call to fetch observations (having calculated secondsAgos)', async () => {
@@ -190,7 +187,7 @@ describe('DataFeedStrategy.sol', () => {
           poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           lastBlockTimestampObserved = now - oracleDelta;
-          lastTickCumulativeObserved = -2001;
+          lastTickCumulativeObserved = -201;
           oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
           oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
           oracleArithmeticMeanTick = Math.floor(oracleTickCumulativesDelta / twapLength);
@@ -201,7 +198,7 @@ describe('DataFeedStrategy.sol', () => {
 
         context('when no thresholds are surpassed', () => {
           beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
           });
 
           it('should revert', async () => {
@@ -209,9 +206,9 @@ describe('DataFeedStrategy.sol', () => {
           });
         });
 
-        context('when a threshold is surpassed', () => {
+        context('when the lower threshold is surpassed', () => {
           beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
           });
 
           it('should call to fetch observations (having calculated secondsAgos)', async () => {
@@ -248,7 +245,7 @@ describe('DataFeedStrategy.sol', () => {
   });
 
   describe('setStrategyCooldown(...)', () => {
-    let newStrategyCooldown = initialStrategyCooldown + 1 * 60 * 60;
+    let newStrategyCooldown = initialStrategyCooldown + 1000;
 
     onlyGovernor(
       () => dataFeedStrategy,
@@ -274,35 +271,8 @@ describe('DataFeedStrategy.sol', () => {
     });
   });
 
-  describe('setPeriodLength(...)', () => {
-    let newPeriodLength = initialPeriodLength + 1 * 60 * 60;
-
-    onlyGovernor(
-      () => dataFeedStrategy,
-      'setPeriodLength',
-      () => governor,
-      () => [newPeriodLength]
-    );
-
-    it('should revert if periodLength > twapLength', async () => {
-      await expect(dataFeedStrategy.connect(governor).setPeriodLength(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
-      await expect(dataFeedStrategy.connect(governor).setPeriodLength(initialTwapLength)).not.to.be.reverted;
-    });
-
-    it('should update the periodLength', async () => {
-      await dataFeedStrategy.connect(governor).setPeriodLength(newPeriodLength);
-      expect(await dataFeedStrategy.periodLength()).to.eq(newPeriodLength);
-    });
-
-    it('should emit PeriodLengthUpdated', async () => {
-      await expect(dataFeedStrategy.connect(governor).setPeriodLength(newPeriodLength))
-        .to.emit(dataFeedStrategy, 'PeriodLengthUpdated')
-        .withArgs(newPeriodLength);
-    });
-  });
-
   describe('setTwapLength(...)', () => {
-    let newTwapLength = 5_000;
+    let newTwapLength = initialTwapLength + 1000;
 
     onlyGovernor(
       () => dataFeedStrategy,
@@ -333,44 +303,59 @@ describe('DataFeedStrategy.sol', () => {
     });
   });
 
-  describe('setTwapThresholds(...)', () => {
-    let newUpperTwapThreshold = initialUpperTwapThreshold.add(10);
-    let newLowerTwapThreshold = initialLowerTwapThreshold.add(10);
+  describe('setTwapThreshold(...)', () => {
+    let newTwapThreshold = initialTwapThreshold + 1000;
 
     onlyGovernor(
       () => dataFeedStrategy,
-      'setTwapThresholds',
+      'setTwapThreshold',
       () => governor,
-      () => [newUpperTwapThreshold, newLowerTwapThreshold]
+      () => [newTwapThreshold]
     );
 
-    it.skip('should revert if newUpperTwapThreshold < 0 || newLowerTwapThreshold > 0', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapThresholds(newLowerTwapThreshold, newUpperTwapThreshold)).to.be.revertedWith(
-        'WrongSetting()'
-      );
-      await expect(dataFeedStrategy.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold)).not.to.be.reverted;
+    it('should update the twapThreshold', async () => {
+      await dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold);
+      expect(await dataFeedStrategy.twapThreshold()).to.eq(newTwapThreshold);
     });
 
-    it('should update the upperTwapThreshold', async () => {
-      await dataFeedStrategy.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold);
-      expect(await dataFeedStrategy.upperTwapThreshold()).to.eq(newUpperTwapThreshold);
+    it('should emit TwapThresholdUpdated', async () => {
+      await expect(dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold))
+        .to.emit(dataFeedStrategy, 'TwapThresholdUpdated')
+        .withArgs(newTwapThreshold);
+    });
+  });
+
+  describe('setPeriodLength(...)', () => {
+    let newPeriodLength = initialPeriodLength + 1000;
+
+    onlyGovernor(
+      () => dataFeedStrategy,
+      'setPeriodLength',
+      () => governor,
+      () => [newPeriodLength]
+    );
+
+    it('should revert if periodLength > twapLength', async () => {
+      await expect(dataFeedStrategy.connect(governor).setPeriodLength(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedStrategy.connect(governor).setPeriodLength(initialTwapLength)).not.to.be.reverted;
     });
 
-    it('should update the lowerTwapThreshold', async () => {
-      await dataFeedStrategy.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold);
-      expect(await dataFeedStrategy.lowerTwapThreshold()).to.eq(newLowerTwapThreshold);
+    it('should update the periodLength', async () => {
+      await dataFeedStrategy.connect(governor).setPeriodLength(newPeriodLength);
+      expect(await dataFeedStrategy.periodLength()).to.eq(newPeriodLength);
     });
 
-    it('should emit TwapThresholdsUpdated', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapThresholds(newUpperTwapThreshold, newLowerTwapThreshold))
-        .to.emit(dataFeedStrategy, 'TwapThresholdsUpdated')
-        .withArgs(newUpperTwapThreshold, newLowerTwapThreshold);
+    it('should emit PeriodLengthUpdated', async () => {
+      await expect(dataFeedStrategy.connect(governor).setPeriodLength(newPeriodLength))
+        .to.emit(dataFeedStrategy, 'PeriodLengthUpdated')
+        .withArgs(newPeriodLength);
     });
   });
 
   describe('isStrategic(bytes32)', () => {
     let now: number;
     let twapLength = 30;
+    let periodLength = twapLength / 2;
     let secondsAgos = [twapLength, 0];
     let tickCumulative = 3000;
     let tickCumulativesDelta: number;
@@ -383,10 +368,8 @@ describe('DataFeedStrategy.sol', () => {
     let oracleTickCumulative: number;
     let oracleTickCumulativesDelta: number;
     let oracleArithmeticMeanTick: number;
-    let upperIsSurpassed = 25;
-    let upperIsNotSurpassed = 50;
-    let lowerIsSurpassed = 50;
-    let lowerIsNotSurpassed = 25;
+    let thresholdIsSurpassed = 25;
+    let thresholdIsNotSurpassed = 50;
     let reason: number;
 
     it('should return TIME if strategyCooldown is 0', async () => {
@@ -407,8 +390,9 @@ describe('DataFeedStrategy.sol', () => {
       });
     });
 
-    context.skip('when strategyCooldown has not expired', () => {
+    context('when strategyCooldown has not expired', () => {
       beforeEach(async () => {
+        await dataFeedStrategy.connect(governor).setPeriodLength(periodLength);
         await dataFeedStrategy.connect(governor).setTwapLength(twapLength);
         now = (await ethers.provider.getBlock('latest')).timestamp + 1;
       });
@@ -430,25 +414,26 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        it('should return TWAP if only the upper threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+        context('when the upper threshold is surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+          });
 
-          reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-          expect(reason).to.eq(TWAP_TRIGGER);
+          it('should return TWAP', async () => {
+            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+            expect(reason).to.eq(TWAP_TRIGGER);
+          });
         });
 
-        it('should return TWAP if only the lower threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+        context('when no thresholds are surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+          });
 
-          reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-          expect(reason).to.eq(TWAP_TRIGGER);
-        });
-
-        it('should return NONE if no thresholds are surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
-
-          reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-          expect(reason).to.eq(NONE_TRIGGER);
+          it('should return NONE', async () => {
+            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+            expect(reason).to.eq(NONE_TRIGGER);
+          });
         });
       });
 
@@ -460,7 +445,7 @@ describe('DataFeedStrategy.sol', () => {
           poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           lastBlockTimestampObserved = now - oracleDelta;
-          lastTickCumulativeObserved = -2001;
+          lastTickCumulativeObserved = -201;
           oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
           oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
           oracleArithmeticMeanTick = Math.floor(oracleTickCumulativesDelta / twapLength);
@@ -469,25 +454,26 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        it('should return TWAP if only the upper threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+        context('when the lower threshold is surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+          });
 
-          reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-          expect(reason).to.eq(TWAP_TRIGGER);
+          it('should return TWAP', async () => {
+            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+            expect(reason).to.eq(TWAP_TRIGGER);
+          });
         });
 
-        it('should return TWAP if only the lower threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+        context('when no thresholds are surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+          });
 
-          reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-          expect(reason).to.eq(TWAP_TRIGGER);
-        });
-
-        it('should return NONE if no thresholds are surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
-
-          reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-          expect(reason).to.eq(NONE_TRIGGER);
+          it('should return NONE', async () => {
+            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+            expect(reason).to.eq(NONE_TRIGGER);
+          });
         });
       });
     });
@@ -521,8 +507,9 @@ describe('DataFeedStrategy.sol', () => {
       });
     });
 
-    context.skip('when the trigger reason is TWAP', () => {
+    context('when the trigger reason is TWAP', () => {
       let twapLength = 30;
+      let periodLength = twapLength / 2;
       let secondsAgos = [twapLength, 0];
       let tickCumulative = 3000;
       let tickCumulativesDelta: number;
@@ -535,12 +522,11 @@ describe('DataFeedStrategy.sol', () => {
       let oracleTickCumulative: number;
       let oracleTickCumulativesDelta: number;
       let oracleArithmeticMeanTick: number;
-      let upperIsSurpassed = 25;
-      let upperIsNotSurpassed = 50;
-      let lowerIsSurpassed = 50;
-      let lowerIsNotSurpassed = 25;
+      let thresholdIsSurpassed = 25;
+      let thresholdIsNotSurpassed = 50;
 
       beforeEach(async () => {
+        await dataFeedStrategy.connect(governor).setPeriodLength(periodLength);
         await dataFeedStrategy.connect(governor).setTwapLength(twapLength);
         now = (await ethers.provider.getBlock('latest')).timestamp + 1;
       });
@@ -562,25 +548,26 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        it('should return true if only the upper threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+        context('when the upper threshold is surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+          });
 
-          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-          expect(isStrategic).to.eq(true);
+          it('should return true', async () => {
+            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isStrategic).to.eq(true);
+          });
         });
 
-        it('should return true if only the lower threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+        context('when no thresholds are surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+          });
 
-          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-          expect(isStrategic).to.eq(true);
-        });
-
-        it('should return false if no thresholds are surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
-
-          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-          expect(isStrategic).to.eq(false);
+          it('should return false', async () => {
+            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isStrategic).to.eq(false);
+          });
         });
       });
 
@@ -592,7 +579,7 @@ describe('DataFeedStrategy.sol', () => {
           poolArithmeticMeanTick = Math.floor(tickCumulativesDelta / twapLength);
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
           lastBlockTimestampObserved = now - oracleDelta;
-          lastTickCumulativeObserved = -2001;
+          lastTickCumulativeObserved = -201;
           oracleTickCumulative = lastTickCumulativeObserved + lastArithmeticMeanTickObserved * oracleDelta;
           oracleTickCumulativesDelta = oracleTickCumulative - tickCumulative;
           oracleArithmeticMeanTick = Math.floor(oracleTickCumulativesDelta / twapLength);
@@ -601,25 +588,26 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        it('should return true if only the upper threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsSurpassed, lowerIsNotSurpassed);
+        context('when the lower threshold is surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+          });
 
-          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-          expect(isStrategic).to.eq(true);
+          it('should return true', async () => {
+            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isStrategic).to.eq(true);
+          });
         });
 
-        it('should return true if only the lower threshold is surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsSurpassed);
+        context('when no thresholds are surpassed', () => {
+          beforeEach(async () => {
+            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+          });
 
-          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-          expect(isStrategic).to.eq(true);
-        });
-
-        it('should return false if no thresholds are surpassed', async () => {
-          await dataFeedStrategy.connect(governor).setTwapThresholds(upperIsNotSurpassed, lowerIsNotSurpassed);
-
-          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-          expect(isStrategic).to.eq(false);
+          it('should return false', async () => {
+            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+            expect(isStrategic).to.eq(false);
+          });
         });
       });
     });

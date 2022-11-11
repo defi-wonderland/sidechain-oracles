@@ -346,8 +346,7 @@ describe('OracleSidechain.sol', () => {
     );
 
     it('should ignore lesser than actual cardinality', async () => {
-      const prevCardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
-      const tx = await oracleSidechain.increaseObservationCardinalityNext(prevCardinalityNext - 1);
+      tx = await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY - 1);
       expect(tx).not.to.emit(oracleSidechain, 'IncreaseObservationCardinalityNext');
     });
 
@@ -358,10 +357,9 @@ describe('OracleSidechain.sol', () => {
     });
 
     it('should emit event', async () => {
-      const prevCardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
-      const tx = await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY_NEXT);
+      tx = await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY_NEXT);
 
-      await expect(tx).to.emit(oracleSidechain, 'IncreaseObservationCardinalityNext').withArgs(prevCardinalityNext, CARDINALITY_NEXT);
+      await expect(tx).to.emit(oracleSidechain, 'IncreaseObservationCardinalityNext').withArgs(CARDINALITY, CARDINALITY_NEXT);
     });
   });
 });

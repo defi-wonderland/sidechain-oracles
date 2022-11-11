@@ -34,10 +34,9 @@ import { calculateSalt, getInitCodeHash } from '@utils/misc';
 const destinationDomain = 1111;
 
 const cooldown = 3600;
-const periodLength = 1200;
 const twapLength = 2400;
-const upperTwapThreshold = 10;
-const lowerTwapThreshold = 10;
+const twapThreshold = 500;
+const periodLength = 1200;
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
@@ -77,10 +76,9 @@ export async function setupContracts(): Promise<{
 
   const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, {
     cooldown,
-    periodLength,
     twapLength,
-    upperTwapThreshold,
-    lowerTwapThreshold,
+    twapThreshold,
+    periodLength,
   })) as DataFeedStrategy;
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);

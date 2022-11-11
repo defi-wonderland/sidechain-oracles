@@ -7,7 +7,7 @@ import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfa
 
 contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
   // The connectHandler contract on this domain
-  IConnext public connext;
+  IConnext public immutable connext;
   // The origin domain ID
   uint32 public immutable originDomain;
   // The DAO that's expected as the xcaller

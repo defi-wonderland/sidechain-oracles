@@ -5,7 +5,7 @@ import {IBridgeReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../int
 
 abstract contract BridgeReceiverAdapter is IBridgeReceiverAdapter {
   /// @inheritdoc IBridgeReceiverAdapter
-  IDataReceiver public dataReceiver;
+  IDataReceiver public immutable dataReceiver;
 
   constructor(IDataReceiver _dataReceiver) {
     dataReceiver = _dataReceiver;

@@ -6,10 +6,10 @@ import {IStrategyJob, IDataFeedStrategy, IDataFeed, IBridgeSenderAdapter, IOracl
 
 contract StrategyJob is IStrategyJob, Keep3rJob {
   /// @inheritdoc IStrategyJob
-  IDataFeedStrategy public dataFeedStrategy;
+  IDataFeedStrategy public immutable dataFeedStrategy;
 
   /// @inheritdoc IStrategyJob
-  IDataFeed public dataFeed;
+  IDataFeed public immutable dataFeed;
 
   /// @inheritdoc IStrategyJob
   IBridgeSenderAdapter public defaultBridgeSenderAdapter;

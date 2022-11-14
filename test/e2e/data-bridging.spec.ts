@@ -324,35 +324,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
         });
       });
     });
-
-    after(async () => {
-      dataFeed = dataFeed.connect(deployer);
-    });
-  });
-
-  describe('fetching observations indices', () => {
-    let time: number;
-    let secondsAgos: number[] = [];
-    let blockTimestamp: number;
-    let expectedObservationsIndices: number[] = [];
-
-    context('when the pool is initialized', () => {
-      beforeEach(async () => {
-        time = (await ethers.provider.getBlock('latest')).timestamp;
-        for (let i = 0; i <= 10; i = i + 2) {
-          [blockTimestamp] = await uniV3Pool.observations(i);
-          secondsAgos[i] = time - blockTimestamp;
-          secondsAgos[i + 1] = time - blockTimestamp - 5;
-          expectedObservationsIndices[i] = i;
-          expectedObservationsIndices[i + 1] = i;
-        }
-      });
-
-      it('should return the observations indices', async () => {
-        let observationsIndices = await dataFeed.fetchObservationsIndices(uniV3Pool.address, secondsAgos);
-        expect(observationsIndices).to.eql(expectedObservationsIndices);
-      });
-    });
   });
 
   describe('twap triggering', () => {

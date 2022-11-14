@@ -7,6 +7,8 @@ import {OracleSidechain} from './OracleSidechain.sol';
 import {IOracleFactory, IOracleSidechain, IDataReceiver} from '../interfaces/IOracleFactory.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
+/// @title The OracleFactory contract
+/// @notice Handles the deployment of new OracleSidechains
 contract OracleFactory is IOracleFactory, Governable {
   /// @inheritdoc IOracleFactory
   IDataReceiver public dataReceiver;
@@ -23,12 +25,7 @@ contract OracleFactory is IOracleFactory, Governable {
 
   /// @inheritdoc IOracleFactory
   function deployOracle(bytes32 _poolSalt, uint24 _initialNonce) external onlyDataReceiver returns (IOracleSidechain _oracle) {
-    oracleParameters = OracleParameters({
-      factory: IOracleFactory(address(this)),
-      poolSalt: _poolSalt,
-      poolNonce: _initialNonce,
-      cardinality: initialCardinality
-    });
+    oracleParameters = OracleParameters({poolSalt: _poolSalt, poolNonce: _initialNonce, cardinality: initialCardinality});
     _oracle = new OracleSidechain{salt: _poolSalt}();
 
     delete oracleParameters;

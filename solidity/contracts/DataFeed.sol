@@ -3,9 +3,10 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {PipelineManagement, Governable} from './peripherals/PipelineManagement.sol';
 import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
-import {OracleFork} from '../libraries/OracleFork.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
+/// @title The DataFeed interface
+/// @notice Queries UniV3Pools, stores history proofs on chain, handles data broadcast
 contract DataFeed is IDataFeed, PipelineManagement {
   /// @inheritdoc IDataFeed
   IDataFeedStrategy public strategy;
@@ -57,15 +58,20 @@ contract DataFeed is IDataFeed, PipelineManagement {
       uint256 _secondsAgosLength = _secondsAgos.length;
       uint256 _i;
 
-      if ((_lastPoolStateObserved.blockTimestamp == 0)) {
+      // If first fetched observation
+      if (_lastPoolStateObserved.blockTimestamp == 0) {
         if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
-        // initializes timestamp and cumulative with first item (and skips it)
+        // Initializes timestamp and cumulative with first item
         _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
         _secondsAgo = _secondsAgos[0];
         _tickCumulative = _tickCumulatives[0];
-        ++_i;
+        // Skips first loop iteration
+        // Cannot not calculate twap (there is no last tickCumulative)
+        unchecked {
+          ++_i;
+        }
       } else {
-        // initializes timestamp and cumulative with cache
+        // Initializes timestamp and cumulative with cache
         _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength);
         _secondsAgo = _secondsNow - _lastPoolStateObserved.blockTimestamp;
         _tickCumulative = _lastPoolStateObserved.tickCumulative;
@@ -75,7 +81,8 @@ contract DataFeed is IDataFeed, PipelineManagement {
       int56 _tickCumulativesDelta;
       uint256 _observationsDataIndex;
 
-      for (_i; _i < _secondsAgosLength; ++_i) {
+      for (_i; _i < _secondsAgosLength; ) {
+        // Twap is calculated using the last recorded tickCumulative and time
         _tickCumulativesDelta = _tickCumulatives[_i] - _tickCumulative;
         _delta = _secondsAgo - _secondsAgos[_i];
         _arithmeticMeanTick = int24(_tickCumulativesDelta / int32(_delta));
@@ -83,13 +90,19 @@ contract DataFeed is IDataFeed, PipelineManagement {
         // Always round to negative infinity
         if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
 
+        // Stores blockTimestamp and tick in observations array
         _observationsData[_observationsDataIndex++] = IOracleSidechain.ObservationData({
           blockTimestamp: _secondsNow - _secondsAgo,
           tick: _arithmeticMeanTick
         });
 
+        // Updates state for next iteration calculation
         _secondsAgo = _secondsAgos[_i];
         _tickCumulative = _tickCumulatives[_i];
+
+        unchecked {
+          ++_i;
+        }
       }
 
       _lastPoolStateObserved = PoolState({
@@ -100,33 +113,15 @@ contract DataFeed is IDataFeed, PipelineManagement {
       });
     }
 
+    // Stores last pool state in the contract cache
     lastPoolStateObserved[_poolSalt] = _lastPoolStateObserved;
 
+    // Whitelists keccak256 to be broadcast to other chains
     bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _lastPoolStateObserved.poolNonce, _observationsData));
     _observedKeccak[_resultingKeccak] = true;
 
+    // Emits event with data to be read off-chain and used as broadcast input parameters
     emit PoolObserved(_poolSalt, _lastPoolStateObserved.poolNonce, _observationsData);
-  }
-
-  /// @inheritdoc IDataFeed
-  /// @dev High gas consuming view, avoid using in txs
-  function fetchObservationsIndices(IUniswapV3Pool _pool, uint32[] calldata _secondsAgos)
-    external
-    view
-    returns (uint16[] memory _observationsIndices)
-  {
-    (, , uint16 _observationIndex, uint16 _observationCardinality, , , ) = _pool.slot0();
-    uint256 _secondsAgosLength = _secondsAgos.length;
-    uint32 _time = uint32(block.timestamp);
-    uint32 _target;
-    uint16 _beforeOrAtIndex;
-    _observationsIndices = new uint16[](_secondsAgosLength);
-
-    for (uint256 _i; _i < _secondsAgosLength; ++_i) {
-      _target = _time - _secondsAgos[_i];
-      _beforeOrAtIndex = OracleFork.getPreviousObservationIndex(_pool, _time, _target, _observationIndex, _observationCardinality);
-      _observationsIndices[_i] = _beforeOrAtIndex;
-    }
   }
 
   /// @inheritdoc IDataFeed
@@ -136,7 +131,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
 
   function _setStrategy(IDataFeedStrategy _strategy) private {
     strategy = _strategy;
-    emit StrategyUpdated(_strategy);
+    emit StrategySet(_strategy);
   }
 
   modifier onlyStrategy() {

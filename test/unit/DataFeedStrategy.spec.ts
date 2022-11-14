@@ -22,7 +22,7 @@ describe('DataFeedStrategy.sol', () => {
   const initialStrategyCooldown = 3600;
   const initialTwapLength = 2400;
   const initialTwapThreshold = 500;
-  const initialPeriodLength = 1200;
+  const initialPeriodDuration = 1200;
 
   const randomSalt = VALID_POOL_SALT;
 
@@ -41,10 +41,10 @@ describe('DataFeedStrategy.sol', () => {
 
     dataFeedStrategyFactory = await smock.mock('DataFeedStrategy');
     dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, {
+      periodDuration: initialPeriodDuration,
       cooldown: initialStrategyCooldown,
       twapLength: initialTwapLength,
       twapThreshold: initialTwapThreshold,
-      periodLength: initialPeriodLength,
     });
 
     snapshotId = await evm.snapshot.take();
@@ -67,8 +67,8 @@ describe('DataFeedStrategy.sol', () => {
       expect(await dataFeedStrategy.strategyCooldown()).to.eq(initialStrategyCooldown);
     });
 
-    it('should set the periodLength', async () => {
-      expect(await dataFeedStrategy.periodLength()).to.eq(initialPeriodLength);
+    it('should set the periodDuration', async () => {
+      expect(await dataFeedStrategy.periodDuration()).to.eq(initialPeriodDuration);
     });
   });
 
@@ -107,7 +107,7 @@ describe('DataFeedStrategy.sol', () => {
 
     context('when the trigger reason is TWAP', () => {
       let twapLength = 30;
-      let periodLength = twapLength / 2;
+      let periodDuration = twapLength / 2;
       let secondsAgos = [twapLength, 0];
       let tickCumulative = 3000;
       let tickCumulativesDelta: number;
@@ -124,7 +124,7 @@ describe('DataFeedStrategy.sol', () => {
       let thresholdIsNotSurpassed = 50;
 
       beforeEach(async () => {
-        await dataFeedStrategy.connect(governor).setPeriodLength(periodLength);
+        await dataFeedStrategy.connect(governor).setPeriodDuration(periodDuration);
         await dataFeedStrategy.connect(governor).setTwapLength(twapLength);
         now = (await ethers.provider.getBlock('latest')).timestamp + 2;
       });
@@ -264,9 +264,9 @@ describe('DataFeedStrategy.sol', () => {
       expect(await dataFeedStrategy.strategyCooldown()).to.eq(newStrategyCooldown);
     });
 
-    it('should emit StrategyCooldownUpdated', async () => {
+    it('should emit StrategyCooldownSet', async () => {
       await expect(dataFeedStrategy.connect(governor).setStrategyCooldown(newStrategyCooldown))
-        .to.emit(dataFeedStrategy, 'StrategyCooldownUpdated')
+        .to.emit(dataFeedStrategy, 'StrategyCooldownSet')
         .withArgs(newStrategyCooldown);
     });
   });
@@ -286,9 +286,9 @@ describe('DataFeedStrategy.sol', () => {
       await expect(dataFeedStrategy.connect(governor).setTwapLength(initialStrategyCooldown)).not.to.be.reverted;
     });
 
-    it('should revert if twapLength < periodLength', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodLength - 1)).to.be.revertedWith('WrongSetting()');
-      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodLength)).not.to.be.reverted;
+    it('should revert if twapLength < periodDuration', async () => {
+      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodDuration - 1)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodDuration)).not.to.be.reverted;
     });
 
     it('should update the twapLength', async () => {
@@ -296,9 +296,9 @@ describe('DataFeedStrategy.sol', () => {
       expect(await dataFeedStrategy.twapLength()).to.eq(newTwapLength);
     });
 
-    it('should emit TwapLengthUpdated', async () => {
+    it('should emit TwapLengthSet', async () => {
       await expect(dataFeedStrategy.connect(governor).setTwapLength(newTwapLength))
-        .to.emit(dataFeedStrategy, 'TwapLengthUpdated')
+        .to.emit(dataFeedStrategy, 'TwapLengthSet')
         .withArgs(newTwapLength);
     });
   });
@@ -318,44 +318,44 @@ describe('DataFeedStrategy.sol', () => {
       expect(await dataFeedStrategy.twapThreshold()).to.eq(newTwapThreshold);
     });
 
-    it('should emit TwapThresholdUpdated', async () => {
+    it('should emit TwapThresholdSet', async () => {
       await expect(dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold))
-        .to.emit(dataFeedStrategy, 'TwapThresholdUpdated')
+        .to.emit(dataFeedStrategy, 'TwapThresholdSet')
         .withArgs(newTwapThreshold);
     });
   });
 
-  describe('setPeriodLength(...)', () => {
-    let newPeriodLength = initialPeriodLength + 1000;
+  describe('setPeriodDuration(...)', () => {
+    let newPeriodDuration = initialPeriodDuration + 1000;
 
     onlyGovernor(
       () => dataFeedStrategy,
-      'setPeriodLength',
+      'setPeriodDuration',
       () => governor,
-      () => [newPeriodLength]
+      () => [newPeriodDuration]
     );
 
-    it('should revert if periodLength > twapLength', async () => {
-      await expect(dataFeedStrategy.connect(governor).setPeriodLength(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
-      await expect(dataFeedStrategy.connect(governor).setPeriodLength(initialTwapLength)).not.to.be.reverted;
+    it('should revert if periodDuration > twapLength', async () => {
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength)).not.to.be.reverted;
     });
 
-    it('should update the periodLength', async () => {
-      await dataFeedStrategy.connect(governor).setPeriodLength(newPeriodLength);
-      expect(await dataFeedStrategy.periodLength()).to.eq(newPeriodLength);
+    it('should update the periodDuration', async () => {
+      await dataFeedStrategy.connect(governor).setPeriodDuration(newPeriodDuration);
+      expect(await dataFeedStrategy.periodDuration()).to.eq(newPeriodDuration);
     });
 
-    it('should emit PeriodLengthUpdated', async () => {
-      await expect(dataFeedStrategy.connect(governor).setPeriodLength(newPeriodLength))
-        .to.emit(dataFeedStrategy, 'PeriodLengthUpdated')
-        .withArgs(newPeriodLength);
+    it('should emit PeriodDurationSet', async () => {
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(newPeriodDuration))
+        .to.emit(dataFeedStrategy, 'PeriodDurationSet')
+        .withArgs(newPeriodDuration);
     });
   });
 
   describe('isStrategic(bytes32)', () => {
     let now: number;
     let twapLength = 30;
-    let periodLength = twapLength / 2;
+    let periodDuration = twapLength / 2;
     let secondsAgos = [twapLength, 0];
     let tickCumulative = 3000;
     let tickCumulativesDelta: number;
@@ -392,7 +392,7 @@ describe('DataFeedStrategy.sol', () => {
 
     context('when strategyCooldown has not expired', () => {
       beforeEach(async () => {
-        await dataFeedStrategy.connect(governor).setPeriodLength(periodLength);
+        await dataFeedStrategy.connect(governor).setPeriodDuration(periodDuration);
         await dataFeedStrategy.connect(governor).setTwapLength(twapLength);
         now = (await ethers.provider.getBlock('latest')).timestamp + 1;
       });
@@ -509,7 +509,7 @@ describe('DataFeedStrategy.sol', () => {
 
     context('when the trigger reason is TWAP', () => {
       let twapLength = 30;
-      let periodLength = twapLength / 2;
+      let periodDuration = twapLength / 2;
       let secondsAgos = [twapLength, 0];
       let tickCumulative = 3000;
       let tickCumulativesDelta: number;
@@ -526,7 +526,7 @@ describe('DataFeedStrategy.sol', () => {
       let thresholdIsNotSurpassed = 50;
 
       beforeEach(async () => {
-        await dataFeedStrategy.connect(governor).setPeriodLength(periodLength);
+        await dataFeedStrategy.connect(governor).setPeriodDuration(periodDuration);
         await dataFeedStrategy.connect(governor).setTwapLength(twapLength);
         now = (await ethers.provider.getBlock('latest')).timestamp + 1;
       });
@@ -623,7 +623,7 @@ describe('DataFeedStrategy.sol', () => {
     context('when less than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
         fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodLength / 2);
+        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration / 2);
       });
 
       it('should return a single datapoint array with 0', async () => {
@@ -635,11 +635,11 @@ describe('DataFeedStrategy.sol', () => {
     context('when more than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
         fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodLength * 3.14);
+        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * 3.14);
         now = (await ethers.provider.getBlock('latest')).timestamp;
         timeSinceLastObservation = now - fromTimestamp;
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodLength);
-        remainder = timeSinceLastObservation % initialPeriodLength;
+        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+        remainder = timeSinceLastObservation % initialPeriodDuration;
         periods++; // adds the bridged remainder
       });
 
@@ -652,7 +652,7 @@ describe('DataFeedStrategy.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodLength;
+          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
         }
 
         const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
@@ -668,10 +668,10 @@ describe('DataFeedStrategy.sol', () => {
     context('when exactly n periods have passed since fromTimestamp', () => {
       beforeEach(async () => {
         fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodLength * 3);
+        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * 3);
         now = (await ethers.provider.getBlock('latest')).timestamp;
         timeSinceLastObservation = now - fromTimestamp;
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodLength);
+        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
       });
 
       it('should return an array with proper length', async () => {
@@ -683,7 +683,7 @@ describe('DataFeedStrategy.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - (i + 1) * initialPeriodLength;
+          expectedSecondsAgos[i] = timeSinceLastObservation - (i + 1) * initialPeriodDuration;
         }
 
         const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
@@ -700,9 +700,9 @@ describe('DataFeedStrategy.sol', () => {
       beforeEach(async () => {
         fromTimestamp = 0;
         now = (await ethers.provider.getBlock('latest')).timestamp;
-        timeSinceLastObservation = now - (now - (initialPeriodLength + 1));
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodLength);
-        remainder = timeSinceLastObservation % initialPeriodLength;
+        timeSinceLastObservation = now - (now - (initialPeriodDuration + 1));
+        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+        remainder = timeSinceLastObservation % initialPeriodDuration;
         periods++; // adds the bridged remainder
       });
 
@@ -715,7 +715,7 @@ describe('DataFeedStrategy.sol', () => {
         let expectedSecondsAgos: number[] = [];
 
         for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodLength;
+          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
         }
 
         const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);

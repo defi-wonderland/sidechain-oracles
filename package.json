@@ -4,7 +4,7 @@
   "description": "Sidechain Oracle",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/defi-wonderland/sidechain-oracle-dev.git"
+    "url": "git+https://github.com/defi-wonderland/sidechain-oracle.git"
   },
   "license": "AGPL-3.0-only",
   "contributors": [
@@ -127,7 +127,7 @@
     "solhint-plugin-prettier": "0.0.5",
     "solhint-plugin-wonderland": "0.0.1",
     "solidity-coverage": "0.8.1",
-    "solidity-docgen": "0.5.16",
+    "solidity-docgen": "0.6.0-beta.29",
     "sort-package-json": "1.57.0",
     "standard-version": "9.3.2",
     "ts-node": "10.7.0",

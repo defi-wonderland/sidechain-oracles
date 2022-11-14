@@ -4,6 +4,8 @@ pragma solidity >=0.8.8 <0.9.0;
 import {Keep3rJob, Governable} from './peripherals/Keep3rJob.sol';
 import {IStrategyJob, IDataFeedStrategy, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IStrategyJob.sol';
 
+/// @title The StrategyJob contract
+/// @notice Adds a reward layer for triggering fetch and bridge transactions
 contract StrategyJob is IStrategyJob, Keep3rJob {
   /// @inheritdoc IStrategyJob
   IDataFeedStrategy public immutable dataFeedStrategy;
@@ -87,6 +89,6 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
 
   function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {
     defaultBridgeSenderAdapter = _defaultBridgeSenderAdapter;
-    emit DefaultBridgeSenderAdapterUpdated(_defaultBridgeSenderAdapter);
+    emit DefaultBridgeSenderAdapterSet(_defaultBridgeSenderAdapter);
   }
 }

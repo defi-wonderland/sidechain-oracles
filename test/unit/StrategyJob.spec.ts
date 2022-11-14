@@ -209,9 +209,9 @@ describe('StrategyJob.sol', () => {
       expect(await strategyJob.defaultBridgeSenderAdapter()).to.eq(randomSenderAdapterAddress);
     });
 
-    it('should emit DefaultBridgeSenderAdapterUpdated', async () => {
+    it('should emit DefaultBridgeSenderAdapterSet', async () => {
       await expect(strategyJob.connect(governor).setDefaultBridgeSenderAdapter(randomSenderAdapterAddress))
-        .to.emit(strategyJob, 'DefaultBridgeSenderAdapterUpdated')
+        .to.emit(strategyJob, 'DefaultBridgeSenderAdapterSet')
         .withArgs(randomSenderAdapterAddress);
     });
   });

@@ -5,21 +5,23 @@ import {Governable} from './peripherals/Governable.sol';
 import {IDataFeedStrategy, IUniswapV3Pool, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeedStrategy.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
+/// @title The DataFeed Strategy contract
+/// @notice Handles when and how a history of a pool should be updated
 contract DataFeedStrategy is IDataFeedStrategy, Governable {
   /// @inheritdoc IDataFeedStrategy
   IDataFeed public immutable dataFeed;
 
   /// @inheritdoc IDataFeedStrategy
-  uint32 public strategyCooldown;
+  uint32 public periodDuration;
 
   /// @inheritdoc IDataFeedStrategy
-  uint32 public twapLength;
+  uint32 public strategyCooldown;
 
   /// @inheritdoc IDataFeedStrategy
   uint24 public twapThreshold;
 
   /// @inheritdoc IDataFeedStrategy
-  uint32 public periodLength;
+  uint32 public twapLength;
 
   address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
@@ -33,7 +35,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     _setStrategyCooldown(_params.cooldown);
     _setTwapLength(_params.twapLength);
     _setTwapThreshold(_params.twapThreshold);
-    _setPeriodLength(_params.periodLength);
+    _setPeriodDuration(_params.periodDuration);
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -70,8 +72,8 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function setPeriodLength(uint32 _periodLength) external onlyGovernor {
-    _setPeriodLength(_periodLength);
+  function setPeriodDuration(uint32 _periodDuration) external onlyGovernor {
+    _setPeriodDuration(_periodDuration);
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -93,9 +95,9 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     if (_fromTimestamp == 0) return _initializeSecondsAgos();
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     uint32 _timeSinceLastObservation = _secondsNow - _fromTimestamp;
-    uint32 _periodLength = periodLength;
-    uint32 _periods = _timeSinceLastObservation / _periodLength;
-    uint32 _remainder = _timeSinceLastObservation % _periodLength;
+    uint32 _periodDuration = periodDuration;
+    uint32 _periods = _timeSinceLastObservation / _periodDuration;
+    uint32 _remainder = _timeSinceLastObservation % _periodDuration;
     uint32 _i;
 
     if (_remainder != 0) {
@@ -106,8 +108,8 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
       _secondsAgos = new uint32[](_periods);
     }
 
-    for (_i; _i < _periods; ) {
-      _timeSinceLastObservation -= _periodLength;
+    while (_timeSinceLastObservation > 0) {
+      _timeSinceLastObservation -= _periodDuration;
       _secondsAgos[_i++] = _timeSinceLastObservation;
     }
   }
@@ -165,33 +167,33 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   function _initializeSecondsAgos() internal view returns (uint32[] memory _secondsAgos) {
     // TODO: define initialization of _secondsAgos
     _secondsAgos = new uint32[](2);
-    _secondsAgos[0] = periodLength;
-    _secondsAgos[1] = 0; // as if _fromTimestamp = _secondsNow - (periodLength + 1)
+    _secondsAgos[0] = periodDuration;
+    _secondsAgos[1] = 0; // as if _fromTimestamp = _secondsNow - (periodDuration + 1)
   }
 
   function _setStrategyCooldown(uint32 _strategyCooldown) private {
     if (_strategyCooldown < twapLength) revert WrongSetting();
 
     strategyCooldown = _strategyCooldown;
-    emit StrategyCooldownUpdated(_strategyCooldown);
+    emit StrategyCooldownSet(_strategyCooldown);
   }
 
   function _setTwapLength(uint32 _twapLength) private {
-    if ((_twapLength > strategyCooldown) || (_twapLength < periodLength)) revert WrongSetting();
+    if ((_twapLength > strategyCooldown) || (_twapLength < periodDuration)) revert WrongSetting();
 
     twapLength = _twapLength;
-    emit TwapLengthUpdated(_twapLength);
+    emit TwapLengthSet(_twapLength);
   }
 
   function _setTwapThreshold(uint24 _twapThreshold) private {
     twapThreshold = _twapThreshold;
-    emit TwapThresholdUpdated(_twapThreshold);
+    emit TwapThresholdSet(_twapThreshold);
   }
 
-  function _setPeriodLength(uint32 _periodLength) private {
-    if (_periodLength > twapLength) revert WrongSetting();
+  function _setPeriodDuration(uint32 _periodDuration) private {
+    if (_periodDuration > twapLength) revert WrongSetting();
 
-    periodLength = _periodLength;
-    emit PeriodLengthUpdated(_periodLength);
+    periodDuration = _periodDuration;
+    emit PeriodDurationSet(_periodDuration);
   }
 }

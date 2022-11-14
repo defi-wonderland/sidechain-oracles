@@ -8,6 +8,7 @@ import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import 'solidity-coverage';
+import 'solidity-docgen';
 import { HardhatUserConfig, NetworksUserConfig } from 'hardhat/types';
 import * as env from './utils/env';
 import 'tsconfig-paths/register';
@@ -120,6 +121,9 @@ const config: HardhatUserConfig = {
   },
   paths: {
     sources: './solidity',
+  },
+  docgen: {
+    exclude: ['solidity/for-test/*'],
   },
 };
 

@@ -36,7 +36,7 @@ const destinationDomain = 1111;
 const cooldown = 3600;
 const twapLength = 2400;
 const twapThreshold = 500;
-const periodLength = 1200;
+const periodDuration = 1200;
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
@@ -75,10 +75,10 @@ export async function setupContracts(): Promise<{
   const dataFeed = (await dataFeedFactory.connect(deployer).deploy(governor.address, precalculatedDataFeedStrategyAddress)) as DataFeed;
 
   const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, {
+    periodDuration,
     cooldown,
     twapLength,
     twapThreshold,
-    periodLength,
   })) as DataFeedStrategy;
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);

@@ -95,9 +95,5 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
 
       expect(await oracleFactory['getPool(address,address,uint24)'](tokenB.address, tokenA.address, fee)).to.eq(oracleSidechain.address);
     });
-
-    after(async () => {
-      oracleFactory = oracleFactory.connect(deployer);
-    });
   });
 });

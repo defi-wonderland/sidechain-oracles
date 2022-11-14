@@ -24,11 +24,6 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
     connext = _connext;
   }
 
-  modifier onlyExecutor(address _originSender, uint32 _originDomain) {
-    if (msg.sender != address(connext) || _originSender != source || _originDomain != originDomain) revert UnauthorizedCaller();
-    _;
-  }
-
   function xReceive(
     bytes32, // _transferId
     uint256, // _amount
@@ -44,5 +39,10 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
 
     _addObservations(_observationsData, _poolSalt, _poolNonce);
     return bytes(abi.encode(''));
+  }
+
+  modifier onlyExecutor(address _originSender, uint32 _originDomain) {
+    if (msg.sender != address(connext) || _originSender != source || _originDomain != originDomain) revert UnauthorizedCaller();
+    _;
   }
 }

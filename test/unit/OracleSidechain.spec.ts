@@ -33,7 +33,7 @@ describe('OracleSidechain.sol', () => {
     oracleFactory = await smock.fake('OracleFactory');
     await wallet.setBalance(oracleFactory.address, toUnit(10));
     oracleFactory.dataReceiver.returns(dataReceiver.address);
-    oracleFactory.oracleParameters.returns([oracleFactory.address, salt, randomNonce, CARDINALITY]);
+    oracleFactory.oracleParameters.returns([salt, randomNonce, CARDINALITY]);
     oracleSidechainFactory = await smock.mock('OracleSidechain');
     snapshotId = await evm.snapshot.take();
   });

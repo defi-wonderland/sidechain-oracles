@@ -5,10 +5,8 @@ import {IOracleSidechain, IOracleFactory} from '../interfaces/IOracleSidechain.s
 import {Oracle} from '@uniswap/v3-core/contracts/libraries/Oracle.sol';
 import {TickMath} from '@uniswap/v3-core/contracts/libraries/TickMath.sol';
 
-/// @title A sidechain oracle contract
-/// @author 0xJabberwock (from DeFi Wonderland)
-/// @notice Computes on-chain price data from Mainnet
-/// @dev Bridges Uniswap V3 pool observations
+/// @title The SidechainOracle contract
+/// @notice Computes and stores on-chain price data from Mainnet
 contract OracleSidechain is IOracleSidechain {
   using Oracle for Oracle.Observation[65535];
 
@@ -55,9 +53,9 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   constructor() {
+    factory = IOracleFactory(msg.sender);
     uint16 _cardinality;
-    // TODO: remove factory from parameters (use msg.sender)
-    (factory, poolSalt, poolNonce, _cardinality) = IOracleFactory(msg.sender).oracleParameters();
+    (poolSalt, poolNonce, _cardinality) = factory.oracleParameters();
 
     slot0 = Slot0({
       sqrtPriceX96: 0,
@@ -70,10 +68,6 @@ contract OracleSidechain is IOracleSidechain {
     });
   }
 
-  /*
-   * NOTE: public function that allows signer to register token0, token1 and fee
-   *       before someone registers, oracle can be found with poolSalt, but token0 and token1 views will return address(0)
-   */
   /// @inheritdoc IOracleSidechain
   function initializePoolInfo(
     address _tokenA,
@@ -107,8 +101,11 @@ contract OracleSidechain is IOracleSidechain {
     if (_poolNonce != poolNonce++) return false;
 
     uint256 _observationsDataLength = _observationsData.length;
-    for (uint256 _i; _i < _observationsDataLength; ++_i) {
+    for (uint256 _i; _i < _observationsDataLength; ) {
       _write(_observationsData[_i]);
+      unchecked {
+        ++_i;
+      }
     }
     slot0.sqrtPriceX96 = TickMath.getSqrtRatioAtTick(slot0.tick);
 

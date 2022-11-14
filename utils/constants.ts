@@ -47,12 +47,12 @@ export const strategySettings: IStrategySettingsRecord = {
     cooldown: 43200, // half-day
     twapLength: 7200, // 2hs
     twapThreshold: 500, // ~5%
-    periodLength: 3600, // 1hr
+    periodDuration: 3600, // 1hr
   },
   80001: {
     cooldown: 3600, // 1hr
     twapLength: 300, // 5min
     twapThreshold: 500, // ~5%
-    periodLength: 300, // 5min
+    periodDuration: 300, // 5min
   },
 };

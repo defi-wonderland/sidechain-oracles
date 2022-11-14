@@ -10,20 +10,29 @@ import {IOracleSidechain} from './IOracleSidechain.sol';
 interface IStrategyJob is IKeep3rJob {
   // STATE VARIABLES
 
+  /// @return _dataFeedStrategy The address of the current DataFeedStrategy
   function dataFeedStrategy() external view returns (IDataFeedStrategy _dataFeedStrategy);
 
+  /// @return _dataFeed The address of the DataFeed
   function dataFeed() external view returns (IDataFeed _dataFeed);
 
+  /// @return _defaultBridgeSenderAdapter The address of the job bridge sender adapter
   function defaultBridgeSenderAdapter() external view returns (IBridgeSenderAdapter _defaultBridgeSenderAdapter);
 
+  /// @param _chainId The identifier of the chain
+  /// @param _poolSalt The identifier of both the pool and oracle
+  /// @return _lastPoolNonceBridged Last nonce of the oracle observed
   function lastPoolNonceBridged(uint32 _chainId, bytes32 _poolSalt) external view returns (uint24 _lastPoolNonceBridged);
 
   // EVENTS
 
-  event DefaultBridgeSenderAdapterUpdated(IBridgeSenderAdapter _defaultBridgeSenderAdapter);
+  /// @notice Emitted when a new default bridge sender adapter is set
+  /// @param _defaultBridgeSenderAdapter Address of the new default bridge sender adapter
+  event DefaultBridgeSenderAdapterSet(IBridgeSenderAdapter _defaultBridgeSenderAdapter);
 
   // ERRORS
 
+  /// @notice Thrown when the job is not workable
   error NotWorkable();
 
   // FUNCTIONS
@@ -39,8 +48,13 @@ interface IStrategyJob is IKeep3rJob {
     IOracleSidechain.ObservationData[] memory _observationsData
   ) external;
 
+  /// @notice Calls to fetch observations and update the oracle state in the DataFeed contract
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _reason The identifier of the reason to trigger an update
   function work(bytes32 _poolSalt, IDataFeedStrategy.TriggerReason _reason) external;
 
+  /// @notice Allows governor to set a new default bridge sender adapter
+  /// @param _defaultBridgeSenderAdapter Address of the new default bridge sender adapter
   function setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) external;
 
   /// @notice Returns if the job can be worked

@@ -5,6 +5,8 @@ import {Governable} from './peripherals/Governable.sol';
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
+/// @title The DataReceiver contract
+/// @notice Handles reception of broadcast data and delivers it to correspondant oracle
 contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   IOracleFactory public immutable oracleFactory;
@@ -16,7 +18,7 @@ contract DataReceiver is IDataReceiver, Governable {
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
   /// @inheritdoc IDataReceiver
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x5c4b88cd255a1789bead8c2b572b1d8ff75bffd901f72e485fd1e0085480a0a3;
+  bytes32 public constant ORACLE_INIT_CODE_HASH = 0xe96fe0b2512027e20768d6fa35f894c744d1e6fcff43cb28979f62b5e04adfb1;
 
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
     oracleFactory = _oracleFactory;
@@ -46,7 +48,7 @@ contract DataReceiver is IDataReceiver, Governable {
     }
     // Try to write observations data into oracle
     if (_oracle.write(_observationsData, _poolNonce)) {
-      emit ObservationsAdded(msg.sender, _poolSalt, _poolNonce, _observationsData);
+      emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
     } else {
       revert ObservationsNotWritable();
     }

@@ -3,9 +3,6 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleFactory} from './IOracleFactory.sol';
 
-/// @title The OracleSidechain interface
-/// @author 0xJabberwock (from DeFi Wonderland)
-/// @notice Contains state variables, events, custom errors and functions used in OracleSidechain
 interface IOracleSidechain {
   // STRUCTS
 
@@ -18,27 +15,32 @@ interface IOracleSidechain {
 
   // TODO: complete natspec
 
+  /// @return _oracleFactory The address of the OracleFactory
   function factory() external view returns (IOracleFactory _oracleFactory);
 
+  /// @return _token0 The mainnet address of the Token0 of the oracle
   function token0() external view returns (address _token0);
 
+  /// @return _token1 The mainnet address of the Token1 of the oracle
   function token1() external view returns (address _token1);
 
+  /// @return _fee The fee identifier of the pool
   function fee() external view returns (uint24 _fee);
 
+  /// @return _poolSalt The identifier of both the pool and the oracle
   function poolSalt() external view returns (bytes32 _poolSalt);
 
+  /// @return _poolNonce Last recorded nonce of the pool history
   function poolNonce() external view returns (uint24 _poolNonce);
 
-  /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
-  /// when accessed externally.
+  /// @notice Replicates the UniV3Pool slot0 behaviour (semi-compatible)
   /// @return _sqrtPriceX96 Used to maintain compatibility with Uniswap V3
   /// @return _tick Used to maintain compatibility with Uniswap V3
   /// @return _observationIndex The index of the last oracle observation that was written,
   /// @return _observationCardinality The current maximum number of observations stored in the pool,
   /// @return _observationCardinalityNext The next maximum number of observations, to be updated when the observation.
   /// @return _feeProtocol Used to maintain compatibility with Uniswap V3
-  /// @return _unlocked Used to maintain compatibility with Uniswap V3
+  /// @return _unlocked Used to track if a pool information was already verified
   function slot0()
     external
     view
@@ -54,8 +56,6 @@ interface IOracleSidechain {
 
   /// @notice Returns data about a specific observation index
   /// @param _index The element of the observations array to fetch
-  /// @dev You most likely want to use #observe() instead of this method to get an observation as of some amount of time
-  /// ago, rather than at a specific index in the array.
   /// @return _blockTimestamp The timestamp of the observation,
   /// @return _tickCumulative the tick multiplied by seconds elapsed for the life of the pool as of the observation timestamp,
   /// @return _secondsPerLiquidityCumulativeX128 the seconds per in range liquidity for the life of the pool as of the observation timestamp,
@@ -72,6 +72,11 @@ interface IOracleSidechain {
 
   // EVENTS
 
+  /// @notice Emitted when the pool information is verified
+  /// @param _poolSalt Identifier of the pool and the oracle
+  /// @param _token0 The contract address of either token0 or token1
+  /// @param _token1 The contract address of the other token
+  /// @param _fee The fee denominated in hundredths of a bip
   event PoolInfoInitialized(bytes32 indexed _poolSalt, address _token0, address _token1, uint24 _fee);
 
   /// @notice Emitted by the oracle to hint indexers that the pool state has changed
@@ -95,6 +100,11 @@ interface IOracleSidechain {
 
   // FUNCTIONS
 
+  /// @notice Permisionless method to verify token0, token1 and fee
+  /// @dev Before verified, token0 and token1 views will return address(0)
+  /// @param _tokenA The contract address of either token0 or token1
+  /// @param _tokenB The contract address of the other token
+  /// @param _fee The fee denominated in hundredths of a bip
   function initializePoolInfo(
     address _tokenA,
     address _tokenB,
@@ -102,21 +112,21 @@ interface IOracleSidechain {
   ) external;
 
   /// @notice Returns the cumulative tick and liquidity as of each timestamp `secondsAgo` from the current block timestamp
-  /// @dev To get a time weighted average tick or liquidity-in-range, you must call this with two values, one representing
-  /// the beginning of the period and another for the end of the period. E.g., to get the last hour time-weighted average tick,
-  /// you must call it with secondsAgos = [3600, 0].
-  /// @dev The time weighted average tick represents the geometric time weighted average price of the pool, in
-  /// log base sqrt(1.0001) of token1 / token0. The TickMath library can be used to go from a tick value to a ratio.
+  /// @dev Imported from UniV3Pool (semi compatible, optimistically extrapolates)
   /// @param _secondsAgos From how long ago each cumulative tick and liquidity value should be returned
   /// @return _tickCumulatives Cumulative tick values as of each `secondsAgos` from the current block timestamp
-  /// @return _secondsPerLiquidityCumulativeX128s Cumulative seconds per liquidity-in-range value as of each `secondsAgos` from the current block
-  /// timestamp
+  /// @return _secondsCumulativeX128s Cumulative seconds as of each `secondsAgos` from the current block timestamp
   function observe(uint32[] calldata _secondsAgos)
     external
     view
-    returns (int56[] memory _tickCumulatives, uint160[] memory _secondsPerLiquidityCumulativeX128s);
+    returns (int56[] memory _tickCumulatives, uint160[] memory _secondsCumulativeX128s);
 
+  /// @notice Permisioned method to push a dataset to update
+  /// @param _observationsData Array of tuples containing the dataset
+  /// @param _poolNonce Nonce of the observation broadcast
   function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external returns (bool _written);
 
+  /// @notice Permisioned method to increase the cardinalityNext value
+  /// @param _observationCardinalityNext The new next length of the observations array
   function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external;
 }

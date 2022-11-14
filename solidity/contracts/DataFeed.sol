@@ -81,7 +81,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
       int56 _tickCumulativesDelta;
       uint256 _observationsDataIndex;
 
-      for (_i; _i < _secondsAgosLength; ) {
+      for (; _i < _secondsAgosLength; ) {
         // Twap is calculated using the last recorded tickCumulative and time
         _tickCumulativesDelta = _tickCumulatives[_i] - _tickCumulative;
         _delta = _secondsAgo - _secondsAgos[_i];

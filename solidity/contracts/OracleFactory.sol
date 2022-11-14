@@ -19,6 +19,9 @@ contract OracleFactory is IOracleFactory, Governable {
   /// @inheritdoc IOracleFactory
   uint16 public initialCardinality = 144;
 
+  /// @inheritdoc IOracleFactory
+  bytes32 public constant ORACLE_INIT_CODE_HASH = keccak256(type(OracleSidechain).creationCode);
+
   constructor(address _governor, IDataReceiver _dataReceiver) Governable(_governor) {
     dataReceiver = _dataReceiver;
   }
@@ -61,7 +64,7 @@ contract OracleFactory is IOracleFactory, Governable {
 
   /// @inheritdoc IOracleFactory
   function getPool(bytes32 _poolSalt) public view returns (IOracleSidechain _oracle) {
-    _oracle = IOracleSidechain(Create2Address.computeAddress(address(this), _poolSalt, keccak256(type(OracleSidechain).creationCode)));
+    _oracle = IOracleSidechain(Create2Address.computeAddress(address(this), _poolSalt, ORACLE_INIT_CODE_HASH));
     if (address(_oracle).code.length == 0) return IOracleSidechain(address(0));
   }
 

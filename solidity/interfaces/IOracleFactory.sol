@@ -16,6 +16,10 @@ interface IOracleFactory is IGovernable {
 
   // STATE VARIABLES
 
+  /// @return _oracleInitCodeHash The oracle creation code hash used to calculate their address
+  //solhint-disable-next-line func-name-mixedcase
+  function ORACLE_INIT_CODE_HASH() external view returns (bytes32 _oracleInitCodeHash);
+
   /// @return _dataReceiver The address of the DataReceiver for the oracles to consult
   function dataReceiver() external view returns (IDataReceiver _dataReceiver);
 

@@ -33,6 +33,7 @@
     "!**/.DS_Store"
   ],
   "scripts": {
+    "analyze": "slither .",
     "compile": "eth-sdk && hardhat compile",
     "compile:size": "hardhat compile && hardhat size-contracts",
     "compile:test": "cross-env TEST=true hardhat compile",

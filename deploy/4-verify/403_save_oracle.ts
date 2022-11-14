@@ -1,7 +1,6 @@
 import OracleSidechain from '../../artifacts/solidity/contracts/OracleSidechain.sol/OracleSidechain.json';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { verifyContractByAddress } from '../../utils/deploy';
 import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -17,9 +16,11 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     abi: OracleSidechain.abi,
     address: ORACLE_ADDRESS,
   });
-  await verifyContractByAddress(hre, ORACLE_ADDRESS);
 
-  await hre.deployments.execute('OracleSidechain', txSettings, 'initializePoolInfo', tokenA, tokenB, TEST_FEE);
+  const IS_UNINITIALIZED = (await hre.deployments.read('OracleSidechain', 'slot0')).unlocked;
+  if (IS_UNINITIALIZED) {
+    await hre.deployments.execute('OracleSidechain', txSettings, 'initializePoolInfo', tokenA, tokenB, TEST_FEE);
+  }
 };
 
 deployFunction.tags = ['save-oracle'];

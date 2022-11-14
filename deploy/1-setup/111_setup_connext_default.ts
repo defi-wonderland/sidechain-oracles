@@ -17,6 +17,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.dependencies = ['connext-setup', 'setup-keep3r-job'];
+deployFunction.dependencies = ['connext-setup', 'setup-keep3r-job', 'pool-whitelisting'];
 deployFunction.tags = ['setup-connext-default'];
 export default deployFunction;

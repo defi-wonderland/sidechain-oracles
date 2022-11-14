@@ -14,9 +14,9 @@ contract ConnextHandlerForTest {
   function xcall(
     uint32, // _destination, unique identifier for destination domain
     address _to, // recipient of funds, where calldata will be executed
-    address _asset, // asset being transferred
+    address, // _asset, asset being transferred
     address, // _delegate, permissioned address to recover in edgecases on destination domain
-    uint256 _amount, // amount being transferred
+    uint256, // _amount, amount being transferred
     uint256, // _slippage, slippage in bps
     bytes calldata _callData // to be executed on _to on the destination domain
   ) external payable returns (bytes32) {

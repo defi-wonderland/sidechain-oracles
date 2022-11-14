@@ -54,6 +54,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.dependencies = ['deploy-tokens'];
+deployFunction.dependencies = ['save-tokens'];
 deployFunction.tags = ['create-pool'];
 export default deployFunction;

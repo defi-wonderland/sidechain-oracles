@@ -1,5 +1,5 @@
 {
-  "address": "0x9566eb8c1e0Df07962F425163c1d1dbDF204a09A",
+  "address": "0xE21Df5C88cA5ee0CB70a5F04d6E58c3163d184A1",
   "abi": [
     {
       "inputs": [],
@@ -32,41 +32,39 @@
       "type": "error"
     },
     {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "address",
-          "name": "_user",
-          "type": "address"
-        },
-        {
-          "components": [
-            {
-              "internalType": "uint32",
-              "name": "blockTimestamp",
-              "type": "uint32"
-            },
-            {
-              "internalType": "int24",
-              "name": "tick",
-              "type": "int24"
-            }
-          ],
-          "indexed": false,
-          "internalType": "struct IOracleSidechain.ObservationData",
-          "name": "_observationData",
-          "type": "tuple"
-        }
-      ],
-      "name": "ObservationWritten",
-      "type": "event"
+      "inputs": [],
+      "name": "OnlyFactory",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "T",
+      "type": "error"
     },
     {
       "anonymous": false,
       "inputs": [
         {
           "indexed": false,
+          "internalType": "uint16",
+          "name": "_observationCardinalityNextOld",
+          "type": "uint16"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint16",
+          "name": "_observationCardinalityNextNew",
+          "type": "uint16"
+        }
+      ],
+      "name": "IncreaseObservationCardinalityNext",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "bytes32",
           "name": "_poolSalt",
           "type": "bytes32"
@@ -94,6 +92,55 @@
       "type": "event"
     },
     {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "",
+          "type": "int256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint160",
+          "name": "_sqrtPriceX96",
+          "type": "uint160"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint128",
+          "name": "",
+          "type": "uint128"
+        },
+        {
+          "indexed": false,
+          "internalType": "int24",
+          "name": "_tick",
+          "type": "int24"
+        }
+      ],
+      "name": "Swap",
+      "type": "event"
+    },
+    {
       "inputs": [],
       "name": "factory",
       "outputs": [
@@ -117,6 +164,19 @@
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint16",
+          "name": "_observationCardinalityNext",
+          "type": "uint16"
+        }
+      ],
+      "name": "increaseObservationCardinalityNext",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

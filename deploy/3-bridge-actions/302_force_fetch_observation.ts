@@ -17,7 +17,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   };
 
   const BLOCK_TIMESTAMP = (await hre.ethers.provider.getBlock('latest')).timestamp;
-  const FETCH_OBSERVATION_ARGS = [salt, BLOCK_TIMESTAMP - 2 * deploymentSettings.cooldown];
+  const FETCH_OBSERVATION_ARGS = [salt, BLOCK_TIMESTAMP - 1.01 * deploymentSettings.cooldown];
   await hre.deployments.execute('DataFeedStrategy', txSettings, 'forceFetchObservations(bytes32,uint32)', ...FETCH_OBSERVATION_ARGS);
 };
 

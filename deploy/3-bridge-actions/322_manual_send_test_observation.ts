@@ -2,6 +2,7 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { TEST_FEE } from '../../utils/constants';
 import { calculateSalt } from '../../test/utils/misc';
+import { getReceiverChainId } from '../../utils/deploy';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
@@ -12,10 +13,10 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  const DUMMY_CHAIN_ID = await hre.getChainId();
+  const RECEIVER_CHAIN_ID = await getReceiverChainId(hre);
 
   const dataFeed = await hre.deployments.get('DataFeed');
-  const dummyAdapter = await hre.deployments.get('DummyAdapterForTest');
+  const senderAdapter = await hre.deployments.get('ConnextSenderAdapter');
 
   const SECONDS_AGOS = [10, 5, 0];
   const FETCH_OBSERVATION_ARGS = [salt, SECONDS_AGOS];
@@ -23,7 +24,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeedContract = await hre.ethers.getContractAt('DataFeed', dataFeed.address);
   const fetchData = dataFeedContract.interface.decodeEventLog('PoolObserved', fetchTx.logs![0].data);
-  const SEND_OBSERVATION_ARGS = [dummyAdapter.address, DUMMY_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
+  const SEND_OBSERVATION_ARGS = [senderAdapter.address, RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
   await hre.deployments.execute('DataFeed', txSettings, 'sendObservations', ...SEND_OBSERVATION_ARGS);
 
   // TODO: read event and log bridge txID for tracking
@@ -31,6 +32,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   // console.log(event.data.transferId)
 };
 
-deployFunction.dependencies = ['dummy-test-setup', 'setup-manual-strategy'];
+deployFunction.dependencies = ['connext-setup', 'pool-whitelisting', 'setup-manual-strategy'];
 deployFunction.tags = ['manual-send-test-observation'];
 export default deployFunction;

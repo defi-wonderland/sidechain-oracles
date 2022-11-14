@@ -12,7 +12,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const txSettings = {
     from: deployer,
-
     log: true,
   };
 

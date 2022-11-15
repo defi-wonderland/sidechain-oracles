@@ -1,22 +1,38 @@
 # Sidechain Oracles
 
-## Background
+- [Scope](#scope)
+- [Contracts](#contracts)
+  - [Permissionless execution](#permissionless-execution)
+  - [Rewarded execution](#rewarded-execution)
+  - [Receiving execution](#receiving-execution)
+- [On-chain Truth Mechanism](#on-chain-truth-mechanism)
+- [Math Representation](#math-representation)
+- [Fetch Strategy](#fetch-strategy)
+  - [Twap trigger](#twap-trigger)
+  - [Timestamps calculation](#timestamps-calculation)
+- [Setup](#setup)
+- [Address Registry](#address-registry)
+  - [Testnet](#testnet)
+    - [Goerli (sender and _receiver_)](#goerli-sender-and-receiver)
+    - [OP Goerli (_receiver_)](#op-goerli-receiver)
+    - [Mumbai (manual sender)](#mumbai-manual-sender)
+    - [Whitelisted pipelines](#whitelisted-pipelines)
 
-### Scope
+## Scope
 
 Sidechain Oracles is a mechanism to provide a Uniswap V3 Pool's price history to chains where the pair may not be available or doesn't have a healthy liquidity to rely on.
 
 The set of contracts is designed to update and broadcast the oracle information every time some cooldown period has expired, or whenever the twap has changed significantly since the last update.
 
-### Contracts
+## Contracts
 
 **DataFeed**: source of truth on mainnet, queries the UniV3Pool and stores the result, also permissionless broadcasts data to bridges
 
-**DataFeedStrategy**: defines whit which timestamps and when the history of a pool should be permissionless updated: cooldown period, twap difference
+**DataFeedStrategy**: defines with which timestamps and when the history of a pool should be permissionless updated: by cooldown period, or twap difference
 
 **StrategyJob**: adds a layer of rewards for calling the update of the strategy (when possible) or the broadcast transaction (when new information is fetched)
 
-**IBridgeAdapter**: abstract and allowlisted, standardizes the message broadcast and delivers to DataReceiver
+**IBridgeAdapter**: abstract and allowlisted, standardizes the message broadcast and delivers to DataReceiver, the bridge provider should instantiate both a Sender and a Receiver
 
 **DataReceiver**: receives the message broadcast by DataFeed, proxies it to the SidechainOracle, or triggers the factory to deploy one first
 
@@ -24,7 +40,7 @@ The set of contracts is designed to update and broadcast the oracle information 
 
 **OracleFactory**: deploys a new instance of an oracle on a precomputed address for each `token0 token1 fee` combination
 
-#### Permisionless execution
+#### Permissionless execution
 
 - When either time has passed since the last update, or twap has changed since the last observation, DataFeedStrategy allows any signer to trigger a data fetch
 - On the strategy, the set of timestamps is defined and passed to the DataFeed
@@ -43,7 +59,7 @@ The set of contracts is designed to update and broadcast the oracle information 
 - If a data batch arrives and no oracle exists for that pair, the receiver will trigger the OracleFactory to deploy the oracle, and then write the batch
 - If a data batch arrives with a nonce different than the oracle's next one, the transaction will revert
 
-### On-chain Truth Mechanism
+## On-chain Truth Mechanism
 
 Using a UniswapV3Pool as a source of truth allows the bridging of its price history to a receiver contract, replicating the OracleLibrary behavior. Any contract on the receiving chain can choose to calculate a twap, the same way it would query the pool `observe([t,0])`, by addressing the query to a pre-computable address: the oracle. Contracts can also query `slot0.sqrtPriceX96` or `slot0.tick`, and will get a time-weighted average of the last time-period.
 
@@ -51,7 +67,7 @@ The pool is consulted at timestamps defined by the strategy, and the DataFeed ca
 
 The DataFeed also stores in the cache the last state of the pool observed to fill in the gaps between sets of timestamps, or to overcome manually (permissioned) whenever the pool returns an `!OLD` error, and keep the consistency of information.
 
-### Math Representation
+## Math Representation
 
 The UniV3Pool price is recorded on a `tickCumulative` variable, that can be represented as the primitive of `tick`, integrated from the first swap of the pool, until the consulted `t`. It is accessed through `observe(uint32[] secondsAgo)`, or accessing each observation by index `observations(uint256 index)`.
 
@@ -72,7 +88,7 @@ $$C_n = C_{n-1} + slot0.tick * (now - t_{n-1})$$
 
 By accepting $C$ as the primitive of $tick(t)$, one can also build another $C'$ function that replicates, at least exactly in a particular set of points, the behavior of $C$, by using the time-weighted averages between that set of points. On the oracle, it is stored in batches every time data is received.
 
-$${C'}_n = C_{n-1} + twap * (t_n - t_n-1)$$
+$${C'}_ {n} = C_{n-1} + twap * (t_n - t_{n-1})$$
 
 $$slot0_n = twap_n$$
 
@@ -80,46 +96,36 @@ This implies that data after the last datapoint of the last received batch is ex
 
 $$C'(t) = tickCumulative(t_{n}) + slot0_n * \Delta t_n^t$$
 
-Notice also, that integrating a function into a primitive also adds the integration constant $K$, that equals, in this case, to the `tickCumulative` of the pool, at the time of the first oracle observation. Since $C$ in the pool integrates from the pool genesis, and $C'$ in the oracle integrates since oracle genesis.
+Notice also, that integrating a function into a primitive also adds the integration constant $K$, that equals, in this case, to the `tickCumulative` of the pool, at the time of the first oracle observation. Since $C$ in the pool integrates from the pool genesis, and $C'$ in the oracle integrates since oracle genesis. But any difference of $C'$ should not be sensible to $K$, since it cancels out.
 
 $$C' = C + K$$
 
 $$C(t) = C'(t) + C(t_{genesis})$$
 
-But any difference of $C'$ should not be sensible to $K$, since it cancels out.
-
-Given that the integration of a curve can be separated in the integration of its parts:
+Given that the integration of a curve can be separated in the integration of its parts, and each integration can be calculated with the twap:
 $$\int_A^Btick*dt = twap_A^B * \Delta t_A^B$$
 
 $$C' = \int_a^ztick*dt = \int_a^bt*dt + \int_b^ct*dt + ... + \int_y^zt*dt$$
 
 $$(twap_a^b * \Delta t_a^b) + twap_b^c * \Delta t_b^c + ...$$
 
-On the pool $C$ as is exactly $tick(t) * \Delta t_{genesis}^t$ as it generates a new insertion each time `tick` changes. The resolution depends on the information, being at least 1s (if two consecutive 1s blocks have a tick-moving swap). On the sidechain, the twap calculation will optimistically extrapolate the data from the last available datapoint. The resolution will depend on the `periodLength`, as it will be calculated as $\sum twap_a^b * \Delta t_a^b$, trying to make $\Delta t$s of a homogeneous length of `periodLenght`, to reduce the number of consultations that the transaction must do to the pool.
+On the pool $C$ is exactly $tick(t) * \Delta t_{genesis}^t$ , as it generates a new insertion each time `tick` changes. The resolution of the pool depends on the information, being at least 1s (if two consecutive 1s blocks have a tick-moving swap). On the sidechain, the twap calculation will both optimistically interpolate information between datapoints, and optimistically extrapolate the data from the last available datapoint. The resolution will depend on the `periodLength` set by the Strategy, as it will be calculated as $\sum twap_a^b * \Delta t_a^b$ , trying to make $\Delta t$ of a homogeneous length. This setting should be set considering the resolution obtained, and the required consultations to the pool's binarySearch required to provide such resolution.
 
-This means that $C(t) \sim C'(t)$ (for any given $t$), but at least there exists points $a, b, c, ...$ such that `C(a) = C'(a) + K`, `C(b) = C'(b) + K`, ...
+All of the information that exists between bridged points $a, b, c, ...$ is reduced to an average between those points, which means that any twap change inside those periods is filtered by the sensitivity of the strategy resolution.
 
-$$C_a^b = C(b)-C(a)$$
-
-$${C'}_a^b = (C'(b)+K)-(C'(a)+K) = C'(b)-C'(a)$$
-
-$$C_a^b = {C'}_a^b$$
-
-All of the information that exists between those points $a, b, c, ...$ is reduced to an average between those points, which means that any twap change inside those periods is filtered out due to the low resolution of the oracle mechanism.
-
-> $C(t)$
+> $C(t)$ UniV3Pool `observe()`
 >
 > - always accessible
 > - always correct
 > - always updated
 >
-> $C'(t)$
+> $C'(t)$ SirechainOracle `observe()`
 >
 > - always accessible
 > - only correct in $a, b, c, ...$
 > - optimistically extrapolates the last state
 
-### Fetch Strategy
+## Fetch Strategy
 
 There are three parameters that define the maintenance of the strategy:
 
@@ -188,4 +194,46 @@ yarn deploy:setup
 yarn deploy:work
 ```
 
+For 1 tag manual-deployment and bridging
+`yarn deploy --network mumbai --tags manual-send-test-observation`
+
 In `/utils/constants.ts`, one can find the configuration of the strategies chosen by chain. The default for Goerli is set to refresh each 1/2 day, using periods of 1hr, and comparing a 2hr twap with 500 ticks (+-5%) threshold.
+
+## Address Registry
+
+#### Testnet
+
+##### Goerli (sender and _receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| DataFeed                  | `0x8Fb68E83831c7e8622e10C154CC0d24856440809` |
+| DataFeedStrategy          | `0x606e25c67B8d6550075C8085083c763769Cfe2BE` |
+| StrategyJob               | `0x606e25c67B8d6550075C8085083c763769Cfe2BE` |
+| Connext SenderAdapter     | `0xF73E6BC8ca4Fec5e9773C4f22E8EBEEEd12733d6` |
+| _Connext ReceiverAdapter_ | `0x05a6CEF3f938E8E9b3112CB44e8B9771638989Ed` |
+| _DataReceiver_            | `0xa09683377E5cE0bB7eEa90D2b64e3644f7eA1B8a` |
+| _OracleFactory_           | `0x0594Dc74043b93Bdb371f01187704C98D45bd4E6` |
+
+##### OP Goerli (_receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| _Connext ReceiverAdapter_ | `0x4D81A5C9F7706377df368D1716460da03faEcBcb` |
+| _DataReceiver_            | `0x768c227320165A71A4001fE23A0C38CD6B5585c0` |
+| _OracleFactory_           | `0xB8aD440Ad7A3298C73258b1Fc202A081Db9107cb` |
+
+##### Mumbai (manual sender)
+
+| Contract              | Address                                      |
+| --------------------- | -------------------------------------------- |
+| DataFeed              | `0x1c9Bc091f070A10E23B2a90eA543AD38AA3De1EE` |
+| Connext SenderAdapter | `0x4C8589e7D1d91e454F5f30C3e1bb3e197B5Bf368` |
+
+##### Whitelisted pipelines:
+
+| Chain - Pool                                          | Chain - OracleSidechain                                  |
+| ----------------------------------------------------- | -------------------------------------------------------- |
+| Goerli - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | OP Goerli - `0x4ECFF2c532d47D7be3D957E4a332AB134cad1fd9` |
+| Mumbai - `0xd69f1635dc28a11E05841AE25Fd1572FD0EF1eF4` | Goerli - `0x050BBA5E4abde750Ea5610D8412cD46171C665e7`    |
+| Goerli - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | Goerli - `0xED7f635EE962537b4DB13a1e1c3922EC65366fE2`    |

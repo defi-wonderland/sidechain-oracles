@@ -1,7 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { verifyContractIfNeeded } from 'utils/deploy';
-import { env } from 'process';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
@@ -24,9 +23,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   // Only one needs to be verified
   await verifyContractIfNeeded(hre, tokenA);
 
-  if (!env.TEST) {
-    console.log('Please register tokens in Hardhat named accounts: ', tokenA.address, tokenB.address);
-  }
+  console.log('Please register tokens in Hardhat named accounts: ', tokenA.address, tokenB.address);
 };
 
 deployFunction.tags = ['deploy-tokens'];

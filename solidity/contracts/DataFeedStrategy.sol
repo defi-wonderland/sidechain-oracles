@@ -144,7 +144,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     int24 _poolArithmeticMeanTick = _computeTwap(_poolTickCumulatives[0], _poolTickCumulatives[1], _twapLength);
 
     uint32 _oracleDelta = _secondsNow - _lastPoolStateObserved.blockTimestamp;
-    int56 _oracleTickCumulative = _lastPoolStateObserved.tickCumulative + _lastPoolStateObserved.arithmeticMeanTick * int32(_oracleDelta);
+    int56 _oracleTickCumulative = _lastPoolStateObserved.tickCumulative + int56(_lastPoolStateObserved.arithmeticMeanTick) * int32(_oracleDelta);
 
     int24 _oracleArithmeticMeanTick = _computeTwap(_poolTickCumulatives[0], _oracleTickCumulative, _twapLength);
 

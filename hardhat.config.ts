@@ -8,7 +8,6 @@ import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import 'solidity-coverage';
-import 'solidity-docgen';
 import { HardhatUserConfig, NetworksUserConfig } from 'hardhat/types';
 import * as env from './utils/env';
 import 'tsconfig-paths/register';
@@ -46,7 +45,7 @@ const networks: NetworksUserConfig =
           },
         },
         mumbai: {
-          url: 'https://rpc-mumbai.maticvigil.com/',
+          url: env.getNodeUrl('mumbai'),
           accounts: env.getAccounts('test'),
           chainId: 80001,
           companionNetworks: {
@@ -54,7 +53,7 @@ const networks: NetworksUserConfig =
           },
         },
         optimisticGoerli: {
-          url: 'https://goerli.optimism.io/',
+          url: env.getNodeUrl('optimisticGoerli'),
           accounts: env.getAccounts('test'),
           chainId: 420,
           companionNetworks: {
@@ -112,9 +111,6 @@ const config: HardhatUserConfig = {
   },
   paths: {
     sources: './solidity',
-  },
-  docgen: {
-    exclude: ['solidity/for-test/*'],
   },
 };
 

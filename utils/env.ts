@@ -68,8 +68,8 @@ export function getEtherscanAPIKeys(networks: string[]): { [network: string]: st
   return apiKeys;
 }
 
-export function isTesting(): boolean {
-  return !!process.env.TEST;
+export function isTestingLocal(): boolean {
+  return !!process.env.LOCAL_TEST;
 }
 
 export function isHardhatCompile(): boolean {

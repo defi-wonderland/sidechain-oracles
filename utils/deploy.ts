@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { DeployResult } from 'hardhat-deploy/dist/types';
+import { DeployResult, Deployment } from 'hardhat-deploy/dist/types';
 import { HardhatNetworkUserConfig, HardhatRuntimeEnvironment } from 'hardhat/types';
 
 let testChainId: number;
@@ -9,7 +9,7 @@ export const setTestChainId = (chainId: number): void => {
 };
 
 export const getChainId = async (hre: HardhatRuntimeEnvironment): Promise<number> => {
-  if (!!process.env.TEST) {
+  if (!!process.env.LOCAL_TEST) {
     if (!testChainId) throw new Error('Should specify chain id of test');
     return testChainId;
   }
@@ -31,4 +31,50 @@ export const shouldVerifyContract = async (deploy: DeployResult): Promise<boolea
   const txReceipt = await ethers.provider.getTransaction(deploy.receipt!.transactionHash);
   await txReceipt.wait(10);
   return true;
+};
+
+export const verifyContractIfNeeded = async (hre: HardhatRuntimeEnvironment, deploy: DeployResult): Promise<boolean> => {
+  if (await shouldVerifyContract(deploy)) {
+    await verifyContract(hre, deploy);
+    return true;
+  }
+  return false;
+};
+
+export const verifyContract = async (hre: HardhatRuntimeEnvironment, deploy: DeployResult | Deployment): Promise<void> => {
+  if (hre.network.config.chainId === 31337 || !hre.config.etherscan.apiKey) {
+    return; // contract is deployed on local network or no apiKey is configured
+  }
+  try {
+    await hre.run('verify:verify', {
+      address: deploy.address,
+      constructorArguments: deploy.args,
+    });
+  } catch (err: any) {
+    if (err.message.includes('Reason: Already Verified')) {
+      console.log('Contract is already verified!');
+    }
+  }
+};
+
+export const verifyContractByAddress = async (hre: HardhatRuntimeEnvironment, address: string, args?: [any]): Promise<void> => {
+  const deploy = {
+    address,
+    args,
+  } as DeployResult;
+  await verifyContract(hre, deploy);
+};
+
+export const waitDeployment = async (deploy: DeployResult, blocks: number) => {
+  const txReceipt = await ethers.provider.getTransaction(deploy.receipt!.transactionHash);
+  await txReceipt.wait(blocks);
+};
+
+export const getReceiverChainId = async (hre: HardhatRuntimeEnvironment): Promise<string | void> => {
+  const senderChainId = await hre.getChainId();
+  const receiverChainId = await hre.companionNetworks['receiver'].getChainId();
+
+  if (senderChainId != receiverChainId) return receiverChainId;
+  // returns 420 for same chain test
+  return '420';
 };

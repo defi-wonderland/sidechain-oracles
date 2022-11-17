@@ -4,31 +4,61 @@ import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
 import '@typechain/hardhat/dist/type-extensions';
-import { removeConsoleLog } from 'hardhat-preprocessor';
 import 'hardhat-gas-reporter';
+import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import 'solidity-coverage';
-import { HardhatUserConfig, MultiSolcUserConfig, NetworksUserConfig } from 'hardhat/types';
+import { HardhatUserConfig, NetworksUserConfig } from 'hardhat/types';
 import * as env from './utils/env';
 import 'tsconfig-paths/register';
+import { addressRegistry } from 'utils/constants';
 
 const networks: NetworksUserConfig =
-  env.isHardhatCompile() || env.isHardhatClean() || env.isTesting()
+  env.isHardhatCompile() || env.isHardhatClean() || env.isTestingLocal()
     ? {}
     : {
         hardhat: {
           forking: {
             enabled: process.env.FORK ? true : false,
-            url: env.getNodeUrl('ethereum'),
+            url: env.getNodeUrl('goerli'),
           },
-        },
-        kovan: {
-          url: env.getNodeUrl('kovan'),
-          accounts: env.getAccounts('kovan'),
+          chainId: 5,
+          companionNetworks: {
+            receiver: 'hardhat',
+          },
         },
         ethereum: {
           url: env.getNodeUrl('ethereum'),
           accounts: env.getAccounts('ethereum'),
+          chainId: 1,
+          companionNetworks: {
+            receiver: 'goerli',
+          },
+        },
+        goerli: {
+          url: env.getNodeUrl('goerli'),
+          accounts: env.getAccounts('test'),
+          chainId: 5,
+          companionNetworks: {
+            receiver: 'optimisticGoerli',
+            sender: 'mumbai',
+          },
+        },
+        mumbai: {
+          url: env.getNodeUrl('mumbai'),
+          accounts: env.getAccounts('test'),
+          chainId: 80001,
+          companionNetworks: {
+            receiver: 'goerli',
+          },
+        },
+        optimisticGoerli: {
+          url: env.getNodeUrl('optimisticGoerli'),
+          accounts: env.getAccounts('test'),
+          chainId: 420,
+          companionNetworks: {
+            sender: 'goerli',
+          },
         },
       };
 
@@ -38,6 +68,7 @@ const config: HardhatUserConfig = {
     deployer: {
       default: 0,
     },
+    ...addressRegistry,
   },
   mocha: {
     timeout: process.env.MOCHA_TIMEOUT || 300000,
@@ -46,7 +77,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.7',
+        version: '0.8.15',
         settings: {
           optimizer: {
             enabled: true,
@@ -56,6 +87,14 @@ const config: HardhatUserConfig = {
       },
     ],
   },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: false,
+    strict: true,
+    only: ['solidity/contracts/'],
+    except: ['solidity/contracts/for-test/'],
+  },
   gasReporter: {
     currency: process.env.COINMARKETCAP_DEFAULT_CURRENCY || 'USD',
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
@@ -63,11 +102,8 @@ const config: HardhatUserConfig = {
     showMethodSig: true,
     onlyCalledMethods: false,
   },
-  preprocess: {
-    eachLine: removeConsoleLog((hre) => hre.network.name !== 'hardhat'),
-  },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'goerli', 'mumbai', 'optimisticGoerli']),
   },
   typechain: {
     outDir: 'typechained',
@@ -77,18 +113,5 @@ const config: HardhatUserConfig = {
     sources: './solidity',
   },
 };
-
-if (process.env.TEST) {
-  (config.solidity as MultiSolcUserConfig).compilers = (config.solidity as MultiSolcUserConfig).compilers.map((compiler) => {
-    return {
-      ...compiler,
-      outputSelection: {
-        '*': {
-          '*': ['storageLayout'],
-        },
-      },
-    };
-  });
-}
 
 export default config;

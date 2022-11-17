@@ -1,33 +1,24 @@
 {
-  "name": "hardhat-boilerplate",
+  "name": "sidechain-oracle",
   "version": "0.0.0",
-  "description": "Hardhat boilerplate",
-  "keywords": [
-    "ethereum",
-    "smart",
-    "contracts",
-    "test",
-    "solidity",
-    "hardhat",
-    "boilerplate"
-  ],
+  "description": "Sidechain Oracle",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/defi-wonderland/hardhat-boilerplate-ts.git"
+    "url": "git+https://github.com/defi-wonderland/sidechain-oracle.git"
   },
   "license": "AGPL-3.0-only",
   "contributors": [
     {
-      "name": "404skillz",
-      "url": "https://github.com/404skillz"
-    },
-    {
-      "name": "0xGorilla",
-      "url": "https://github.com/0xGorilla"
+      "name": "0xJabberwock",
+      "url": "https://github.com/0xJabberwock"
     },
     {
       "name": "wei3erHase",
       "url": "https://github.com/wei3erHase"
+    },
+    {
+      "name": "0xng",
+      "url": "https://github.com/0xng"
     }
   ],
   "files": [
@@ -42,16 +33,24 @@
     "!**/.DS_Store"
   ],
   "scripts": {
+    "analyze": "slither .",
     "compile": "eth-sdk && hardhat compile",
+    "compile:size": "hardhat compile && hardhat size-contracts",
     "compile:test": "cross-env TEST=true hardhat compile",
     "coverage": "hardhat coverage",
     "deploy": "npx hardhat deploy",
-    "docs": "solidity-docgen --solc-module solc-0.8",
+    "deploy:bridge": "yarn deploy --network goerli --tags bridge-observation",
+    "deploy:bridge-dummy": "yarn deploy --network goerli --tags dummy-bridge-observation",
+    "deploy:fetch": "yarn deploy --network goerli --tags fetch-observation",
+    "deploy:force-fetch": "yarn deploy --network goerli --tags force-fetch-observation",
+    "deploy:setup": "yarn deploy --network goerli --tags setup-connext-default",
+    "deploy:setup-dummy": "yarn deploy --network mumbai --tags data-receiver",
+    "deploy:work": "yarn deploy --network goerli --tags work-job",
     "fork:node": "cross-env FORK=true hardhat node",
     "fork:script": "cross-env FORK=true hardhat run",
     "postinstall": "husky install && yarn compile:test",
-    "lint:check": "cross-env solhint 'contracts/**/*.sol' 'interfaces/**/*.sol' && cross-env prettier --check './**'",
-    "lint:fix": "sort-package-json && cross-env prettier --write './**' && cross-env solhint --fix 'contracts/**/*.sol' 'interfaces/**/*.sol'",
+    "lint:check": "cross-env solhint 'solidity/**/*.sol' && cross-env prettier --check './**'",
+    "lint:fix": "sort-package-json && cross-env prettier --write './**' && cross-env solhint --fix 'solidity/**/*.sol'",
     "prepare": "husky install",
     "prepublishOnly": "hardhat clean && hardhat compile && pinst --disable",
     "postpublish": "pinst --enable",
@@ -60,6 +59,7 @@
     "test:all": "yarn test './test/e2e/**/*.spec.ts' && cross-env TEST=true mocha 'test/unit/**/*.spec.ts'",
     "test:all:parallel": "yarn test:parallel './test/e2e/**/*.spec.ts' 'test/unit/**/*.spec.ts'",
     "test:e2e": "yarn test './test/e2e/**/*.spec.ts'",
+    "test:e2e:no-compile": "cross-env TEST=true mocha './test/e2e/**/*.spec.ts'",
     "test:e2e:parallel": "yarn test:parallel './test/e2e/**/*.spec.ts'",
     "test:gas": "cross-env REPORT_GAS=1 npx hardhat test",
     "test:parallel": "yarn compile:test && cross-env TEST=true mocha --parallel",
@@ -68,7 +68,7 @@
   },
   "lint-staged": {
     "*.{js,css,md,ts,sol}": "prettier --write",
-    "*.sol": "cross-env solhint --fix 'contracts/**/*.sol' 'interfaces/**/*.sol'",
+    "*.sol": "cross-env solhint --fix 'solidity/**/*.sol'",
     "package.json": "sort-package-json"
   },
   "resolutions": {
@@ -77,17 +77,23 @@
     "eth-gas-reporter/colors": "1.4.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "4.6.0"
+    "@connext/nxtp-contracts": "0.2.0-alpha.29",
+    "@defi-wonderland/crypto-husky-checks": "1.1.1",
+    "@defi-wonderland/keep3r-v2": "0.0.0-ba0f8872",
+    "@openzeppelin/contracts": "4.7.3",
+    "@openzeppelin/contracts-upgradeable": "4.7.3",
+    "@uniswap/v3-core": "1.0.2-solc-0.8-simulate",
+    "@uniswap/v3-periphery": "1.4.1"
   },
   "devDependencies": {
     "@codechecks/client": "0.1.12",
     "@commitlint/cli": "16.2.4",
     "@commitlint/config-conventional": "16.2.4",
-    "@defi-wonderland/smock": "2.0.7",
+    "@defi-wonderland/smock": "2.3.3",
     "@dethcrypto/eth-sdk": "0.3.1",
     "@dethcrypto/eth-sdk-client": "0.1.6",
-    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.13",
-    "@nomiclabs/hardhat-etherscan": "3.0.3",
+    "@nomiclabs/hardhat-ethers": "2.2.1",
+    "@nomiclabs/hardhat-etherscan": "3.1.2",
     "@nomiclabs/hardhat-waffle": "2.0.3",
     "@typechain/ethers-v5": "10.0.0",
     "@typechain/hardhat": "6.0.0",
@@ -104,8 +110,9 @@
     "dotenv": "16.0.0",
     "ethereum-waffle": "3.4.4",
     "ethers": "5.6.4",
-    "hardhat": "2.9.3",
-    "hardhat-deploy": "0.11.4",
+    "hardhat": "2.12.0",
+    "hardhat-contract-sizer": "2.6.1",
+    "hardhat-deploy": "0.11.20",
     "hardhat-gas-reporter": "1.0.8",
     "hardhat-preprocessor": "0.1.4",
     "husky": "7.0.4",
@@ -118,8 +125,8 @@
     "solc-0.8": "npm:solc@0.8.13",
     "solhint": "3.3.7",
     "solhint-plugin-prettier": "0.0.5",
-    "solidity-coverage": "0.7.21",
-    "solidity-docgen": "0.5.16",
+    "solhint-plugin-wonderland": "0.0.1",
+    "solidity-coverage": "0.8.1",
     "sort-package-json": "1.57.0",
     "standard-version": "9.3.2",
     "ts-node": "10.7.0",

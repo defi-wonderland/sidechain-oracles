@@ -1,5 +1,6 @@
 const forkBlockNumber: { [name: string]: number } = {
-  dai: 12103332,
+  oracleSidechain: 14600000,
+  goerli: 7805000,
 };
 
 export default forkBlockNumber;

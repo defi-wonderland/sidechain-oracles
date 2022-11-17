@@ -18,6 +18,7 @@ deployments/localhost
 
 # Config files
 .env
+tenderly.yaml
 
 # Not ignore gitkeep
 !/**/.gitkeep

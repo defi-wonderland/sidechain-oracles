@@ -1,5 +1,5 @@
-import { BigNumber, Contract } from 'ethers';
 import { ethers } from 'hardhat';
+import { BigNumber, Contract } from 'ethers';
 
 export const deploy = async ({
   name,

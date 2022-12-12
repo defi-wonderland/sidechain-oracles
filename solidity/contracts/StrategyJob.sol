@@ -57,7 +57,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
     uint32 _chainId,
     bytes32 _poolSalt,
     uint24 _poolNonce
-  ) public view returns (bool _isWorkable) {
+  ) external view returns (bool _isWorkable) {
     uint24 _whitelistedNonce = dataFeed.whitelistedNonces(_chainId, _poolSalt);
     if (_whitelistedNonce != 0 && _whitelistedNonce <= _poolNonce) return _workable(_chainId, _poolSalt, _poolNonce);
   }
@@ -68,7 +68,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
   }
 
   /// @inheritdoc IStrategyJob
-  function workable(bytes32 _poolSalt, IDataFeedStrategy.TriggerReason _reason) public view returns (bool _isWorkable) {
+  function workable(bytes32 _poolSalt, IDataFeedStrategy.TriggerReason _reason) external view returns (bool _isWorkable) {
     if (dataFeed.isWhitelistedPool(_poolSalt)) return dataFeedStrategy.isStrategic(_poolSalt, _reason);
   }
 

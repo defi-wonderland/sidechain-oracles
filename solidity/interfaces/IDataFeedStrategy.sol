@@ -13,7 +13,8 @@ interface IDataFeedStrategy is IGovernable {
   enum TriggerReason {
     NONE,
     TIME,
-    TWAP
+    TWAP,
+    FORCE
   }
 
   // STRUCTS

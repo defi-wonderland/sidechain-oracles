@@ -54,6 +54,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external onlyGovernor {
     uint32[] memory _secondsAgos = calculateSecondsAgos(_fromTimestamp);
     dataFeed.fetchObservations(_poolSalt, _secondsAgos);
+    emit StrategicFetch(_poolSalt, TriggerReason.FORCE);
   }
 
   /// @inheritdoc IDataFeedStrategy

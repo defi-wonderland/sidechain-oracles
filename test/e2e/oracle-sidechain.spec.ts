@@ -11,9 +11,8 @@ import {
   ERC20,
 } from '@typechained';
 import { evm, wallet } from '@utils';
-import { KP3R, WETH, FEE, UNI_FACTORY, POOL_INIT_CODE_HASH, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { bn } from '@utils';
-import { calculateSalt, getInitCodeHash, getCreate2Address } from '@utils/misc';
+import { calculateSalt } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle } from './common';
@@ -27,7 +26,6 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   let allowedDataReceiver: DataReceiverForTest;
   let unallowedDataReceiver: DataReceiverForTest;
   let allowedDataReceiverWallet: JsonRpcSigner;
-  let unallowedDataReceiverWallet: JsonRpcSigner;
   let snapshotId: string;
   let tokenA: ERC20;
   let tokenB: ERC20;
@@ -59,7 +57,6 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     unallowedDataReceiver = await dataReceiverFactory.connect(deployer).deploy(governor.address, oracleFactory.address);
 
     allowedDataReceiverWallet = await wallet.impersonate(allowedDataReceiver.address);
-    unallowedDataReceiverWallet = await wallet.impersonate(unallowedDataReceiver.address);
     await wallet.setBalance(allowedDataReceiver.address, bn.toUnit(1));
     await wallet.setBalance(unallowedDataReceiver.address, bn.toUnit(1));
 
@@ -68,18 +65,6 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-  });
-
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await allowedDataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
-  });
-
-  describe('observing an observation', () => {
-    it('should observe an observation', async () => {
-      // NOTE: WTF
-    });
   });
 
   describe('writing observations', () => {

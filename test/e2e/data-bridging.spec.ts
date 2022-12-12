@@ -17,10 +17,10 @@ import {
 } from '@typechained';
 import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
-import { RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { RANDOM_CHAIN_ID } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
-import { calculateSalt, getInitCodeHash } from '@utils/misc';
+import { calculateSalt } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
@@ -77,12 +77,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-  });
-
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
   });
 
   describe('observation bridging flow', () => {

@@ -38,7 +38,6 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
     );
 
     _addObservations(_observationsData, _poolSalt, _poolNonce);
-    return bytes(abi.encode(''));
   }
 
   modifier onlyExecutor(address _originSender, uint32 _originDomain) {

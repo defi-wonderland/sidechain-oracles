@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleFactory} from './IOracleFactory.sol';
@@ -12,8 +12,6 @@ interface IOracleSidechain {
   }
 
   // STATE VARIABLES
-
-  // TODO: complete natspec
 
   /// @return _oracleFactory The address of the OracleFactory
   function factory() external view returns (IOracleFactory _oracleFactory);

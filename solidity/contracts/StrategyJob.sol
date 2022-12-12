@@ -37,7 +37,6 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
   ) external upkeep {
-    // TODO: change criteria for workable (if there's a new nonce, bridge)
     if (!_workable(_chainId, _poolSalt, _poolNonce)) revert NotWorkable();
     lastPoolNonceBridged[_chainId][_poolSalt] = _poolNonce;
     dataFeed.sendObservations(defaultBridgeSenderAdapter, _chainId, _poolSalt, _poolNonce, _observationsData);

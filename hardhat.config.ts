@@ -32,8 +32,21 @@ const networks: NetworksUserConfig =
           accounts: env.getAccounts('ethereum'),
           chainId: 1,
           companionNetworks: {
-            receiver: 'goerli',
+            receiver: 'optimism',
+            // receiver: 'polygon',
           },
+        },
+        optimism: {
+          url: env.getNodeUrl('optimism'),
+          accounts: env.getAccounts('ethereum'),
+          chainId: 10,
+          companionNetworks: { sender: 'ethereum' },
+        },
+        polygon: {
+          url: env.getNodeUrl('polygon'),
+          accounts: env.getAccounts('ethereum'),
+          chainId: 137,
+          companionNetworks: { sender: 'ethereum' },
         },
         goerli: {
           url: env.getNodeUrl('goerli'),
@@ -41,10 +54,10 @@ const networks: NetworksUserConfig =
           chainId: 5,
           companionNetworks: {
             receiver: 'optimisticGoerli',
-            sender: 'mumbai',
+            sender: 'polygonMumbai',
           },
         },
-        mumbai: {
+        polygonMumbai: {
           url: env.getNodeUrl('mumbai'),
           accounts: env.getAccounts('test'),
           chainId: 80001,
@@ -103,7 +116,7 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'goerli', 'mumbai', 'optimisticGoerli']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'goerli', 'optimisticGoerli', 'polygonMumbai']),
   },
   typechain: {
     outDir: 'typechained',

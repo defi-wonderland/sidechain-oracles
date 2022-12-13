@@ -87,13 +87,13 @@ describe('ConnextReceiverAdapter.sol', () => {
       dataReceiver.addObservations.reset();
     });
 
-    context('when the origin sender is not allowed', async () => {
+    context('when the origin sender is not allowed', () => {
       it('should revert', async () => {
         await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith('UnauthorizedCaller()');
       });
     });
 
-    context('when the origin chain is not allowed', async () => {
+    context('when the origin chain is not allowed', () => {
       beforeEach(async () => {
         xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, connextSenderAdapter.address, 0];
       });
@@ -103,7 +103,7 @@ describe('ConnextReceiverAdapter.sol', () => {
       });
     });
 
-    context('when the executor is the caller and origin sender and domain are correct', async () => {
+    context('when the executor is the caller and origin sender and domain are correct', () => {
       beforeEach(async () => {
         xReceiveParams = [ZERO_BYTES_32, 0, ZERO_ADDRESS, connextSenderAdapter.address, rinkebyOriginId];
       });

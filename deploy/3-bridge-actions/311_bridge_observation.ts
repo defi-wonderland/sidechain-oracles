@@ -21,7 +21,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const filter = dataFeedContract.filters.PoolObserved();
 
   const blockNumber = (await hre.ethers.provider.getBlock('latest')).number;
-  const events: any[] = await dataFeedContract.queryFilter(filter, blockNumber - 1000);
+  const events: any[] = await dataFeedContract.queryFilter(filter, blockNumber - 7000);
   const fetchData = events[events.length - 1].args;
 
   const SEND_OBSERVATION_ARGS = [senderAdapter.address, RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];

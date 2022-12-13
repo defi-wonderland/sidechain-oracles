@@ -271,10 +271,10 @@
   dependencies:
     fs-extra "10.1.0"
 
-"@defi-wonderland/keep3r-v2@0.0.0-ba0f8872":
-  version "0.0.0-ba0f8872"
-  resolved "https://registry.yarnpkg.com/@defi-wonderland/keep3r-v2/-/keep3r-v2-0.0.0-ba0f8872.tgz#a851baefea251f425dd7348237da9fc9088bb177"
-  integrity sha512-MabaQFxV+TkXaaHawOTkdQ2j1LdLbHs2LEy2m/bDoHBEWSwTnf1RoBX1+xNQrCA0Bdt3niJW9LXrts2p8HemKw==
+"@defi-wonderland/keep3r-v2@0.0.0-ab44125a":
+  version "0.0.0-ab44125a"
+  resolved "https://registry.yarnpkg.com/@defi-wonderland/keep3r-v2/-/keep3r-v2-0.0.0-ab44125a.tgz#a29328c4d6343e9bcb9887ef83e9819b8289e249"
+  integrity sha512-sCZj0zEjYLopaZDRvDYji1dC6ZhuBOcsjoFGsZ1MIMG2wAhNlrh344+XZ8pc9YbhFH4+ITJ1sVPp6AtwSXfa0A==
   dependencies:
     "@openzeppelin/contracts" "4.3.0"
 

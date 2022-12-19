@@ -9,7 +9,7 @@ abstract contract Keep3rJob is IKeep3rJob, Governable {
   IKeep3r public keep3r = IKeep3r(0xeb02addCfD8B773A5FFA6B9d1FE99c566f8c44CC);
 
   /// @inheritdoc IKeep3rJob
-  function setKeep3r(IKeep3r _keep3r) public onlyGovernor {
+  function setKeep3r(IKeep3r _keep3r) external onlyGovernor {
     _setKeep3r(_keep3r);
   }
 

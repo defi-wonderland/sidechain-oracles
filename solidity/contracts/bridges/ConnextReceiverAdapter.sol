@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {BridgeReceiverAdapter} from './BridgeReceiverAdapter.sol';
@@ -38,7 +38,6 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
     );
 
     _addObservations(_observationsData, _poolSalt, _poolNonce);
-    return bytes(abi.encode(''));
   }
 
   modifier onlyExecutor(address _originSender, uint32 _originDomain) {

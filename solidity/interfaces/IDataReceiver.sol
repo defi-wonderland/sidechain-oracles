@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IGovernable} from './peripherals/IGovernable.sol';
@@ -21,10 +21,6 @@ interface IDataReceiver is IGovernable {
   /// @param _adapter Address of the bridge adapter to consult
   /// @return _isAllowed Whether a bridge adapter is whitelisted
   function whitelistedAdapters(IBridgeReceiverAdapter _adapter) external view returns (bool _isAllowed);
-
-  /// @return _oracleInitCodeHash The oracle creation code hash used to calculate their address
-  //solhint-disable-next-line func-name-mixedcase
-  function ORACLE_INIT_CODE_HASH() external view returns (bytes32 _oracleInitCodeHash);
 
   // EVENTS
 

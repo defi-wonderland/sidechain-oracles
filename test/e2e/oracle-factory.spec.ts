@@ -43,12 +43,6 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
-  });
-
   describe('deploying oracle', () => {
     let dataReceiverSigner: JsonRpcSigner;
 
@@ -94,6 +88,10 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
       ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
       expect(await oracleFactory['getPool(address,address,uint24)'](tokenB.address, tokenA.address, fee)).to.eq(oracleSidechain.address);
+    });
+
+    it('should correctly set oracle init code hash', async () => {
+      expect(await oracleFactory.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
     });
   });
 });

@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IGovernable} from './peripherals/IGovernable.sol';
@@ -13,7 +13,8 @@ interface IDataFeedStrategy is IGovernable {
   enum TriggerReason {
     NONE,
     TIME,
-    TWAP
+    TWAP,
+    FORCE
   }
 
   // STRUCTS

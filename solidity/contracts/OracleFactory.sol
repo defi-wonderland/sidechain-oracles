@@ -1,5 +1,4 @@
-//TODO: change license
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './peripherals/Governable.sol';

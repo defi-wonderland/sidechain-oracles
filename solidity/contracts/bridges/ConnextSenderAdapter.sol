@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {LibConnextStorage, TransferInfo} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
@@ -22,7 +22,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
-    uint24 _poolNonce // TODO: review input parameters packing KMC-
+    uint24 _poolNonce
   ) external payable onlyDataFeed {
     bytes memory _callData = abi.encode(_observationsData, _poolSalt, _poolNonce);
 

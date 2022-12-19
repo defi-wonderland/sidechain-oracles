@@ -42,12 +42,6 @@ describe('DataReceiver.sol', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
-  });
-
   describe('constructor(...)', () => {
     it('should set the governor', async () => {
       expect(await dataReceiver.governor()).to.eq(governor.address);

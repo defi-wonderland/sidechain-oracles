@@ -29,6 +29,7 @@ describe('DataFeedStrategy.sol', () => {
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
+  const FORCE_TRIGGER = 3;
 
   before(async () => {
     [, governor] = await ethers.getSigners();
@@ -241,6 +242,15 @@ describe('DataFeedStrategy.sol', () => {
       dataFeed.fetchObservations.reset();
       await dataFeedStrategy.connect(governor).forceFetchObservations(randomSalt, fromTimestamp);
       expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+    });
+
+    it('should emit StrategicFetch', async () => {
+      const tx = await dataFeedStrategy.connect(governor).forceFetchObservations(randomSalt, fromTimestamp);
+      let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+      let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
+
+      expect(eventPoolSalt).to.eq(randomSalt);
+      expect(eventReason).to.eq(FORCE_TRIGGER);
     });
   });
 

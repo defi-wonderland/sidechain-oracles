@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {Governable} from './peripherals/Governable.sol';
@@ -54,6 +54,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external onlyGovernor {
     uint32[] memory _secondsAgos = calculateSecondsAgos(_fromTimestamp);
     dataFeed.fetchObservations(_poolSalt, _secondsAgos);
+    emit StrategicFetch(_poolSalt, TriggerReason.FORCE);
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -165,7 +166,6 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   function _initializeSecondsAgos() internal view returns (uint32[] memory _secondsAgos) {
-    // TODO: define initialization of _secondsAgos
     _secondsAgos = new uint32[](2);
     _secondsAgos[0] = periodDuration;
     _secondsAgos[1] = 0; // as if _fromTimestamp = _secondsNow - (periodDuration + 1)

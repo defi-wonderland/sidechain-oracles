@@ -59,6 +59,9 @@ interface IOracleFactory is IGovernable {
   /// @notice Thrown when a contract other than the DataReceiver tries to deploy an oracle
   error OnlyDataReceiver();
 
+  /// @notice Thrown if initialCardinality is set to zero
+  error ZeroCardinality();
+
   // FUNCTIONS
 
   /// @notice Deploys a new oracle given an inputted salt

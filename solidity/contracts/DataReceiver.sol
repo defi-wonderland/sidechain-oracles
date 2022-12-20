@@ -18,6 +18,7 @@ contract DataReceiver is IDataReceiver, Governable {
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
+    if (address(_oracleFactory) == address(0)) revert ZeroAddress();
     oracleFactory = _oracleFactory;
   }
 

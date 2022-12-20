@@ -8,6 +8,7 @@ abstract contract BridgeReceiverAdapter is IBridgeReceiverAdapter {
   IDataReceiver public immutable dataReceiver;
 
   constructor(IDataReceiver _dataReceiver) {
+    if (address(_dataReceiver) == address(0)) revert ZeroAddress();
     dataReceiver = _dataReceiver;
   }
 

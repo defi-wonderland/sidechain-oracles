@@ -8,20 +8,21 @@ import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfa
 contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
   // The connectHandler contract on this domain
   IConnext public immutable connext;
-  // The origin domain ID
-  uint32 public immutable originDomain;
   // The DAO that's expected as the xcaller
   address public immutable source;
+  // The origin domain ID
+  uint32 public immutable originDomain;
 
   constructor(
     IDataReceiver _dataReceiver,
+    IConnext _connext,
     address _source,
-    uint32 _originDomain,
-    IConnext _connext
+    uint32 _originDomain
   ) BridgeReceiverAdapter(_dataReceiver) {
+    if (address(_connext) == address(0) || _source == address(0)) revert ZeroAddress();
+    connext = _connext;
     source = _source;
     originDomain = _originDomain;
-    connext = _connext;
   }
 
   function xReceive(

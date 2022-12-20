@@ -97,9 +97,9 @@ export async function setupContracts(): Promise<{
     .connect(deployer)
     .deploy(
       dataReceiver.address,
+      connextHandler.address,
       precalculatedConnextSenderAdapterAddress,
-      destinationDomain,
-      connextHandler.address
+      destinationDomain
     )) as ConnextReceiverAdapter;
 
   return {

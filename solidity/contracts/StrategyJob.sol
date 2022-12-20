@@ -25,6 +25,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
     IDataFeed _dataFeed,
     IBridgeSenderAdapter _defaultBridgeSenderAdapter
   ) Governable(_governor) {
+    if (address(_dataFeedStrategy) == address(0) || address(_dataFeed) == address(0)) revert ZeroAddress();
     dataFeedStrategy = _dataFeedStrategy;
     dataFeed = _dataFeed;
     _setDefaultBridgeSenderAdapter(_defaultBridgeSenderAdapter);
@@ -87,6 +88,8 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
   }
 
   function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {
+    if (address(_defaultBridgeSenderAdapter) == address(0)) revert ZeroAddress();
+
     defaultBridgeSenderAdapter = _defaultBridgeSenderAdapter;
     emit DefaultBridgeSenderAdapterSet(_defaultBridgeSenderAdapter);
   }

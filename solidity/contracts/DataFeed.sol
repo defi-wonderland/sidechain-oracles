@@ -130,6 +130,8 @@ contract DataFeed is IDataFeed, PipelineManagement {
   }
 
   function _setStrategy(IDataFeedStrategy _strategy) private {
+    if (address(_strategy) == address(0)) revert ZeroAddress();
+
     strategy = _strategy;
     emit StrategySet(_strategy);
   }

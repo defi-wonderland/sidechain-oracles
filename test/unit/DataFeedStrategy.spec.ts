@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeedStrategy, DataFeedStrategy__factory, IDataFeed, IUniswapV3Pool } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm } from '@utils';
-import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
+import { ZERO_ADDRESS, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor } from '@utils/behaviours';
 import { getCreate2Address } from '@utils/misc';
@@ -56,6 +56,17 @@ describe('DataFeedStrategy.sol', () => {
   });
 
   describe('constructor(...)', () => {
+    it('should revert if dataFeed is set to the zero address', async () => {
+      await expect(
+        dataFeedStrategyFactory.deploy(governor.address, ZERO_ADDRESS, {
+          periodDuration: initialPeriodDuration,
+          cooldown: initialStrategyCooldown,
+          twapLength: initialTwapLength,
+          twapThreshold: initialTwapThreshold,
+        })
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
     it('should set the governor', async () => {
       expect(await dataFeedStrategy.governor()).to.eq(governor.address);
     });
@@ -348,6 +359,10 @@ describe('DataFeedStrategy.sol', () => {
     it('should revert if periodDuration > twapLength', async () => {
       await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
       await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength)).not.to.be.reverted;
+    });
+
+    it('should revert if periodDuration = 0', async () => {
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(0)).to.be.revertedWith('WrongSetting()');
     });
 
     it('should update the periodDuration', async () => {

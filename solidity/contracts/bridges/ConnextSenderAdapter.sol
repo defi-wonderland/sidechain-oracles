@@ -12,6 +12,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
   IDataFeed public immutable dataFeed;
 
   constructor(IConnext _connext, IDataFeed _dataFeed) {
+    if (address(_connext) == address(0) || address(_dataFeed) == address(0)) revert ZeroAddress();
     connext = _connext;
     dataFeed = _dataFeed;
   }

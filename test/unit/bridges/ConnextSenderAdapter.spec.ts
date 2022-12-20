@@ -5,7 +5,6 @@ import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wo
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, VALID_POOL_SALT } from '@utils/constants';
 import { toBN } from '@utils/bn';
-import { readArgFromEvent } from '@utils/event-utils';
 import { onlyDataFeed } from '@utils/behaviours';
 import chai, { expect } from 'chai';
 
@@ -20,7 +19,6 @@ describe('ConnextSenderAdapter.sol', () => {
 
   const randomReceiverAdapterAddress = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
-  const rinkebyOriginId = 1111;
 
   const randomSalt = VALID_POOL_SALT;
   const randomNonce = 420;
@@ -40,10 +38,18 @@ describe('ConnextSenderAdapter.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should initialize connext receiver to the address passed to the constructor', async () => {
+    it('should revert if connext is set to the zero address', async () => {
+      await expect(connextSenderAdapterFactory.deploy(ZERO_ADDRESS, randomFeed.address)).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should revert if dataFeed is set to the zero address', async () => {
+      await expect(connextSenderAdapterFactory.deploy(connextHandler.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should initialize connext interface', async () => {
       expect(await connextSenderAdapter.connext()).to.eq(connextHandler.address);
     });
-    it('should initialize data feed to the address passed to the constructor', async () => {
+    it('should initialize dataFeed interface', async () => {
       expect(await connextSenderAdapter.dataFeed()).to.eq(randomFeed.address);
     });
   });

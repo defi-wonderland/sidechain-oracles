@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { StrategyJob, StrategyJob__factory, IKeep3r, IDataFeedStrategy, IDataFeed } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { KEEP3R, VALID_POOL_SALT } from '@utils/constants';
+import { ZERO_ADDRESS, KEEP3R, VALID_POOL_SALT } from '@utils/constants';
 import { onlyGovernor } from '@utils/behaviours';
 import chai, { expect } from 'chai';
 
@@ -48,6 +48,18 @@ describe('StrategyJob.sol', () => {
   });
 
   describe('constructor(...)', () => {
+    it('should revert if dataFeedStrategy is set to the zero address', async () => {
+      await expect(strategyJobFactory.deploy(governor.address, ZERO_ADDRESS, dataFeed.address, defaultSenderAdapterAddress)).to.be.revertedWith(
+        'ZeroAddress()'
+      );
+    });
+
+    it('should revert if dataFeed is set to the zero address', async () => {
+      await expect(
+        strategyJobFactory.deploy(governor.address, dataFeedStrategy.address, ZERO_ADDRESS, defaultSenderAdapterAddress)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
     it('should set the governor', async () => {
       expect(await strategyJob.governor()).to.eq(governor.address);
     });
@@ -203,6 +215,10 @@ describe('StrategyJob.sol', () => {
       () => governor,
       () => [randomSenderAdapterAddress]
     );
+
+    it('should revert if defaultBridgeSenderAdapter is set to the zero address', async () => {
+      await expect(strategyJob.connect(governor).setDefaultBridgeSenderAdapter(ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
 
     it('should update the defaultBridgeSenderAdapter', async () => {
       await strategyJob.connect(governor).setDefaultBridgeSenderAdapter(randomSenderAdapterAddress);

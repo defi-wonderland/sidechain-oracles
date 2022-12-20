@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, DataFeed__factory, IUniswapV3Pool, IConnextSenderAdapter } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
+import { ZERO_ADDRESS, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor, onlyStrategy } from '@utils/behaviours';
 import { getCreate2Address, getObservedHash } from '@utils/misc';
@@ -509,6 +509,10 @@ describe('DataFeed.sol', () => {
       () => governor,
       () => [randomAddress]
     );
+
+    it('should revert if strategy is set to the zero address', async () => {
+      await expect(dataFeed.connect(governor).setStrategy(ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
 
     it('should update the strategy', async () => {
       await dataFeed.connect(governor).setStrategy(randomAddress);

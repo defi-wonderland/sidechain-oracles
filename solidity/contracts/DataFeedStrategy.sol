@@ -31,6 +31,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     IDataFeed _dataFeed,
     StrategySettings memory _params
   ) Governable(_governor) {
+    if (address(_dataFeed) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
     _setStrategyCooldown(_params.cooldown);
     _setTwapLength(_params.twapLength);
@@ -191,7 +192,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   function _setPeriodDuration(uint32 _periodDuration) private {
-    if (_periodDuration > twapLength) revert WrongSetting();
+    if (_periodDuration > twapLength || _periodDuration == 0) revert WrongSetting();
 
     periodDuration = _periodDuration;
     emit PeriodDurationSet(_periodDuration);

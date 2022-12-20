@@ -22,7 +22,7 @@ contract DummyAdapterForTest is IBridgeSenderAdapter {
     IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
-  ) external payable override {
+  ) external payable {
     if (!ignoreTxs) {
       IDataReceiver(_to).addObservations(_observationsData, _poolSalt, _poolNonce);
     }

@@ -14,4 +14,6 @@ interface IBridgeReceiverAdapter {
   // ERRORS
 
   error UnauthorizedCaller();
+
+  error ZeroAddress();
 }

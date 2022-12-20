@@ -22,7 +22,7 @@ contract OracleFactory is IOracleFactory, Governable {
   bytes32 public constant ORACLE_INIT_CODE_HASH = keccak256(type(OracleSidechain).creationCode);
 
   constructor(address _governor, IDataReceiver _dataReceiver) Governable(_governor) {
-    dataReceiver = _dataReceiver;
+    _setDataReceiver(_dataReceiver);
   }
 
   /// @inheritdoc IOracleFactory
@@ -36,12 +36,13 @@ contract OracleFactory is IOracleFactory, Governable {
 
   /// @inheritdoc IOracleFactory
   function setDataReceiver(IDataReceiver _dataReceiver) external onlyGovernor {
-    dataReceiver = _dataReceiver;
-    emit DataReceiverSet(_dataReceiver);
+    _setDataReceiver(_dataReceiver);
   }
 
   /// @inheritdoc IOracleFactory
   function setInitialCardinality(uint16 _initialCardinality) external onlyGovernor {
+    if (_initialCardinality == 0) revert ZeroCardinality();
+
     initialCardinality = _initialCardinality;
     emit InitialCardinalitySet(_initialCardinality);
   }
@@ -75,6 +76,13 @@ contract OracleFactory is IOracleFactory, Governable {
   ) public pure returns (bytes32 _poolSalt) {
     (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
     _poolSalt = keccak256(abi.encode(_token0, _token1, _fee));
+  }
+
+  function _setDataReceiver(IDataReceiver _dataReceiver) private {
+    if (address(_dataReceiver) == address(0)) revert ZeroAddress();
+
+    dataReceiver = _dataReceiver;
+    emit DataReceiverSet(_dataReceiver);
   }
 
   modifier onlyDataReceiver() {

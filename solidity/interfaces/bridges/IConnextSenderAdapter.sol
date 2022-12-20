@@ -11,4 +11,8 @@ interface IConnextSenderAdapter is IBridgeSenderAdapter {
   function connext() external view returns (IConnext _connext);
 
   function dataFeed() external view returns (IDataFeed _dataFeed);
+
+  // ERRORS
+
+  error ZeroAddress();
 }

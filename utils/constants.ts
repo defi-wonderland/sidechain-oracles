@@ -54,7 +54,7 @@ export const strategySettings: IStrategySettingsRecord = {
   1: {
     cooldown: 172800, // 2d
     twapLength: 28800, // 8hs
-    twapThreshold: 500, // 5%
+    twapThreshold: 500, // ~5%
     periodDuration: 14400, // 4hs
   },
   5: {

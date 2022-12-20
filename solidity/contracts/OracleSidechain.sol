@@ -116,7 +116,7 @@ contract OracleSidechain is IOracleSidechain {
 
   function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external onlyFactory {
     uint16 _observationCardinalityNextOld = slot0.observationCardinalityNext;
-    if (_observationCardinalityNext <= _observationCardinalityNextOld) return;
+    if (_observationCardinalityNext <= _observationCardinalityNextOld) revert AI();
     slot0.observationCardinalityNext = _observationCardinalityNext;
     emit IncreaseObservationCardinalityNext(_observationCardinalityNextOld, _observationCardinalityNext);
   }

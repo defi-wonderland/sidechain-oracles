@@ -345,15 +345,16 @@ describe('OracleSidechain.sol', () => {
       () => [CARDINALITY_NEXT]
     );
 
-    it('should ignore lesser than actual cardinality', async () => {
-      tx = await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY - 1);
-      expect(tx).not.to.emit(oracleSidechain, 'IncreaseObservationCardinalityNext');
+    it('should revert if not increasing', async () => {
+      await expect(oracleSidechain.increaseObservationCardinalityNext(CARDINALITY - 1)).to.be.revertedWith('AI()');
+      await expect(oracleSidechain.increaseObservationCardinalityNext(CARDINALITY)).to.be.revertedWith('AI()');
     });
 
     it('should update the slot0', async () => {
       await oracleSidechain.increaseObservationCardinalityNext(CARDINALITY_NEXT);
-      const cardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
-      expect(cardinalityNext).to.eq(CARDINALITY_NEXT);
+
+      const observationCardinalityNext = (await oracleSidechain.slot0()).observationCardinalityNext;
+      expect(observationCardinalityNext).to.eq(CARDINALITY_NEXT);
     });
 
     it('should emit event', async () => {

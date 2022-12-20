@@ -92,7 +92,7 @@ interface IDataFeed is IPipelineManagement {
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
-  ) external;
+  ) external payable;
 
   /// @notice Triggers an update of the oracle state
   /// @dev Permisioned, callable only by Strategy

@@ -4,7 +4,7 @@ import { ConnextSenderAdapter, ConnextSenderAdapter__factory, ConnextHandlerForT
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, VALID_POOL_SALT } from '@utils/constants';
-import { toBN } from '@utils/bn';
+import { toBN, toUnit } from '@utils/bn';
 import { onlyDataFeed } from '@utils/behaviours';
 import chai, { expect } from 'chai';
 
@@ -62,10 +62,18 @@ describe('ConnextSenderAdapter.sol', () => {
     let arithmeticMeanTick2 = 300;
     let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
     let observationsData = [observationData1, observationData2];
+    const fee = toUnit(0.1);
 
     beforeEach(async () => {
       connextHandler.xcall.reset();
     });
+
+    onlyDataFeed(
+      () => connextSenderAdapter,
+      'bridgeObservations',
+      () => randomFeed,
+      () => [randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce, { value: fee }]
+    );
 
     it('should call xCall with the correct arguments', async () => {
       const xcallArgs = await prepareData(observationsData);
@@ -76,12 +84,13 @@ describe('ConnextSenderAdapter.sol', () => {
       expect(connextHandler.xcall).to.have.been.calledOnceWith(...xcallArgs);
     });
 
-    onlyDataFeed(
-      () => connextSenderAdapter,
-      'bridgeObservations',
-      () => randomFeed,
-      () => [randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce]
-    );
+    it('should call xCall with the provided msg.value', async () => {
+      await connextSenderAdapter
+        .connect(randomFeed)
+        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce, { value: fee });
+
+      expect(connextHandler.xcall).to.have.been.calledWithValue(fee);
+    });
   });
 
   const prepareData = async (observationsData: number[][]) => {

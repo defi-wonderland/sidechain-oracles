@@ -27,7 +27,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
   ) external payable onlyDataFeed {
     bytes memory _callData = abi.encode(_observationsData, _poolSalt, _poolNonce);
 
-    connext.xcall({
+    connext.xcall{value: msg.value}({
       _destination: _destinationDomainId, // unique identifier for destination domain
       _to: _to, // recipient of funds, where calldata will be executed
       _asset: address(0), // asset being transferred

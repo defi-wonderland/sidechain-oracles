@@ -30,7 +30,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
-  ) external validatePipeline(_chainId, _poolSalt, _poolNonce) {
+  ) external payable validatePipeline(_chainId, _poolSalt, _poolNonce) {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
 
     {
@@ -38,7 +38,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
       if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
     }
 
-    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
+    _bridgeSenderAdapter.bridgeObservations{value: msg.value}(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
     emit DataBroadcast(_poolSalt, _poolNonce, _chainId, _dataReceiver, _bridgeSenderAdapter);
   }
 

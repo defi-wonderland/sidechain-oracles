@@ -4,6 +4,7 @@ import { DataFeed, DataFeed__factory, IUniswapV3Pool, IConnextSenderAdapter } fr
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
+import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor, onlyStrategy } from '@utils/behaviours';
 import { getCreate2Address, getObservedHash } from '@utils/misc';
@@ -63,6 +64,7 @@ describe('DataFeed.sol', () => {
     let observationData1 = [1000000, 100];
     let observationData2 = [3000000, 300];
     let observationsData = [observationData0, observationData1, observationData2];
+    const fee = toUnit(0.1);
 
     beforeEach(async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
@@ -106,6 +108,11 @@ describe('DataFeed.sol', () => {
           randomSalt,
           nonce
         );
+      });
+
+      it('should route msg.value to the bridge sender adapter', async () => {
+        await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, nonce, observationsData, { value: fee });
+        expect(connextSenderAdapter.bridgeObservations).to.have.been.calledWithValue(fee);
       });
 
       it('should emit DataBroadcast', async () => {

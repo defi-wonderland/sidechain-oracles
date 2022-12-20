@@ -52,6 +52,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
   const destinationDomain = 420;
   const nonce = 1;
+  const connextFee = toUnit(0.1);
 
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;

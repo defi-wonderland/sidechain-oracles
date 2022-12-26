@@ -60,6 +60,11 @@ describe('PipelineManagement.sol', () => {
       () => [randomChainId, randomSalt]
     );
 
+    it('should revert if the pipeline has already been whitelisted', async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      await expect(dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt)).to.be.revertedWith('AlreadyAllowedPipeline()');
+    });
+
     it('should whitelist the next pool nonce to be observed', async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
       expect(await dataFeed.whitelistedNonces(randomChainId, randomSalt)).to.eq(lastPoolNonceObserved + 1);
@@ -110,6 +115,11 @@ describe('PipelineManagement.sol', () => {
 
       await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
       await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
+    });
+
+    it('should revert if the pipelines have already been whitelisted', async () => {
+      await dataFeed.connect(governor).whitelistPipelines(...validArgs);
+      await expect(dataFeed.connect(governor).whitelistPipelines(...validArgs)).to.be.revertedWith('AlreadyAllowedPipeline()');
     });
 
     it('should whitelist the next pool nonces to be observed', async () => {

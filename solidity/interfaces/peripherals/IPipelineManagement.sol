@@ -27,6 +27,8 @@ interface IPipelineManagement is IGovernable {
 
   // ERRORS
 
+  error AlreadyAllowedPipeline();
+
   error UnallowedPool();
 
   error UnallowedPipeline();

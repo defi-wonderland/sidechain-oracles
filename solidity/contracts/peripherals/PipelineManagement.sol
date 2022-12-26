@@ -137,6 +137,8 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   }
 
   function _whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) internal {
+    if (whitelistedNonces[_chainId][_poolSalt] != 0) revert AlreadyAllowedPipeline();
+
     (uint24 _lastPoolNonceObserved, , , ) = IDataFeed(address(this)).lastPoolStateObserved(_poolSalt);
     whitelistedNonces[_chainId][_poolSalt] = _lastPoolNonceObserved + 1;
     _whitelistedPools.add(_poolSalt);

@@ -31,12 +31,12 @@ interface IDataFeedStrategy is IGovernable {
   /// @return _dataFeed The address of the DataFeed contract
   function dataFeed() external view returns (IDataFeed _dataFeed);
 
-  /// @return _strategyCooldown Time in seconds since last update required to time-trigger an update
-  function strategyCooldown() external view returns (uint32 _strategyCooldown);
-
   /// @return _periodDuration The targetted amount of seconds between pool consultations
   /// @dev Defines the resolution of the oracle, averaging data between consultations
   function periodDuration() external view returns (uint32 _periodDuration);
+
+  /// @return _strategyCooldown Time in seconds since last update required to time-trigger an update
+  function strategyCooldown() external view returns (uint32 _strategyCooldown);
 
   /// @return _twapThreshold Twap difference, in ticks, to twap-trigger an update
   function twapThreshold() external view returns (uint24 _twapThreshold);

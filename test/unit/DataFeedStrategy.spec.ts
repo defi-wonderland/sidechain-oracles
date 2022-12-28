@@ -642,8 +642,10 @@ describe('DataFeedStrategy.sol', () => {
     let fromTimestamp: number;
     let now: number;
     let timeSinceLastObservation: number;
+    let totalPeriods: number;
     let periods: number;
     let remainder: number;
+    const maxPeriods = Math.trunc(initialStrategyCooldown / initialPeriodDuration);
 
     context('when less than a period has passed since fromTimestamp', () => {
       beforeEach(async () => {
@@ -658,66 +660,138 @@ describe('DataFeedStrategy.sol', () => {
     });
 
     context('when more than a period has passed since fromTimestamp', () => {
-      beforeEach(async () => {
-        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * 3.14);
-        now = (await ethers.provider.getBlock('latest')).timestamp;
-        timeSinceLastObservation = now - fromTimestamp;
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
-        remainder = timeSinceLastObservation % initialPeriodDuration;
-        periods++; // adds the bridged remainder
+      context('when the amount of periods to bridge is not above the maximum', () => {
+        beforeEach(async () => {
+          fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+          await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * (maxPeriods + 0.14));
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          timeSinceLastObservation = now - fromTimestamp;
+          periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+          remainder = timeSinceLastObservation % initialPeriodDuration;
+          periods++; // adds the bridged remainder
+        });
+
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos.length).to.eq(periods);
+        });
+
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
+
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
+          }
+
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
 
-      it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos.length).to.eq(periods);
-      });
+      context('when the amount of periods to bridge is above the maximum', () => {
+        beforeEach(async () => {
+          fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+          await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * (maxPeriods + 3.14));
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          timeSinceLastObservation = now - fromTimestamp;
+          totalPeriods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+          periods = maxPeriods;
+          remainder = (timeSinceLastObservation % initialPeriodDuration) + (totalPeriods - maxPeriods) * initialPeriodDuration;
+          periods++; // adds the bridged remainder
+        });
 
-      it('should build the array of secondsAgos', async () => {
-        let expectedSecondsAgos: number[] = [];
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos.length).to.eq(periods);
+        });
 
-        for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
-        }
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos).to.eql(expectedSecondsAgos);
-      });
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
+          }
 
-      it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
     });
 
     context('when exactly n periods have passed since fromTimestamp', () => {
-      beforeEach(async () => {
-        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * 3);
-        now = (await ethers.provider.getBlock('latest')).timestamp;
-        timeSinceLastObservation = now - fromTimestamp;
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+      context('when the amount of periods to bridge is not above the maximum', () => {
+        beforeEach(async () => {
+          fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+          await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * maxPeriods);
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          timeSinceLastObservation = now - fromTimestamp;
+          periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+        });
+
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos.length).to.eq(periods);
+        });
+
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
+
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = timeSinceLastObservation - (i + 1) * initialPeriodDuration;
+          }
+
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
 
-      it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos.length).to.eq(periods);
-      });
+      context('when the amount of periods to bridge is above the maximum', () => {
+        beforeEach(async () => {
+          fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
+          await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * (maxPeriods + 3));
+          now = (await ethers.provider.getBlock('latest')).timestamp;
+          timeSinceLastObservation = now - fromTimestamp;
+          totalPeriods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+          periods = maxPeriods;
+          remainder = (totalPeriods - maxPeriods) * initialPeriodDuration;
+          periods++; // adds the bridged remainder
+        });
 
-      it('should build the array of secondsAgos', async () => {
-        let expectedSecondsAgos: number[] = [];
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos.length).to.eq(periods);
+        });
 
-        for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - (i + 1) * initialPeriodDuration;
-        }
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos).to.eql(expectedSecondsAgos);
-      });
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
+          }
 
-      it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
     });
 

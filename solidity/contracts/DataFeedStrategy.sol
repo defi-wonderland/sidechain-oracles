@@ -95,12 +95,19 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   /// @inheritdoc IDataFeedStrategy
   function calculateSecondsAgos(uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
     if (_fromTimestamp == 0) return _initializeSecondsAgos();
+
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     uint32 _timeSinceLastObservation = _secondsNow - _fromTimestamp;
     uint32 _periodDuration = periodDuration;
+    uint32 _maxPeriods = strategyCooldown / _periodDuration;
     uint32 _periods = _timeSinceLastObservation / _periodDuration;
     uint32 _remainder = _timeSinceLastObservation % _periodDuration;
     uint32 _i;
+
+    if (_periods > _maxPeriods) {
+      _remainder += (_periods - _maxPeriods) * _periodDuration;
+      _periods = _maxPeriods;
+    }
 
     if (_remainder != 0) {
       _secondsAgos = new uint32[](++_periods);

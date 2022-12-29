@@ -32,6 +32,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   // console.log(event.data.transferId)
 };
 
-deployFunction.dependencies = ['connext-setup', 'pool-whitelisting', 'setup-manual-strategy'];
+deployFunction.dependencies = ['connext-setup', 'setup-manual-strategy'];
 deployFunction.tags = ['manual-send-test-observation'];
 export default deployFunction;

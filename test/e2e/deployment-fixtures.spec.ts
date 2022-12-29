@@ -112,7 +112,7 @@ describe('@skip-on-coverage Fixture', () => {
 
         describe('when the job is setup', () => {
           beforeEach(async () => {
-            await deployments.fixture(['setup-keep3r-job'], { keepExistingDeployments: true });
+            await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
             dataFeedStrategy = (await getContractFromFixture('DataFeedStrategy')) as Type.DataFeedStrategy;
             strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
             await addCreditsToJob(strategyJob.address);
@@ -185,6 +185,16 @@ describe('@skip-on-coverage Fixture', () => {
               await deployments.fixture(['send-observation'], { keepExistingDeployments: true });
             });
           });
+
+          describe('when adapters redeploy', () => {
+            beforeEach(async () => {
+              await deployments.fixture(['setup-connext-default'], { keepExistingDeployments: true });
+            });
+
+            it('should not redeploy the job', async () => {
+              expect(strategyJob.address).to.eq((await getContractFromFixture('StrategyJob')).address);
+            });
+          });
         });
       });
     });
@@ -193,24 +203,33 @@ describe('@skip-on-coverage Fixture', () => {
   describe('production setup', () => {
     beforeEach(async () => {
       await deployments.fixture(['base-contracts']);
-      await deployments.fixture(['setup-keep3r-job', 'connext-setup'], { keepExistingDeployments: true });
+      await deployments.fixture(['connext-setup', 'pool-whitelisting'], { keepExistingDeployments: true });
+    });
 
-      strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
-
-      await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
-      await addCreditsToJob(strategyJob.address);
+    it('should work with manual-send-test-observation', async () => {
+      await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
     });
 
     it('should work with force-fetch-observation', async () => {
       await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
     });
 
-    it('should work with work-job', async () => {
-      await deployments.fixture(['work-job'], { keepExistingDeployments: true });
-    });
+    describe('strategy job setup', () => {
+      beforeEach(async () => {
+        await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
+        strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
 
-    it('should work with dummy-work-job', async () => {
-      await deployments.fixture(['dummy-work-job'], { keepExistingDeployments: true });
+        await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
+        await addCreditsToJob(strategyJob.address);
+      });
+
+      it('should work with work-job', async () => {
+        await deployments.fixture(['work-job'], { keepExistingDeployments: true });
+      });
+
+      it('should work with dummy-work-job', async () => {
+        await deployments.fixture(['dummy-work-job'], { keepExistingDeployments: true });
+      });
     });
 
     describe('after observation was fetched', () => {
@@ -228,16 +247,8 @@ describe('@skip-on-coverage Fixture', () => {
 /* HELPER FUNCTIONS */
 
 const addCreditsToJob = async (jobAddress: string) => {
-  const { keep3rGovernance } = await getNamedAccounts();
-
   const keep3rContract = await getContractFromFixture('Keep3r', 'IKeep3r');
-
-  // force KP3R credits to job
-  // TODO:
-  // - add IGovernable to IKeep3r interface
-  // - set rewardPeriodTime = 1 days
-  // const keep3rGovernance = await keep3rContract.governor()
-  await wallet.setBalance(keep3rGovernance, toUnit(10));
-  const governor = await wallet.impersonate(keep3rGovernance);
+  const governor = await wallet.impersonate(await keep3rContract.governance());
+  await wallet.setBalance(governor._address, toUnit(10));
   await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(100));
 };

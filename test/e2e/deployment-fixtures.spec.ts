@@ -31,7 +31,8 @@ describe('@skip-on-coverage Fixture', () => {
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
-  const FORCE_TRIGGER = 3;
+  const OLD_TRIGGER = 3;
+  const FORCE_TRIGGER = 4;
 
   beforeEach(async () => {
     ({ deployer } = await getNamedAccounts());

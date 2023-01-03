@@ -1828,6 +1828,11 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.3.0.tgz#345236d4ec73ef381ab4907c6ef66fd55e5dedad"
   integrity sha512-+uBDl/TrmR0Kch6mq3tuxMex/fK7huR6+fQMae+zJk1K5T+dp0pFl12Hbc+1L6oYMXoyDSBJ8zqhRIntrREDFA==
 
+"@openzeppelin/contracts@4.6.0":
+  version "4.6.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.6.0.tgz#c91cf64bc27f573836dba4122758b4743418c1b3"
+  integrity sha512-8vi4d50NNya/bQqCmaVzvHNmwHvS0OBKb7HNtuNwEE3scXWrP31fKQoGxNMT+KbzmrNZzatE3QK5p2gFONI/hg==
+
 "@openzeppelin/contracts@4.7.3":
   version "4.7.3"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.3.tgz#939534757a81f8d69cc854c7692805684ff3111e"
@@ -2461,6 +2466,16 @@
     "@uniswap/v2-core" "1.0.1"
     "@uniswap/v3-core" "1.0.0"
     base64-sol "1.0.1"
+    hardhat-watcher "^2.1.1"
+
+"@uniswap/v3-periphery@https://github.com/Uniswap/v3-periphery.git#0.8":
+  version "1.4.2-solc-0.8"
+  resolved "https://github.com/Uniswap/v3-periphery.git#b325bb0905d922ae61fcc7df85ee802e8df5e96c"
+  dependencies:
+    "@openzeppelin/contracts" "4.6.0"
+    "@uniswap/v2-core" "1.0.1"
+    "@uniswap/v3-core" "1.0.2-solc-0.8-simulate"
+    base64-sol "1.1.0"
     hardhat-watcher "^2.1.1"
 
 "@yarnpkg/lockfile@^1.1.0":
@@ -3540,6 +3555,11 @@ base64-sol@1.0.1:
   version "1.0.1"
   resolved "https://registry.yarnpkg.com/base64-sol/-/base64-sol-1.0.1.tgz#91317aa341f0bc763811783c5729f1c2574600f6"
   integrity sha512-ld3cCNMeXt4uJXmLZBHFGMvVpK9KsLVEhPpFRXnvSVAqABKbuNZg/+dsq3NuM+wxFLb/UrVkz7m1ciWmkMfTbg==
+
+base64-sol@1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/base64-sol/-/base64-sol-1.1.0.tgz#39c3c91a35790b6eb3b8e73114b46bacf0fc2865"
+  integrity sha512-mksLxtFyBcXd3LYK5UxyMj29YR//zoaeXpJaKRbnLQC0E99oCJl7VpKaJDXWAuTvnhxBU9XNYzhxSL8umsrxWg==
 
 base@^0.11.1:
   version "0.11.2"
@@ -7493,9 +7513,9 @@ hardhat-preprocessor@0.1.4:
     murmur-128 "^0.2.1"
 
 hardhat-watcher@^2.1.1:
-  version "2.3.0"
-  resolved "https://registry.yarnpkg.com/hardhat-watcher/-/hardhat-watcher-2.3.0.tgz#57586a7fb79b73365014794f7e3dc0706aa65b7d"
-  integrity sha512-u76a/1pxPyW9DRZ7FZ8HoSQ4AuKOiSDQTR2NyiZlH5f0Ux+qQfahsh9CNusRLhx2s1OWzlkwCVvrdHq5FTGUzw==
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/hardhat-watcher/-/hardhat-watcher-2.5.0.tgz#3ee76c3cb5b99f2875b78d176207745aa484ed4a"
+  integrity sha512-Su2qcSMIo2YO2PrmJ0/tdkf+6pSt8zf9+4URR5edMVti6+ShI8T3xhPrwugdyTOFuyj8lKHrcTZNKUFYowYiyA==
   dependencies:
     chokidar "^3.5.3"
 

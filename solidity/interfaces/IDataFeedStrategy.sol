@@ -14,6 +14,7 @@ interface IDataFeedStrategy is IGovernable {
     NONE,
     TIME,
     TWAP,
+    OLD,
     FORCE
   }
 

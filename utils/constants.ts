@@ -1,8 +1,8 @@
 import { IDomainIDRecord, IStrategySettingsRecord } from './types';
 
-export const TEST_FEE = 10_000;
-
 export const UNI_V3_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
+
+export const TEST_FEE = 10_000;
 
 export const addressRegistry = {
   // KEEP3R DEPLOYMENTS

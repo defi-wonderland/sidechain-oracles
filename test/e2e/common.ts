@@ -19,14 +19,17 @@ import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { wallet, evm } from '@utils';
 import { getCreate2Address } from '@utils/misc';
 import {
+  KP3R_WHALE_ADDRESS,
+  USDC_WHALE_ADDRESS,
+  WETH_WHALE_ADDRESS,
+  KP3R_V1_PROXY_GOVERNANCE_ADDRESS,
   UNISWAP_V3_K3PR_ADDRESS,
+  UNISWAP_V3_USDC_ADDRESS,
   KP3R,
+  USDC,
   WETH,
   FEE,
-  KP3R_WHALE_ADDRESS,
-  WETH_WHALE_ADDRESS,
   ORACLE_SIDECHAIN_CREATION_CODE,
-  KP3R_V1_PROXY_GOVERNANCE_ADDRESS,
 } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
@@ -139,6 +142,22 @@ export async function getEnvironment(): Promise<{
   await wallet.setBalance(kp3rProxyGovernor._address, toUnit(10));
 
   return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE, keep3rV2, keeper, kp3rProxyGovernor };
+}
+
+export async function getOLDEnvironment(): Promise<{
+  uniswapV3Factory: UniswapV3Factory;
+  uniV3Pool: UniswapV3Pool;
+  tokenA: ERC20;
+  tokenB: ERC20;
+  fee: number;
+}> {
+  const [signer] = await ethers.getSigners();
+  const uniswapV3Factory = getMainnetSdk(signer).uniswapV3Factory;
+  const uniV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_USDC_ADDRESS);
+  const tokenA = (await ethers.getContractAt('ERC20', WETH)) as ERC20;
+  const tokenB = (await ethers.getContractAt('ERC20', USDC)) as ERC20;
+
+  return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE };
 }
 
 export async function getOracle(
@@ -316,18 +335,21 @@ export async function uniswapV3Swap(tokenIn: string, amountIn: BigNumber, tokenO
     whale = await wallet.impersonate(KP3R_WHALE_ADDRESS);
     let kp3r = getMainnetSdk(stranger).kp3r;
     await kp3r.connect(whale).approve(uniswapV3SwapRouter.address, amountIn);
+  } else if (tokenIn == USDC) {
+    whale = await wallet.impersonate(USDC_WHALE_ADDRESS);
+    let usdc = getMainnetSdk(stranger).usdc;
+    await usdc.connect(whale).approve(uniswapV3SwapRouter.address, amountIn);
   } else {
     whale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     let weth = getMainnetSdk(stranger).weth;
     await weth.connect(whale).approve(uniswapV3SwapRouter.address, amountIn);
   }
-  let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 3;
   await uniswapV3SwapRouter.connect(whale).exactInputSingle({
     tokenIn: tokenIn,
     tokenOut: tokenOut,
     fee: fee,
     recipient: whale._address,
-    deadline: secondsNow,
+    deadline: ethers.constants.MaxUint256,
     amountIn: amountIn,
     amountOutMinimum: 1,
     sqrtPriceLimitX96: 0,

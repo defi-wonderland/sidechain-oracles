@@ -23,7 +23,16 @@ import { readArgFromEvent } from '@utils/event-utils';
 import { calculateSalt } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
+import {
+  setupContracts,
+  getEnvironment,
+  getOLDEnvironment,
+  getOracle,
+  getSecondsAgos,
+  observePool,
+  calculateOracleObservations,
+  uniswapV3Swap,
+} from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
@@ -31,16 +40,16 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let governor: SignerWithAddress;
   let keeper: JsonRpcSigner;
   let kp3rProxyGovernor: JsonRpcSigner;
-  let dataFeed: DataFeed;
-  let dataFeedStrategy: DataFeedStrategy;
-  let strategyJob: StrategyJob;
+  let keep3rV2: Keep3rV2;
   let uniswapV3Factory: UniswapV3Factory;
   let uniV3Pool: UniswapV3Pool;
   let tokenA: ERC20;
   let tokenB: ERC20;
   let fee: number;
-  let keep3rV2: Keep3rV2;
   let salt: string;
+  let dataFeed: DataFeed;
+  let dataFeedStrategy: DataFeedStrategy;
+  let strategyJob: StrategyJob;
   let connextSenderAdapter: ConnextSenderAdapter;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataReceiver: DataReceiver;
@@ -57,7 +66,8 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
-  const FORCE_TRIGGER = 3;
+  const OLD_TRIGGER = 3;
+  const FORCE_TRIGGER = 4;
 
   before(async () => {
     await evm.reset({
@@ -111,7 +121,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has no data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
 
@@ -192,7 +202,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
 
@@ -322,7 +332,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     });
   });
 
-  describe('twap triggering', () => {
+  describe('TWAP triggering', () => {
     let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
     let swapAmount = toUnit(100);
     const hours = 10_000;
@@ -339,7 +349,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
           fetchTx = await dataFeedStrategy.strategicFetchObservations(salt, TIME_TRIGGER);
@@ -380,6 +390,84 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           it('should trigger a strategic fetch', async () => {
             await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
+          });
+        });
+      });
+    });
+  });
+
+  describe('OLD triggering', () => {
+    let uniV3Pool: UniswapV3Pool;
+    let tokenA: ERC20;
+    let tokenB: ERC20;
+    let fee: number;
+    let salt: string;
+    let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
+    let observationCardinalityNext: number;
+    let swapAmount = toBN(100_000_000000);
+    const hours = 10_000;
+
+    before(async () => {
+      ({ uniV3Pool, tokenA, tokenB, fee } = await getOLDEnvironment());
+
+      salt = calculateSalt(tokenA.address, tokenB.address, fee);
+    });
+
+    context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
+      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
+        await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
+      });
+
+      context('when the oracle has no data', () => {
+        beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+        });
+
+        it('should trigger a strategic fetch', async () => {
+          await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
+        });
+      });
+
+      context('when the oracle has data', () => {
+        beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+
+          fetchTx = await dataFeedStrategy.strategicFetchObservations(salt, TIME_TRIGGER);
+
+          const eventPoolObserved = (await fetchTx.wait()).events![0];
+          observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
+            ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
+
+          broadcastTx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+
+          await evm.advanceTimeAndBlock(4 * hours);
+        });
+
+        context('when the last pool state observed is not older than the oldest observation', () => {
+          it('should revert', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.be.revertedWith('NotStrategic()');
+          });
+        });
+
+        context('when the last pool state observed is older than the oldest observation', () => {
+          beforeEach(async () => {
+            [, , , , observationCardinalityNext, ,] = await uniV3Pool.slot0();
+            for (let i = 0; i < Math.round(observationCardinalityNext / 2); ++i) {
+              await uniswapV3Swap(tokenB.address, swapAmount, tokenA.address, fee);
+              await uniswapV3Swap(tokenA.address, toUnit(100), tokenB.address, fee);
+            }
+          });
+
+          it('should trigger a strategic fetch', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
           });
         });
       });
@@ -487,7 +575,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has no data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
         });
 
@@ -541,7 +629,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
           fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);

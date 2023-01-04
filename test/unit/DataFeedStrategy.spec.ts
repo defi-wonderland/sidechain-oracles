@@ -30,7 +30,6 @@ describe('DataFeedStrategy.sol', () => {
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
   const OLD_TRIGGER = 3;
-  const FORCE_TRIGGER = 4;
 
   before(async () => {
     [, governor] = await ethers.getSigners();
@@ -277,37 +276,6 @@ describe('DataFeedStrategy.sol', () => {
         expect(eventPoolSalt).to.eq(randomSalt);
         expect(eventReason).to.eq(OLD_TRIGGER);
       });
-    });
-  });
-
-  describe('forceFetchObservations(...)', () => {
-    let fromSecondsAgo: number;
-
-    beforeEach(async () => {
-      fromSecondsAgo = (await ethers.provider.getBlock('latest')).timestamp + 1;
-    });
-
-    onlyGovernor(
-      () => dataFeedStrategy,
-      'forceFetchObservations',
-      () => governor,
-      () => [randomSalt, fromSecondsAgo]
-    );
-
-    it('should call to fetch observations (having calculated secondsAgos)', async () => {
-      dataFeed.fetchObservations.reset();
-      await dataFeedStrategy.connect(governor).forceFetchObservations(randomSalt, fromSecondsAgo);
-      const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
-      expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
-    });
-
-    it('should emit StrategicFetch', async () => {
-      const tx = await dataFeedStrategy.connect(governor).forceFetchObservations(randomSalt, fromSecondsAgo);
-      let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
-      let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
-
-      expect(eventPoolSalt).to.eq(randomSalt);
-      expect(eventReason).to.eq(FORCE_TRIGGER);
     });
   });
 

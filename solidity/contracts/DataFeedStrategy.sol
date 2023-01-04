@@ -64,14 +64,6 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
-  /// @dev Allows governor to choose a timestamp from which to send data (overcome !OLD error)
-  function forceFetchObservations(bytes32 _poolSalt, uint32 _fromSecondsAgo) external onlyGovernor {
-    uint32[] memory _secondsAgos = calculateSecondsAgos(_fromSecondsAgo);
-    dataFeed.fetchObservations(_poolSalt, _secondsAgos);
-    emit StrategicFetch(_poolSalt, TriggerReason.FORCE);
-  }
-
-  /// @inheritdoc IDataFeedStrategy
   function setStrategyCooldown(uint32 _strategyCooldown) external onlyGovernor {
     _setStrategyCooldown(_strategyCooldown);
   }

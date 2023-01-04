@@ -14,8 +14,7 @@ interface IDataFeedStrategy is IGovernable {
     NONE,
     TIME,
     TWAP,
-    OLD,
-    FORCE
+    OLD
   }
 
   // STRUCTS
@@ -83,11 +82,6 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _reason Identifier of trigger reason (time/twap)
   function strategicFetchObservations(bytes32 _poolSalt, TriggerReason _reason) external;
 
-  /// @notice Permisioned, used to update the oracle state from a given timestamp
-  /// @param _poolSalt Identifier of the pool to fetch
-  /// @param _fromTimestamp Timestamp to start backfilling from
-  function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external;
-
   /// @notice Sets the job cooldown
   /// @param _strategyCooldown The job cooldown to be set
   function setStrategyCooldown(uint32 _strategyCooldown) external;
@@ -116,7 +110,7 @@ interface IDataFeedStrategy is IGovernable {
   function isStrategic(bytes32 _poolSalt, TriggerReason _reason) external view returns (bool _isStrategic);
 
   /// @notice Builds the secondsAgos array with periodDuration between each datapoint
-  /// @param _fromTimestamp Timestamp from which to backfill the oracle with
-  /// @return _secondsAgos Array of secondsAgo that backfills the history from fromTimestamp
-  function calculateSecondsAgos(uint32 _fromTimestamp) external view returns (uint32[] memory _secondsAgos);
+  /// @param _fromSecondsAgo Seconds ago of the timestamp from which to backfill the oracle with
+  /// @return _secondsAgos Array of secondsAgo that backfills the history from fromSecondsAgo
+  function calculateSecondsAgos(uint32 _fromSecondsAgo) external view returns (uint32[] memory _secondsAgos);
 }

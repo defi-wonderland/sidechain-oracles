@@ -32,7 +32,6 @@ describe('@skip-on-coverage Fixture', () => {
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
   const OLD_TRIGGER = 3;
-  const FORCE_TRIGGER = 4;
 
   beforeEach(async () => {
     ({ deployer } = await getNamedAccounts());
@@ -96,10 +95,6 @@ describe('@skip-on-coverage Fixture', () => {
 
         it('should work with fetch-observation', async () => {
           await deployments.fixture(['fetch-observation'], { keepExistingDeployments: true });
-        });
-
-        it('should work with force-fetch-observation', async () => {
-          await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
         });
 
         describe('when an observation was fetched', () => {
@@ -202,10 +197,6 @@ describe('@skip-on-coverage Fixture', () => {
       await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
     });
 
-    it('should work with force-fetch-observation', async () => {
-      await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
-    });
-
     describe('strategy job setup', () => {
       beforeEach(async () => {
         await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
@@ -226,7 +217,7 @@ describe('@skip-on-coverage Fixture', () => {
 
     describe('after observation was fetched', () => {
       beforeEach(async () => {
-        await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
+        await deployments.fixture(['fetch-observation'], { keepExistingDeployments: true });
       });
 
       it('should work with bridge-observation', async () => {

@@ -67,7 +67,6 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
   const OLD_TRIGGER = 3;
-  const FORCE_TRIGGER = 4;
 
   before(async () => {
     await evm.reset({

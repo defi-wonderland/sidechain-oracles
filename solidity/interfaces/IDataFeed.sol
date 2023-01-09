@@ -24,6 +24,9 @@ interface IDataFeed is IPipelineManagement {
   /// @dev The strategy should define when and with which timestamps the pool should be read
   function strategy() external view returns (IDataFeedStrategy _strategy);
 
+  /// @return _minLastOracleDelta Minimum timestamp delta between latest oracle observations
+  function minLastOracleDelta() external view returns (uint32 _minLastOracleDelta);
+
   /// @notice Tracks the last observed pool state by salt
   /// @param _poolSalt The id of both the oracle and the pool
   /// @return _lastPoolNonceObserved Nonce of the last observation
@@ -63,19 +66,29 @@ interface IDataFeed is IPipelineManagement {
   event PoolObserved(bytes32 indexed _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
 
   /// @notice Emitted when the Strategy contract is set
-  /// @param _strategy Address of the new strategy
+  /// @param _strategy Address of the new Strategy
   event StrategySet(IDataFeedStrategy _strategy);
+
+  /// @notice Emitted when minLastOracleDelta is set
+  /// @param _minLastOracleDelta New value of minLastOracleDelta
+  event MinLastOracleDeltaSet(uint32 _minLastOracleDelta);
 
   // ERRORS
 
-  /// @notice Throws if set of secondsAgos is invalid to update the oracle
+  /// @notice Thrown if set of secondsAgos is invalid to update the oracle
   error InvalidSecondsAgos();
 
-  /// @notice Throws if an unknown dataset is being broadcast
+  /// @notice Thrown if the last oracle delta is less than minLastOracleDelta
+  error InsufficientDelta();
+
+  /// @notice Thrown if an unknown dataset is being broadcast
   error UnknownHash();
 
-  /// @notice Throws if a contract other than Strategy calls an update
+  /// @notice Thrown if a contract other than Strategy calls an update
   error OnlyStrategy();
+
+  /// @notice Thrown if minLastOracleDelta is set to zero
+  error ZeroDelta();
 
   // FUNCTIONS
 
@@ -101,7 +114,12 @@ interface IDataFeed is IPipelineManagement {
   function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external;
 
   /// @notice Updates the Strategy address
-  /// @dev Permisioned, callable only by Governor
+  /// @dev Permissioned, callable only by governor
   /// @param _strategy Address of the new Strategy
   function setStrategy(IDataFeedStrategy _strategy) external;
+
+  /// @notice Updates the minLastOracleDelta value
+  /// @dev Permissioned, callable only by governor
+  /// @param _minLastOracleDelta New value of minLastOracleDelta
+  function setMinLastOracleDelta(uint32 _minLastOracleDelta) external;
 }

@@ -2,6 +2,10 @@ export interface IDomainIDRecord {
   [key: number]: number;
 }
 
+export interface IDataFeedSettingsRecord {
+  [key: number]: number;
+}
+
 export interface IStrategySettingsRecord {
   [key: number]: DataFeedStrategySettings;
 }

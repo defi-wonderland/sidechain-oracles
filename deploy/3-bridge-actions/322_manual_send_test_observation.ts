@@ -18,7 +18,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const dataFeed = await hre.deployments.get('DataFeed');
   const senderAdapter = await hre.deployments.get('ConnextSenderAdapter');
 
-  const SECONDS_AGOS = [10, 5, 0];
+  const SECONDS_AGOS = [10000, 5000, 0];
   const FETCH_OBSERVATION_ARGS = [salt, SECONDS_AGOS];
   const fetchTx = await hre.deployments.execute('DataFeed', txSettings, 'fetchObservations(bytes32,uint32[])', ...FETCH_OBSERVATION_ARGS);
 

@@ -21,6 +21,8 @@ describe('PipelineManagement.sol', () => {
   let tx: ContractTransaction;
   let snapshotId: string;
 
+  const initialMinLastOracleDelta = 1800;
+
   const randomDataReceiverAddress = wallet.generateRandomAddress();
   const randomDataReceiverAddress2 = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
@@ -37,7 +39,7 @@ describe('PipelineManagement.sol', () => {
     fakeAdapter = await smock.fake('IConnextSenderAdapter');
 
     dataFeedFactory = await smock.mock('DataFeed');
-    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address, initialMinLastOracleDelta);
 
     snapshotId = await evm.snapshot.take();
   });

@@ -92,7 +92,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
   describe('observation bridging flow', () => {
     let dataFeedStrategySigner: JsonRpcSigner;
-    let secondsAgos = [30, 10, 0];
+    let secondsAgos;
     let blockTimestamps: number[];
     let tickCumulatives: BigNumber[];
     let arithmeticMeanTicks: BigNumber[];

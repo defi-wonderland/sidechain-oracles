@@ -9,7 +9,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const deploymentSettings = strategySettings[chainId];
 
   const dataFeed = await hre.deployments.get('DataFeed');
-  // TODO: read strategy params from constants
   const CONSTRUCTOR_ARGS = [deployer, dataFeed.address, deploymentSettings];
 
   await hre.deployments.deploy('DataFeedStrategy', {

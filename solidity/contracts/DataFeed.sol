@@ -12,6 +12,9 @@ contract DataFeed is IDataFeed, PipelineManagement {
   IDataFeedStrategy public strategy;
 
   /// @inheritdoc IDataFeed
+  uint32 public minLastOracleDelta;
+
+  /// @inheritdoc IDataFeed
   mapping(bytes32 => PoolState) public lastPoolStateObserved;
 
   mapping(bytes32 => bool) internal _observedKeccak;
@@ -19,8 +22,13 @@ contract DataFeed is IDataFeed, PipelineManagement {
   address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
-  constructor(address _governor, IDataFeedStrategy _strategy) Governable(_governor) {
+  constructor(
+    address _governor,
+    IDataFeedStrategy _strategy,
+    uint32 _minLastOracleDelta
+  ) Governable(_governor) {
     _setStrategy(_strategy);
+    _setMinLastOracleDelta(_minLastOracleDelta);
   }
 
   /// @inheritdoc IDataFeed
@@ -105,6 +113,8 @@ contract DataFeed is IDataFeed, PipelineManagement {
         }
       }
 
+      if (_delta < minLastOracleDelta) revert InsufficientDelta();
+
       _lastPoolStateObserved = PoolState({
         poolNonce: _lastPoolStateObserved.poolNonce + 1,
         blockTimestamp: _secondsNow - _secondsAgo,
@@ -129,11 +139,22 @@ contract DataFeed is IDataFeed, PipelineManagement {
     _setStrategy(_strategy);
   }
 
+  function setMinLastOracleDelta(uint32 _minLastOracleDelta) external onlyGovernor {
+    _setMinLastOracleDelta(_minLastOracleDelta);
+  }
+
   function _setStrategy(IDataFeedStrategy _strategy) private {
     if (address(_strategy) == address(0)) revert ZeroAddress();
 
     strategy = _strategy;
     emit StrategySet(_strategy);
+  }
+
+  function _setMinLastOracleDelta(uint32 _minLastOracleDelta) private {
+    if (_minLastOracleDelta == 0) revert ZeroDelta();
+
+    minLastOracleDelta = _minLastOracleDelta;
+    emit MinLastOracleDeltaSet(_minLastOracleDelta);
   }
 
   modifier onlyStrategy() {

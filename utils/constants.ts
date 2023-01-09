@@ -1,4 +1,4 @@
-import { IDomainIDRecord, IStrategySettingsRecord } from './types';
+import { IDomainIDRecord, IDataFeedSettingsRecord, IStrategySettingsRecord } from './types';
 
 export const UNI_V3_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
 
@@ -48,6 +48,11 @@ export const domainId: IDomainIDRecord = {
   420: 1735356532,
   80001: 9991,
   42069: 42069,
+};
+
+export const dataFeedSettings: IDataFeedSettingsRecord = {
+  //TODO: Specify each chain minLastOracleDelta
+  5: 1800, // 30min
 };
 
 export const strategySettings: IStrategySettingsRecord = {

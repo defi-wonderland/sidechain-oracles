@@ -25,10 +25,11 @@ describe('ConnextSenderAdapter.sol', () => {
 
   before(async () => {
     [, randomFeed] = await ethers.getSigners();
+
     connextHandler = await smock.fake('ConnextHandlerForTest');
 
     connextSenderAdapterFactory = await smock.mock('ConnextSenderAdapter');
-    connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextHandler.address, randomFeed.address);
+    connextSenderAdapter = await connextSenderAdapterFactory.deploy(randomFeed.address, connextHandler.address);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -38,19 +39,20 @@ describe('ConnextSenderAdapter.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should revert if connext is set to the zero address', async () => {
-      await expect(connextSenderAdapterFactory.deploy(ZERO_ADDRESS, randomFeed.address)).to.be.revertedWith('ZeroAddress()');
+    it('should revert if dataFeed is set to the zero address', async () => {
+      await expect(connextSenderAdapterFactory.deploy(ZERO_ADDRESS, connextHandler.address)).to.be.revertedWith('ZeroAddress()');
     });
 
-    it('should revert if dataFeed is set to the zero address', async () => {
-      await expect(connextSenderAdapterFactory.deploy(connextHandler.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    it('should revert if connext is set to the zero address', async () => {
+      await expect(connextSenderAdapterFactory.deploy(randomFeed.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should initialize dataFeed interface', async () => {
+      expect(await connextSenderAdapter.dataFeed()).to.eq(randomFeed.address);
     });
 
     it('should initialize connext interface', async () => {
       expect(await connextSenderAdapter.connext()).to.eq(connextHandler.address);
-    });
-    it('should initialize dataFeed interface', async () => {
-      expect(await connextSenderAdapter.dataFeed()).to.eq(randomFeed.address);
     });
   });
 

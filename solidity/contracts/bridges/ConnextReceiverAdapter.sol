@@ -2,15 +2,16 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {BridgeReceiverAdapter} from './BridgeReceiverAdapter.sol';
-import {IConnext, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
-import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
+import {IConnext, IXReceiver, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
 
-contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
-  // The connectHandler contract on this domain
+contract ConnextReceiverAdapter is IConnextReceiverAdapter, BridgeReceiverAdapter {
+  /// @inheritdoc IConnextReceiverAdapter
   IConnext public immutable connext;
-  // The DAO that's expected as the xcaller
+
+  /// @inheritdoc IConnextReceiverAdapter
   address public immutable source;
-  // The origin domain ID
+
+  /// @inheritdoc IConnextReceiverAdapter
   uint32 public immutable originDomain;
 
   constructor(
@@ -25,6 +26,7 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
     originDomain = _originDomain;
   }
 
+  /// @inheritdoc IXReceiver
   function xReceive(
     bytes32, // _transferId
     uint256, // _amount

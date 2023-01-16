@@ -5,15 +5,19 @@ import {IDataReceiver} from '../IDataReceiver.sol';
 import {IOracleSidechain} from '../IOracleSidechain.sol';
 
 interface IBridgeReceiverAdapter {
-  // FUNCTIONS
+  // STATE VARIABLES
 
+  /// @notice Gets the address of the DataReceiver contract
+  /// @return _dataReceiver Address of the DataReceiver contract
   function dataReceiver() external view returns (IDataReceiver _dataReceiver);
 
   /* NOTE: callback methods should be here declared */
 
   // ERRORS
 
+  /// @notice Thrown if a caller is not authorized
   error UnauthorizedCaller();
 
+  /// @notice Thrown if a state variable is set to the zero address
   error ZeroAddress();
 }

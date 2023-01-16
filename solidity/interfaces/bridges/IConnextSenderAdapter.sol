@@ -8,11 +8,19 @@ import {IDataFeed} from '../IDataFeed.sol';
 interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // STATE VARIABLES
 
-  function connext() external view returns (IConnext _connext);
-
+  /// @notice Gets the address of the DataFeed contract
+  /// @return _dataFeed Address of the DataFeed contract
   function dataFeed() external view returns (IDataFeed _dataFeed);
+
+  /// @notice Gets the ConnextHandler contract on this domain
+  /// @return _connext Address of the ConnextHandler contract
+  function connext() external view returns (IConnext _connext);
 
   // ERRORS
 
+  /// @notice Thrown if the DataFeed contract is not the one calling for bridging observations
+  error OnlyDataFeed();
+
+  /// @notice Thrown if a state variable is set to the zero address
   error ZeroAddress();
 }

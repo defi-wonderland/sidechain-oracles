@@ -47,8 +47,8 @@ interface IDataFeed is IPipelineManagement {
 
   /// @notice Emitted when a data batch is broadcast
   /// @param _bridgeSenderAdapter Address of the bridge sender adapter
-  /// @param _dataReceiver Address of the targetted contract receiving the data
-  /// @param _chainId Identifier number of the targetted chain
+  /// @param _dataReceiver Address of the targeted contract receiving the data
+  /// @param _chainId Identifier number of the targeted chain
   /// @param _poolSalt Identifier of the pool to which the data corresponds
   /// @param _poolNonce Identifier number of time period to which the data corresponds
   event DataBroadcast(
@@ -113,12 +113,12 @@ interface IDataFeed is IPipelineManagement {
   /// @param _secondsAgos Set of time periods to consult the pool with
   function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external;
 
-  /// @notice Updates the Strategy address
+  /// @notice Sets the Strategy address
   /// @dev Permissioned, callable only by governor
   /// @param _strategy Address of the new Strategy
   function setStrategy(IDataFeedStrategy _strategy) external;
 
-  /// @notice Updates the minLastOracleDelta value
+  /// @notice Sets the minLastOracleDelta value
   /// @dev Permissioned, callable only by governor
   /// @param _minLastOracleDelta New value of minLastOracleDelta
   function setMinLastOracleDelta(uint32 _minLastOracleDelta) external;

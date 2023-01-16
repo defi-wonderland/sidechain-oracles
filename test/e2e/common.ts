@@ -98,7 +98,7 @@ export async function setupContracts(): Promise<{
 
   const connextSenderAdapter = (await connextSenderAdapterFactory
     .connect(deployer)
-    .deploy(connextHandler.address, dataFeed.address)) as ConnextSenderAdapter;
+    .deploy(dataFeed.address, connextHandler.address)) as ConnextSenderAdapter;
 
   const connextReceiverAdapter = (await connextReceiverAdapterFactory
     .connect(deployer)

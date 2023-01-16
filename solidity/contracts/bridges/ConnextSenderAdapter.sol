@@ -1,20 +1,20 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IConnext, IConnextSenderAdapter, IBridgeSenderAdapter, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
 import {LibConnextStorage, TransferInfo} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import {IConnext, IConnextSenderAdapter, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
 
 contract ConnextSenderAdapter is IConnextSenderAdapter {
   /// @inheritdoc IConnextSenderAdapter
-  IConnext public immutable connext;
-
-  /// @inheritdoc IConnextSenderAdapter
   IDataFeed public immutable dataFeed;
 
-  constructor(IConnext _connext, IDataFeed _dataFeed) {
-    if (address(_connext) == address(0) || address(_dataFeed) == address(0)) revert ZeroAddress();
-    connext = _connext;
+  /// @inheritdoc IConnextSenderAdapter
+  IConnext public immutable connext;
+
+  constructor(IDataFeed _dataFeed, IConnext _connext) {
+    if (address(_dataFeed) == address(0) || address(_connext) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
+    connext = _connext;
   }
 
   /// @inheritdoc IBridgeSenderAdapter

@@ -39,8 +39,8 @@ const destinationDomain = 1111;
 const minLastOracleDelta = 900;
 
 const periodDuration = 1200;
-const cooldown = 3600;
-const twapThreshold = 500;
+const strategyCooldown = 3600;
+const defaultTwapThreshold = 500;
 const twapLength = 2400;
 
 export async function setupContracts(): Promise<{
@@ -83,9 +83,9 @@ export async function setupContracts(): Promise<{
 
   const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, {
     periodDuration,
-    cooldown,
+    strategyCooldown,
+    defaultTwapThreshold,
     twapLength,
-    twapThreshold,
   })) as DataFeedStrategy;
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);

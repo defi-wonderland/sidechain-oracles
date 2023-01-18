@@ -21,8 +21,8 @@ interface IDataFeedStrategy is IGovernable {
 
   struct StrategySettings {
     uint32 periodDuration; // Resolution of the oracle, target twap length
-    uint32 cooldown; // Time since last update to wait to time-trigger update
-    uint24 twapThreshold; // Twap difference, in ticks, to twap-trigger update
+    uint32 strategyCooldown; // Time since last update to wait to time-trigger update
+    uint24 defaultTwapThreshold; // Default twap difference, in ticks, to twap-trigger update
     uint32 twapLength; // Twap length, in seconds, used for twap-trigger update
   }
 
@@ -38,8 +38,12 @@ interface IDataFeedStrategy is IGovernable {
   /// @return _strategyCooldown Time in seconds since last update required to time-trigger an update
   function strategyCooldown() external view returns (uint32 _strategyCooldown);
 
+  /// @return _defaultTwapThreshold Default twap difference, in ticks, to twap-trigger an update
+  function defaultTwapThreshold() external view returns (uint24 _defaultTwapThreshold);
+
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
   /// @return _twapThreshold Twap difference, in ticks, to twap-trigger an update
-  function twapThreshold() external view returns (uint24 _twapThreshold);
+  function twapThreshold(bytes32 _poolSalt) external view returns (uint24 _twapThreshold);
 
   /// @return _twapLength The time length, in seconds, used to calculate twap-trigger
   function twapLength() external view returns (uint32 _twapLength);
@@ -55,13 +59,18 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _strategyCooldown The new job cooldown
   event StrategyCooldownSet(uint32 _strategyCooldown);
 
+  /// @notice Emitted when the owner updates the job default twap threshold percentage
+  /// @param _defaultTwapThreshold The default twap difference threshold used to trigger an update of the oracle
+  event DefaultTwapThresholdSet(uint24 _defaultTwapThreshold);
+
+  /// @notice Emitted when the owner updates the job twap threshold percentage of a pool
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _twapThreshold The default twap difference threshold used to trigger an update of the oracle
+  event TwapThresholdSet(bytes32 _poolSalt, uint24 _twapThreshold);
+
   /// @notice Emitted when the owner updates the job twap length
   /// @param _twapLength The new length of the twap used to trigger an update of the oracle
   event TwapLengthSet(uint32 _twapLength);
-
-  /// @notice Emitted when the owner updates the job twap threshold percentage
-  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
-  event TwapThresholdSet(uint24 _twapThreshold);
 
   /// @notice Emitted when the owner updates the job period length
   /// @param _periodDuration The new length of reading resolution periods
@@ -75,6 +84,9 @@ interface IDataFeedStrategy is IGovernable {
   /// @notice Thrown if setting breaks strategyCooldown >= twapLength >= periodDuration
   error WrongSetting();
 
+  /// @notice Thrown if defaultTwapThreshold is set to zero
+  error ZeroThreshold();
+
   // FUNCTIONS
 
   /// @notice Permisionless, used to update the oracle state
@@ -86,13 +98,18 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _strategyCooldown The job cooldown to be set
   function setStrategyCooldown(uint32 _strategyCooldown) external;
 
+  /// @notice Sets the job default twap threshold percentage
+  /// @param _defaultTwapThreshold The default twap difference threshold used to trigger an update of the oracle
+  function setDefaultTwapThreshold(uint24 _defaultTwapThreshold) external;
+
+  /// @notice Sets the job twap threshold percentage of a pool
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
+  function setTwapThreshold(bytes32 _poolSalt, uint24 _twapThreshold) external;
+
   /// @notice Sets the job twap length
   /// @param _twapLength The new length of the twap used to trigger an update of the oracle
   function setTwapLength(uint32 _twapLength) external;
-
-  /// @notice Sets the job twap threshold percentage
-  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
-  function setTwapThreshold(uint24 _twapThreshold) external;
 
   /// @notice Sets the job period length
   /// @param _periodDuration The new length of reading resolution periods

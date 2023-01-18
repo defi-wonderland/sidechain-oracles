@@ -58,21 +58,21 @@ export const dataFeedSettings: IDataFeedSettingsRecord = {
 
 export const strategySettings: IStrategySettingsRecord = {
   1: {
-    cooldown: 172800, // 2d
-    twapLength: 28800, // 8hs
-    twapThreshold: 500, // ~5%
     periodDuration: 14400, // 4hs
+    strategyCooldown: 172800, // 2d
+    defaultTwapThreshold: 500, // ~5%
+    twapLength: 28800, // 8hs
   },
   5: {
-    cooldown: 43200, // half-day
-    twapLength: 7200, // 2hs
-    twapThreshold: 500, // ~5%
     periodDuration: 3600, // 1hr
+    strategyCooldown: 43200, // half-day
+    defaultTwapThreshold: 500, // ~5%
+    twapLength: 7200, // 2hs
   },
   80001: {
-    cooldown: 3600, // 1hr
-    twapLength: 300, // 5min
-    twapThreshold: 500, // ~5%
     periodDuration: 300, // 5min
+    strategyCooldown: 3600, // 1hr
+    defaultTwapThreshold: 500, // ~5%
+    twapLength: 300, // 5min
   },
 };

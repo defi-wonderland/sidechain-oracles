@@ -19,7 +19,9 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   uint32 public strategyCooldown;
 
   /// @inheritdoc IDataFeedStrategy
-  uint24 public twapThreshold;
+  uint24 public defaultTwapThreshold;
+
+  mapping(bytes32 => uint24) internal _twapThreshold;
 
   /// @inheritdoc IDataFeedStrategy
   uint32 public twapLength;
@@ -34,9 +36,9 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   ) Governable(_governor) {
     if (address(_dataFeed) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
-    _setStrategyCooldown(_params.cooldown);
+    _setStrategyCooldown(_params.strategyCooldown);
+    _setDefaultTwapThreshold(_params.defaultTwapThreshold);
     _setTwapLength(_params.twapLength);
-    _setTwapThreshold(_params.twapThreshold);
     _setPeriodDuration(_params.periodDuration);
   }
 
@@ -69,18 +71,29 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
+  function setDefaultTwapThreshold(uint24 _defaultTwapThreshold) external onlyGovernor {
+    _setDefaultTwapThreshold(_defaultTwapThreshold);
+  }
+
+  /// @inheritdoc IDataFeedStrategy
+  function setTwapThreshold(bytes32 _poolSalt, uint24 _poolTwapThreshold) external onlyGovernor {
+    _setTwapThreshold(_poolSalt, _poolTwapThreshold);
+  }
+
+  /// @inheritdoc IDataFeedStrategy
   function setTwapLength(uint32 _twapLength) external onlyGovernor {
     _setTwapLength(_twapLength);
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function setTwapThreshold(uint24 _twapThreshold) external onlyGovernor {
-    _setTwapThreshold(_twapThreshold);
+  function setPeriodDuration(uint32 _periodDuration) external onlyGovernor {
+    _setPeriodDuration(_periodDuration);
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function setPeriodDuration(uint32 _periodDuration) external onlyGovernor {
-    _setPeriodDuration(_periodDuration);
+  function twapThreshold(bytes32 _poolSalt) external view returns (uint24 _poolTwapThreshold) {
+    _poolTwapThreshold = _twapThreshold[_poolSalt];
+    if (_poolTwapThreshold == 0) return defaultTwapThreshold;
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -168,9 +181,12 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
 
     int24 _oracleArithmeticMeanTick = _computeTwap(_poolTickCumulatives[0], _oracleTickCumulative, _twapLength);
 
+    uint24 _poolTwapThreshold = _twapThreshold[_poolSalt];
+    if (_poolTwapThreshold == 0) _poolTwapThreshold = defaultTwapThreshold;
+
     return
-      _poolArithmeticMeanTick > _oracleArithmeticMeanTick + int24(twapThreshold) ||
-      _poolArithmeticMeanTick < _oracleArithmeticMeanTick - int24(twapThreshold);
+      _poolArithmeticMeanTick > _oracleArithmeticMeanTick + int24(_poolTwapThreshold) ||
+      _poolArithmeticMeanTick < _oracleArithmeticMeanTick - int24(_poolTwapThreshold);
   }
 
   function _computeTwap(
@@ -202,16 +218,23 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     emit StrategyCooldownSet(_strategyCooldown);
   }
 
+  function _setDefaultTwapThreshold(uint24 _defaultTwapThreshold) private {
+    if (_defaultTwapThreshold == 0) revert ZeroThreshold();
+
+    defaultTwapThreshold = _defaultTwapThreshold;
+    emit DefaultTwapThresholdSet(_defaultTwapThreshold);
+  }
+
+  function _setTwapThreshold(bytes32 _poolSalt, uint24 _poolTwapThreshold) private {
+    _twapThreshold[_poolSalt] = _poolTwapThreshold;
+    emit TwapThresholdSet(_poolSalt, _poolTwapThreshold);
+  }
+
   function _setTwapLength(uint32 _twapLength) private {
     if ((_twapLength > strategyCooldown) || (_twapLength < periodDuration)) revert WrongSetting();
 
     twapLength = _twapLength;
     emit TwapLengthSet(_twapLength);
-  }
-
-  function _setTwapThreshold(uint24 _twapThreshold) private {
-    twapThreshold = _twapThreshold;
-    emit TwapThresholdSet(_twapThreshold);
   }
 
   function _setPeriodDuration(uint32 _periodDuration) private {

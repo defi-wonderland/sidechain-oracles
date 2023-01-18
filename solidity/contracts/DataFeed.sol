@@ -5,7 +5,7 @@ import {PipelineManagement, Governable} from './peripherals/PipelineManagement.s
 import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 import {Create2Address} from '../libraries/Create2Address.sol';
 
-/// @title The DataFeed interface
+/// @title The DataFeed contract
 /// @notice Queries UniV3Pools, stores history proofs on chain, handles data broadcast
 contract DataFeed is IDataFeed, PipelineManagement {
   /// @inheritdoc IDataFeed

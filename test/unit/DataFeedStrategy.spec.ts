@@ -6,7 +6,7 @@ import { evm } from '@utils';
 import { ZERO_ADDRESS, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor } from '@utils/behaviours';
-import { getCreate2Address } from '@utils/misc';
+import { getCreate2Address, getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -19,12 +19,13 @@ describe('DataFeedStrategy.sol', () => {
   let uniswapV3Pool: FakeContract<IUniswapV3Pool>;
   let snapshotId: string;
 
-  const initialStrategyCooldown = 3600;
-  const initialTwapLength = 2400;
-  const initialTwapThreshold = 500;
   const initialPeriodDuration = 1200;
+  const initialStrategyCooldown = 3600;
+  const initialDefaultTwapThreshold = 500;
+  const initialTwapLength = 2400;
 
   const randomSalt = VALID_POOL_SALT;
+  const randomSalt2 = getRandomBytes32();
 
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
@@ -43,9 +44,9 @@ describe('DataFeedStrategy.sol', () => {
     dataFeedStrategyFactory = await smock.mock('DataFeedStrategy');
     dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, {
       periodDuration: initialPeriodDuration,
-      cooldown: initialStrategyCooldown,
+      strategyCooldown: initialStrategyCooldown,
+      defaultTwapThreshold: initialDefaultTwapThreshold,
       twapLength: initialTwapLength,
-      twapThreshold: initialTwapThreshold,
     });
 
     snapshotId = await evm.snapshot.take();
@@ -60,9 +61,9 @@ describe('DataFeedStrategy.sol', () => {
       await expect(
         dataFeedStrategyFactory.deploy(governor.address, ZERO_ADDRESS, {
           periodDuration: initialPeriodDuration,
-          cooldown: initialStrategyCooldown,
+          strategyCooldown: initialStrategyCooldown,
+          defaultTwapThreshold: initialDefaultTwapThreshold,
           twapLength: initialTwapLength,
-          twapThreshold: initialTwapThreshold,
         })
       ).to.be.revertedWith('ZeroAddress()');
     });
@@ -77,6 +78,14 @@ describe('DataFeedStrategy.sol', () => {
 
     it('should set the strategyCooldown', async () => {
       expect(await dataFeedStrategy.strategyCooldown()).to.eq(initialStrategyCooldown);
+    });
+
+    it('should set the defaultTwapThreshold', async () => {
+      expect(await dataFeedStrategy.defaultTwapThreshold()).to.eq(initialDefaultTwapThreshold);
+    });
+
+    it('should set the twapLength', async () => {
+      expect(await dataFeedStrategy.twapLength()).to.eq(initialTwapLength);
     });
 
     it('should set the periodDuration', async () => {
@@ -158,36 +167,38 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+        context('when the pool twap threshold is set', () => {
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsNotSurpassed);
+            });
+
+            it('should revert', async () => {
+              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
+            });
           });
 
-          it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
-          });
-        });
+          context('when the upper threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsSurpassed);
+            });
 
-        context('when the upper threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
-          });
+            it('should call to fetch observations (having calculated secondsAgos)', async () => {
+              dataFeed.fetchObservations.reset();
+              await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              const fromSecondsAgo = now - lastBlockTimestampObserved;
+              const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+              expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+            });
 
-          it('should call to fetch observations (having calculated secondsAgos)', async () => {
-            dataFeed.fetchObservations.reset();
-            await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            const fromSecondsAgo = now - lastBlockTimestampObserved;
-            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
-            expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
-          });
+            it('should emit StrategicFetch', async () => {
+              const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+              let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
 
-          it('should emit StrategicFetch', async () => {
-            const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
-            let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
-
-            expect(eventPoolSalt).to.eq(randomSalt);
-            expect(eventReason).to.eq(TWAP_TRIGGER);
+              expect(eventPoolSalt).to.eq(randomSalt);
+              expect(eventReason).to.eq(TWAP_TRIGGER);
+            });
           });
         });
       });
@@ -209,36 +220,38 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+        context('when the pool twap threshold is not set', () => {
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsNotSurpassed);
+            });
+
+            it('should revert', async () => {
+              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
+            });
           });
 
-          it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
-          });
-        });
+          context('when the lower threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsSurpassed);
+            });
 
-        context('when the lower threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
-          });
+            it('should call to fetch observations (having calculated secondsAgos)', async () => {
+              dataFeed.fetchObservations.reset();
+              await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              const fromSecondsAgo = now - lastBlockTimestampObserved;
+              const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+              expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+            });
 
-          it('should call to fetch observations (having calculated secondsAgos)', async () => {
-            dataFeed.fetchObservations.reset();
-            await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            const fromSecondsAgo = now - lastBlockTimestampObserved;
-            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
-            expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
-          });
+            it('should emit StrategicFetch', async () => {
+              const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+              let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
 
-          it('should emit StrategicFetch', async () => {
-            const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
-            let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
-
-            expect(eventPoolSalt).to.eq(randomSalt);
-            expect(eventReason).to.eq(TWAP_TRIGGER);
+              expect(eventPoolSalt).to.eq(randomSalt);
+              expect(eventReason).to.eq(TWAP_TRIGGER);
+            });
           });
         });
       });
@@ -306,6 +319,61 @@ describe('DataFeedStrategy.sol', () => {
     });
   });
 
+  describe('setDefaultTwapThreshold(...)', () => {
+    let newDefaultTwapThreshold = initialDefaultTwapThreshold + 1000;
+
+    onlyGovernor(
+      () => dataFeedStrategy,
+      'setDefaultTwapThreshold',
+      () => governor,
+      () => [newDefaultTwapThreshold]
+    );
+
+    it('should revert if set to zero', async () => {
+      await expect(dataFeedStrategy.connect(governor).setDefaultTwapThreshold(0)).to.be.revertedWith('ZeroThreshold()');
+    });
+
+    it('should update the defaultTwapThreshold', async () => {
+      await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(newDefaultTwapThreshold);
+      expect(await dataFeedStrategy.defaultTwapThreshold()).to.eq(newDefaultTwapThreshold);
+    });
+
+    it('should emit DefaultTwapThresholdSet', async () => {
+      await expect(dataFeedStrategy.connect(governor).setDefaultTwapThreshold(newDefaultTwapThreshold))
+        .to.emit(dataFeedStrategy, 'DefaultTwapThresholdSet')
+        .withArgs(newDefaultTwapThreshold);
+    });
+  });
+
+  describe('setTwapThreshold(...)', () => {
+    let newTwapThreshold = initialDefaultTwapThreshold + 1000;
+
+    onlyGovernor(
+      () => dataFeedStrategy,
+      'setTwapThreshold',
+      () => governor,
+      () => [randomSalt, newTwapThreshold]
+    );
+
+    it('should update a twapThreshold', async () => {
+      await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, newTwapThreshold);
+      expect(await dataFeedStrategy.twapThreshold(randomSalt)).to.eq(newTwapThreshold);
+      expect(await dataFeedStrategy.twapThreshold(randomSalt2)).to.eq(initialDefaultTwapThreshold);
+    });
+
+    it('should fallback to default if set to 0', async () => {
+      await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, newTwapThreshold);
+      await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, 0);
+      expect(await dataFeedStrategy.twapThreshold(randomSalt)).to.eq(initialDefaultTwapThreshold);
+    });
+
+    it('should emit TwapThresholdSet', async () => {
+      await expect(dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, newTwapThreshold))
+        .to.emit(dataFeedStrategy, 'TwapThresholdSet')
+        .withArgs(randomSalt, newTwapThreshold);
+    });
+  });
+
   describe('setTwapLength(...)', () => {
     let newTwapLength = initialTwapLength + 1000;
 
@@ -335,28 +403,6 @@ describe('DataFeedStrategy.sol', () => {
       await expect(dataFeedStrategy.connect(governor).setTwapLength(newTwapLength))
         .to.emit(dataFeedStrategy, 'TwapLengthSet')
         .withArgs(newTwapLength);
-    });
-  });
-
-  describe('setTwapThreshold(...)', () => {
-    let newTwapThreshold = initialTwapThreshold + 1000;
-
-    onlyGovernor(
-      () => dataFeedStrategy,
-      'setTwapThreshold',
-      () => governor,
-      () => [newTwapThreshold]
-    );
-
-    it('should update the twapThreshold', async () => {
-      await dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold);
-      expect(await dataFeedStrategy.twapThreshold()).to.eq(newTwapThreshold);
-    });
-
-    it('should emit TwapThresholdSet', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold))
-        .to.emit(dataFeedStrategy, 'TwapThresholdSet')
-        .withArgs(newTwapThreshold);
     });
   });
 
@@ -458,42 +504,44 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the upper threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
-          });
-
-          it('should return TWAP', async () => {
-            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-            expect(reason).to.eq(TWAP_TRIGGER);
-          });
-        });
-
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-            uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
-          });
-
-          context('when the last pool state observed is older than the oldest observation', () => {
+        context('when the pool twap threshold is set', () => {
+          context('when the upper threshold is surpassed', () => {
             beforeEach(async () => {
-              uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved + 1, 0, 0, true]);
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsSurpassed);
             });
 
-            it('should return OLD', async () => {
+            it('should return TWAP', async () => {
               reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-              expect(reason).to.eq(OLD_TRIGGER);
+              expect(reason).to.eq(TWAP_TRIGGER);
             });
           });
 
-          context('when the last pool state observed is not older than the oldest observation', () => {
+          context('when no thresholds are surpassed', () => {
             beforeEach(async () => {
-              uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved, 0, 0, true]);
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsNotSurpassed);
+              uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
             });
 
-            it('should return NONE', async () => {
-              reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-              expect(reason).to.eq(NONE_TRIGGER);
+            context('when the last pool state observed is older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved + 1, 0, 0, true]);
+              });
+
+              it('should return OLD', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(OLD_TRIGGER);
+              });
+            });
+
+            context('when the last pool state observed is not older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved, 0, 0, true]);
+              });
+
+              it('should return NONE', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(NONE_TRIGGER);
+              });
             });
           });
         });
@@ -516,42 +564,44 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the lower threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
-          });
-
-          it('should return TWAP', async () => {
-            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-            expect(reason).to.eq(TWAP_TRIGGER);
-          });
-        });
-
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-            uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
-          });
-
-          context('when the last pool state observed is older than the oldest observation', () => {
+        context('when the pool twap threshold is not set', () => {
+          context('when the lower threshold is surpassed', () => {
             beforeEach(async () => {
-              uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved + 1, 0, 0, true]);
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsSurpassed);
             });
 
-            it('should return OLD', async () => {
+            it('should return TWAP', async () => {
               reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-              expect(reason).to.eq(OLD_TRIGGER);
+              expect(reason).to.eq(TWAP_TRIGGER);
             });
           });
 
-          context('when the last pool state observed is not older than the oldest observation', () => {
+          context('when no thresholds are surpassed', () => {
             beforeEach(async () => {
-              uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved, 0, 0, true]);
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsNotSurpassed);
+              uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
             });
 
-            it('should return NONE', async () => {
-              reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-              expect(reason).to.eq(NONE_TRIGGER);
+            context('when the last pool state observed is older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved + 1, 0, 0, true]);
+              });
+
+              it('should return OLD', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(OLD_TRIGGER);
+              });
+            });
+
+            context('when the last pool state observed is not older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved, 0, 0, true]);
+              });
+
+              it('should return NONE', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(NONE_TRIGGER);
+              });
             });
           });
         });
@@ -643,25 +693,27 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the upper threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+        context('when the pool twap threshold is set', () => {
+          context('when the upper threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsSurpassed);
+            });
+
+            it('should return true', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(true);
+            });
           });
 
-          it('should return true', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(true);
-          });
-        });
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsNotSurpassed);
+            });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-          });
-
-          it('should return false', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(false);
+            it('should return false', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(false);
+            });
           });
         });
       });
@@ -683,25 +735,27 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the lower threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+        context('when the pool twap threshold is not set', () => {
+          context('when the lower threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsSurpassed);
+            });
+
+            it('should return true', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(true);
+            });
           });
 
-          it('should return true', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(true);
-          });
-        });
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsNotSurpassed);
+            });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-          });
-
-          it('should return false', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(false);
+            it('should return false', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(false);
+            });
           });
         });
       });

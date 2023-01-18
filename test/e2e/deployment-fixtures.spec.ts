@@ -130,9 +130,13 @@ describe('@skip-on-coverage Fixture', () => {
             });
 
             it('should be able to fetch and send observations', async () => {
-              const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
-              const txReceipt = await tx.wait();
-              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+              await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
+
+              const lastPoolNonce = (await dataFeed.lastPoolStateObserved(poolSalt)).poolNonce;
+              const evtFilter = dataFeed.filters.PoolObserved(poolSalt, lastPoolNonce);
+              const queryResults = await dataFeed.queryFilter(evtFilter);
+
+              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
               const RANDOM_CHAIN_ID = 5;
 
@@ -140,7 +144,7 @@ describe('@skip-on-coverage Fixture', () => {
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
                   RANDOM_CHAIN_ID,
                   poolSalt,
-                  fetchData._poolNonce,
+                  lastPoolNonce,
                   fetchData._observationsData
                 )
               ).not.to.be.reverted;
@@ -162,19 +166,17 @@ describe('@skip-on-coverage Fixture', () => {
             });
 
             it('should be able to fetch and send observations', async () => {
-              const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
-              const txReceipt = await tx.wait();
-              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+              await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
+              const lastPoolNonce = (await dataFeed.lastPoolStateObserved(poolSalt)).poolNonce;
+              const evtFilter = dataFeed.filters.PoolObserved(poolSalt, lastPoolNonce);
+              const queryResults = await dataFeed.queryFilter(evtFilter);
+
+              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
               const REAL_CHAIN_ID = 420;
 
               await expect(
-                strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
-                  REAL_CHAIN_ID,
-                  poolSalt,
-                  fetchData._poolNonce,
-                  fetchData._observationsData
-                )
+                strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](REAL_CHAIN_ID, poolSalt, lastPoolNonce, fetchData._observationsData)
               ).not.to.be.reverted;
             });
 

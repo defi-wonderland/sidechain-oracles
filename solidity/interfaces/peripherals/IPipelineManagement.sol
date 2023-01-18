@@ -146,6 +146,9 @@ interface IPipelineManagement is IGovernable {
   /// @notice Gets the salt of each whitelisted pool
   function whitelistedPools() external view returns (bytes32[] memory);
 
+  /// @notice Gets the id of each whitelisted chain
+  function whitelistedChains() external view returns (uint256[] memory);
+
   /// @notice Returns whether a pool is whitelisted or not
   /// @param _poolSalt Identifier of the pool
   /// @return _isWhitelisted Whether the pool is whitelisted or not

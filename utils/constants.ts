@@ -51,8 +51,9 @@ export const domainId: IDomainIDRecord = {
 };
 
 export const dataFeedSettings: IDataFeedSettingsRecord = {
-  //TODO: Specify each chain minLastOracleDelta
-  5: 1800, // 30min
+  1: 1800, // 30min
+  5: 180, // 3min
+  80001: 180,
 };
 
 export const strategySettings: IStrategySettingsRecord = {

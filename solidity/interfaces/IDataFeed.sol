@@ -63,7 +63,7 @@ interface IDataFeed is IPipelineManagement {
   /// @param _poolSalt Identifier of the pool to which the data corresponds
   /// @param _poolNonce Identifier number of time period to which the data corresponds
   /// @param _observationsData Timestamp and tick data of the broadcast nonce
-  event PoolObserved(bytes32 indexed _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
+  event PoolObserved(bytes32 indexed _poolSalt, uint24 indexed _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
 
   /// @notice Emitted when the Strategy contract is set
   /// @param _strategy Address of the new Strategy

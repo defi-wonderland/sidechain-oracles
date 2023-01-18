@@ -8,8 +8,11 @@ import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet
 
 abstract contract PipelineManagement is IPipelineManagement, Governable {
   using EnumerableSet for EnumerableSet.Bytes32Set;
+  using EnumerableSet for EnumerableSet.UintSet;
 
   EnumerableSet.Bytes32Set private _whitelistedPools;
+
+  EnumerableSet.UintSet private _whitelistedChains;
 
   /// @inheritdoc IPipelineManagement
   mapping(uint32 => mapping(bytes32 => uint24)) public whitelistedNonces;
@@ -112,6 +115,11 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   }
 
   /// @inheritdoc IPipelineManagement
+  function whitelistedChains() external view returns (uint256[] memory) {
+    return _whitelistedChains.values();
+  }
+
+  /// @inheritdoc IPipelineManagement
   function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
     return _whitelistedPools.contains(_poolSalt);
   }
@@ -142,6 +150,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     (uint24 _lastPoolNonceObserved, , , ) = IDataFeed(address(this)).lastPoolStateObserved(_poolSalt);
     whitelistedNonces[_chainId][_poolSalt] = _lastPoolNonceObserved + 1;
     _whitelistedPools.add(_poolSalt);
+    _whitelistedChains.add(_chainId);
     emit PipelineWhitelisted(_chainId, _poolSalt, _lastPoolNonceObserved + 1);
   }
 

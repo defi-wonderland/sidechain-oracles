@@ -405,6 +405,20 @@ describe('PipelineManagement.sol', () => {
     });
   });
 
+  describe('whitelistedChains()', () => {
+    beforeEach(async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt2);
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId2, randomSalt);
+    });
+
+    it('should return the whitelisted chains', async () => {
+      let whitelistedChains = await dataFeed.whitelistedChains();
+      expect(whitelistedChains[0]).to.eq(randomChainId);
+      expect(whitelistedChains[1]).to.eq(randomChainId2);
+    });
+  });
+
   describe('isWhitelistedPool(...)', () => {
     beforeEach(async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);

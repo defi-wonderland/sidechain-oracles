@@ -147,11 +147,11 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   function _whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) internal {
     if (whitelistedNonces[_chainId][_poolSalt] != 0) revert AlreadyAllowedPipeline();
 
-    (uint24 _lastPoolNonceObserved, , , ) = IDataFeed(address(this)).lastPoolStateObserved(_poolSalt);
-    whitelistedNonces[_chainId][_poolSalt] = _lastPoolNonceObserved + 1;
+    uint24 _whitelistedNonce = getPoolNonce(_poolSalt) + 1;
+    whitelistedNonces[_chainId][_poolSalt] = _whitelistedNonce;
     _whitelistedPools.add(_poolSalt);
     _whitelistedChains.add(_chainId);
-    emit PipelineWhitelisted(_chainId, _poolSalt, _lastPoolNonceObserved + 1);
+    emit PipelineWhitelisted(_chainId, _poolSalt, _whitelistedNonce);
   }
 
   function _whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) internal {
@@ -176,6 +176,8 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     receivers[_bridgeSenderAdapter][_destinationDomainId] = _dataReceiver;
     emit ReceiverSet(_bridgeSenderAdapter, _destinationDomainId, _dataReceiver);
   }
+
+  function getPoolNonce(bytes32 _poolSalt) public view virtual returns (uint24 _poolNonce);
 
   modifier validatePool(bytes32 _poolSalt) {
     if (!_whitelistedPools.contains(_poolSalt)) revert UnallowedPool();

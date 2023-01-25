@@ -32,6 +32,12 @@ contract DataFeed is IDataFeed, PipelineManagement {
   }
 
   /// @inheritdoc IDataFeed
+  function getPoolNonce(bytes32 _poolSalt) public view virtual override(PipelineManagement, IDataFeed) returns (uint24 _poolNonce) {
+    PoolState memory _poolState = lastPoolStateObserved[_poolSalt];
+    return _poolState.poolNonce;
+  }
+
+  /// @inheritdoc IDataFeed
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint32 _chainId,

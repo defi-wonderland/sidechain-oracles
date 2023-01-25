@@ -18,6 +18,11 @@ interface IDataFeed is IPipelineManagement {
     int24 arithmeticMeanTick; // Last calculated twap
   }
 
+  // VIEWS
+
+  /// @return _poolNonce The last observed nonce of the given pool
+  function getPoolNonce(bytes32 _poolSalt) external view returns (uint24 _poolNonce);
+
   // STATE VARIABLES
 
   /// @return _strategy Address of the contract allowed to trigger an oracle update

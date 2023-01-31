@@ -55,19 +55,19 @@ describe('ConnextReceiverAdapter.sol', () => {
     it('should revert if dataReceiver is set to the zero address', async () => {
       await expect(
         connextReceiverAdapterFactory.deploy(ZERO_ADDRESS, connextHandler.address, connextSenderAdapter.address, rinkebyOriginId)
-      ).to.be.revertedWith('ZeroAddress()');
+      ).to.be.revertedWith('BridgeReceiverAdapter_ZeroAddress()');
     });
 
     it('should revert if connext is set to the zero address', async () => {
       await expect(
         connextReceiverAdapterFactory.deploy(dataReceiver.address, ZERO_ADDRESS, connextSenderAdapter.address, rinkebyOriginId)
-      ).to.be.revertedWith('ZeroAddress()');
+      ).to.be.revertedWith('ConnextReceiverAdapter_ZeroAddress()');
     });
 
     it('should revert if the origin contract is set to the zero address', async () => {
       await expect(
         connextReceiverAdapterFactory.deploy(dataReceiver.address, connextHandler.address, ZERO_ADDRESS, rinkebyOriginId)
-      ).to.be.revertedWith('ZeroAddress()');
+      ).to.be.revertedWith('ConnextReceiverAdapter_ZeroAddress()');
     });
 
     it('should initialize dataReceiver interface', async () => {
@@ -106,7 +106,9 @@ describe('ConnextReceiverAdapter.sol', () => {
 
     context('when the origin sender is not allowed', () => {
       it('should revert', async () => {
-        await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith('UnauthorizedCaller()');
+        await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith(
+          'ConnextReceiverAdapter_UnauthorizedCaller()'
+        );
       });
     });
 
@@ -116,7 +118,9 @@ describe('ConnextReceiverAdapter.sol', () => {
       });
 
       it('should revert', async () => {
-        await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith('UnauthorizedCaller()');
+        await expect(connextReceiverAdapter.xReceive(...xReceiveParams, callData)).to.be.revertedWith(
+          'ConnextReceiverAdapter_UnauthorizedCaller()'
+        );
       });
     });
 
@@ -127,7 +131,7 @@ describe('ConnextReceiverAdapter.sol', () => {
 
       it('should revert if caller is not the executor contract', async () => {
         await expect(connextReceiverAdapter.connect(randomUser).xReceive(...xReceiveParams, callData)).to.be.revertedWith(
-          'UnauthorizedCaller()'
+          'ConnextReceiverAdapter_UnauthorizedCaller()'
         );
       });
 

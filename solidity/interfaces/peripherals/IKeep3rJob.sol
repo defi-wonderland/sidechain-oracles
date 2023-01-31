@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IGovernable} from './IGovernable.sol';
+import {IGovernable} from '@defi-wonderland/solidity-utils/solidity/interfaces/IGovernable.sol';
 import {IKeep3r} from '@defi-wonderland/keep3r-v2/solidity/interfaces/IKeep3r.sol';
 
 interface IKeep3rJob is IGovernable {
@@ -19,7 +19,7 @@ interface IKeep3rJob is IGovernable {
   // ERRORS
 
   /// @notice Throws when a keeper fails the validation
-  error KeeperNotValid();
+  error Keep3rJob_KeeperNotValid();
 
   // FUNCTIONS
 

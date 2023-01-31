@@ -18,15 +18,10 @@ interface IDataFeed is IPipelineManagement {
     int24 arithmeticMeanTick; // Last calculated twap
   }
 
-  // VIEWS
-
-  /// @return _poolNonce The last observed nonce of the given pool
-  function getPoolNonce(bytes32 _poolSalt) external view returns (uint24 _poolNonce);
-
   // STATE VARIABLES
 
   /// @return _strategy Address of the contract allowed to trigger an oracle update
-  /// @dev The strategy should define when and with which timestamps the pool should be read
+  /// @dev The Strategy should define when and with which timestamps the pool should be read
   function strategy() external view returns (IDataFeedStrategy _strategy);
 
   /// @return _minLastOracleDelta Minimum timestamp delta between latest oracle observations
@@ -81,19 +76,22 @@ interface IDataFeed is IPipelineManagement {
   // ERRORS
 
   /// @notice Thrown if set of secondsAgos is invalid to update the oracle
-  error InvalidSecondsAgos();
+  error DataFeed_InvalidSecondsAgos();
 
   /// @notice Thrown if the last oracle delta is less than minLastOracleDelta
-  error InsufficientDelta();
+  error DataFeed_InsufficientDelta();
 
   /// @notice Thrown if an unknown dataset is being broadcast
-  error UnknownHash();
+  error DataFeed_UnknownHash();
 
   /// @notice Thrown if a contract other than Strategy calls an update
-  error OnlyStrategy();
+  error DataFeed_OnlyStrategy();
+
+  /// @notice Thrown if Strategy is set to the zero address
+  error DataFeed_ZeroAddress();
 
   /// @notice Thrown if minLastOracleDelta is set to zero
-  error ZeroDelta();
+  error DataFeed_ZeroDelta();
 
   // FUNCTIONS
 
@@ -127,4 +125,7 @@ interface IDataFeed is IPipelineManagement {
   /// @dev Permissioned, callable only by governor
   /// @param _minLastOracleDelta New value of minLastOracleDelta
   function setMinLastOracleDelta(uint32 _minLastOracleDelta) external;
+
+  /// @return _poolNonce The last observed nonce of the given pool
+  function getPoolNonce(bytes32 _poolSalt) external view returns (uint24 _poolNonce);
 }

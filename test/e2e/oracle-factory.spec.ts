@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { OracleFactory, OracleSidechain, DataReceiver, ERC20 } from '@typechained';
+import { OracleFactory, OracleSidechain, DataReceiver, IERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
 import { toUnit } from '@utils/bn';
@@ -16,8 +16,8 @@ describe('@skip-on-coverage OracleFactory.sol', () => {
   let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
   let dataReceiver: DataReceiver;
-  let tokenA: ERC20;
-  let tokenB: ERC20;
+  let tokenA: IERC20;
+  let tokenB: IERC20;
   let fee: number;
   let salt: string;
   let snapshotId: string;

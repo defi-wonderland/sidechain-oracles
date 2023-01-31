@@ -33,7 +33,10 @@ interface IStrategyJob is IKeep3rJob {
   // ERRORS
 
   /// @notice Thrown when the job is not workable
-  error NotWorkable();
+  error StrategyJob_NotWorkable();
+
+  /// @notice Thrown if DataFeed, DataFeedStrategy or defaultBridgeSenderAdapter are set to the zero address
+  error StrategyJob_ZeroAddress();
 
   // FUNCTIONS
 

@@ -1,5 +1,5 @@
-import IUniswapV3Pool from '../../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import IUniswapV3Factory from '../../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol/IUniswapV3Factory.json';
+import IUniswapV3Pool from '../../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { calculateSalt } from '../../test/utils/misc';
@@ -16,18 +16,18 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  await hre.deployments.save('UniV3Factory', {
+  await hre.deployments.save('UniswapV3Factory', {
     abi: IUniswapV3Factory.abi,
     address: UNI_V3_FACTORY,
   });
 
-  const POOL_ADDRESS = await hre.deployments.read('UniV3Factory', 'getPool', tokenA, tokenB, TEST_FEE);
+  const POOL_ADDRESS = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA, tokenB, TEST_FEE);
   if (ZERO_ADDRESS == POOL_ADDRESS) {
     console.log('Pool does not exist', tokenA, tokenB, TEST_FEE);
     return;
   }
 
-  await hre.deployments.save('UniV3Pool', {
+  await hre.deployments.save('UniswapV3Pool', {
     abi: IUniswapV3Pool.abi,
     address: POOL_ADDRESS,
   });

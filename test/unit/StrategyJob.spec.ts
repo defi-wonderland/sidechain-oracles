@@ -50,14 +50,14 @@ describe('StrategyJob.sol', () => {
   describe('constructor(...)', () => {
     it('should revert if dataFeedStrategy is set to the zero address', async () => {
       await expect(strategyJobFactory.deploy(governor.address, ZERO_ADDRESS, dataFeed.address, defaultSenderAdapterAddress)).to.be.revertedWith(
-        'ZeroAddress()'
+        'StrategyJob_ZeroAddress()'
       );
     });
 
     it('should revert if dataFeed is set to the zero address', async () => {
       await expect(
         strategyJobFactory.deploy(governor.address, dataFeedStrategy.address, ZERO_ADDRESS, defaultSenderAdapterAddress)
-      ).to.be.revertedWith('ZeroAddress()');
+      ).to.be.revertedWith('StrategyJob_ZeroAddress()');
     });
 
     it('should set the governor', async () => {
@@ -87,7 +87,7 @@ describe('StrategyJob.sol', () => {
       keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
       await expect(
         strategyJob.connect(governor)['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce, observationsData)
-      ).to.be.revertedWith('KeeperNotValid()');
+      ).to.be.revertedWith('Keep3rJob_KeeperNotValid()');
     });
 
     context('when lastPoolNonceBridged is 0', () => {
@@ -100,12 +100,12 @@ describe('StrategyJob.sol', () => {
           strategyJob
             .connect(keeper)
             ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
-        ).to.be.revertedWith('NotWorkable()');
+        ).to.be.revertedWith('StrategyJob_NotWorkable()');
         await expect(
           strategyJob
             .connect(keeper)
             ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
-        ).to.be.revertedWith('NotWorkable()');
+        ).to.be.revertedWith('StrategyJob_NotWorkable()');
       });
 
       it('should update lastPoolNonceBridged', async () => {
@@ -149,12 +149,12 @@ describe('StrategyJob.sol', () => {
           strategyJob
             .connect(keeper)
             ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce - 1, observationsData)
-        ).to.be.revertedWith('NotWorkable()');
+        ).to.be.revertedWith('StrategyJob_NotWorkable()');
         await expect(
           strategyJob
             .connect(keeper)
             ['work(uint32,bytes32,uint24,(uint32,int24)[])'](randomChainId, randomSalt, randomNonce + 1, observationsData)
-        ).to.be.revertedWith('NotWorkable()');
+        ).to.be.revertedWith('StrategyJob_NotWorkable()');
       });
 
       it('should update lastPoolNonceBridged', async () => {
@@ -192,7 +192,9 @@ describe('StrategyJob.sol', () => {
   describe('work(bytes32,uint8)', () => {
     it('should revert if the keeper is not valid', async () => {
       keep3r.isKeeper.whenCalledWith(governor.address).returns(false);
-      await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](randomSalt, randomTrigger)).to.be.revertedWith('KeeperNotValid()');
+      await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](randomSalt, randomTrigger)).to.be.revertedWith(
+        'Keep3rJob_KeeperNotValid()'
+      );
     });
 
     it('should call to fetch observations strategically', async () => {
@@ -217,7 +219,7 @@ describe('StrategyJob.sol', () => {
     );
 
     it('should revert if defaultBridgeSenderAdapter is set to the zero address', async () => {
-      await expect(strategyJob.connect(governor).setDefaultBridgeSenderAdapter(ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+      await expect(strategyJob.connect(governor).setDefaultBridgeSenderAdapter(ZERO_ADDRESS)).to.be.revertedWith('StrategyJob_ZeroAddress()');
     });
 
     it('should update the defaultBridgeSenderAdapter', async () => {

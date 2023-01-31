@@ -8,7 +8,7 @@ import {
   OracleFactory__factory,
   DataReceiverForTest,
   DataReceiverForTest__factory,
-  ERC20,
+  IERC20,
 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { bn } from '@utils';
@@ -27,8 +27,8 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
   let unallowedDataReceiver: DataReceiverForTest;
   let allowedDataReceiverWallet: JsonRpcSigner;
   let snapshotId: string;
-  let tokenA: ERC20;
-  let tokenB: ERC20;
+  let tokenA: IERC20;
+  let tokenB: IERC20;
   let fee: number;
   let salt: string;
 
@@ -79,7 +79,9 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     it('should revert if the caller is not an allowed data receiver', async () => {
       await oracleFactory.connect(allowedDataReceiverWallet).deployOracle(salt, nonce);
 
-      await expect(unallowedDataReceiver.internalAddObservations(observationsData, salt, nonce)).to.be.revertedWith('OnlyDataReceiver');
+      await expect(unallowedDataReceiver.internalAddObservations(observationsData, salt, nonce)).to.be.revertedWith(
+        'OracleSidechain_OnlyDataReceiver'
+      );
     });
 
     it('should deploy a oracleSidechain and write an observation', async () => {

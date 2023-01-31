@@ -44,7 +44,7 @@ describe('DataReceiver.sol', () => {
 
   describe('constructor(...)', () => {
     it('should revert if oracleFactory is set to the zero address', async () => {
-      await expect(dataReceiverFactory.deploy(governor.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+      await expect(dataReceiverFactory.deploy(governor.address, ZERO_ADDRESS)).to.be.revertedWith('DataReceiver_ZeroAddress()');
     });
 
     it('should set the governor', async () => {
@@ -91,7 +91,7 @@ describe('DataReceiver.sol', () => {
       it('should revert if the observations are not writable', async () => {
         oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
         await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
-          'ObservationsNotWritable()'
+          'DataReceiver_ObservationsNotWritable()'
         );
       });
 
@@ -125,7 +125,7 @@ describe('DataReceiver.sol', () => {
         it('should revert if the observations are not writable', async () => {
           oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
           await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
-            'ObservationsNotWritable()'
+            'DataReceiver_ObservationsNotWritable()'
           );
         });
 
@@ -154,7 +154,7 @@ describe('DataReceiver.sol', () => {
         it('should revert if the observations are not writable', async () => {
           oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
           await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
-            'ObservationsNotWritable()'
+            'DataReceiver_ObservationsNotWritable()'
           );
         });
 
@@ -216,11 +216,11 @@ describe('DataReceiver.sol', () => {
 
     it('should revert if the lengths of the arguments do not match', async () => {
       await expect(dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address, fakeAdapter.address], [true])).to.be.revertedWith(
-        'LengthMismatch()'
+        'DataReceiver_LengthMismatch()'
       );
 
       await expect(dataReceiver.connect(governor).whitelistAdapters([randomAdapter.address], [true, true])).to.be.revertedWith(
-        'LengthMismatch()'
+        'DataReceiver_LengthMismatch()'
       );
     });
 

@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './peripherals/Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
@@ -18,7 +18,7 @@ contract DataReceiver is IDataReceiver, Governable {
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
-    if (address(_oracleFactory) == address(0)) revert ZeroAddress();
+    if (address(_oracleFactory) == address(0)) revert DataReceiver_ZeroAddress();
     oracleFactory = _oracleFactory;
   }
 
@@ -48,7 +48,7 @@ contract DataReceiver is IDataReceiver, Governable {
     if (_oracle.write(_observationsData, _poolNonce)) {
       emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
     } else {
-      revert ObservationsNotWritable();
+      revert DataReceiver_ObservationsNotWritable();
     }
   }
 
@@ -59,7 +59,7 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   function whitelistAdapters(IBridgeReceiverAdapter[] calldata _receiverAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {
     uint256 _receiverAdapterLength = _receiverAdapters.length;
-    if (_receiverAdapterLength != _isWhitelisted.length) revert LengthMismatch();
+    if (_receiverAdapterLength != _isWhitelisted.length) revert DataReceiver_LengthMismatch();
     unchecked {
       for (uint256 _i; _i < _receiverAdapterLength; ++_i) {
         _whitelistAdapter(_receiverAdapters[_i], _isWhitelisted[_i]);
@@ -73,7 +73,7 @@ contract DataReceiver is IDataReceiver, Governable {
   }
 
   modifier onlyWhitelistedAdapters() {
-    if (!whitelistedAdapters[IBridgeReceiverAdapter(msg.sender)]) revert UnallowedAdapter();
+    if (!whitelistedAdapters[IBridgeReceiverAdapter(msg.sender)]) revert DataReceiver_UnallowedAdapter();
     _;
   }
 }

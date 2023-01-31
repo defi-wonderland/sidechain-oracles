@@ -19,8 +19,8 @@ interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // ERRORS
 
   /// @notice Thrown if the DataFeed contract is not the one calling for bridging observations
-  error OnlyDataFeed();
+  error ConnextSenderAdapter_OnlyDataFeed();
 
   /// @notice Thrown if a state variable is set to the zero address
-  error ZeroAddress();
+  error ConnextSenderAdapter_ZeroAddress();
 }

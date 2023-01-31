@@ -80,6 +80,7 @@
     "@connext/nxtp-contracts": "0.2.0-alpha.29",
     "@defi-wonderland/crypto-husky-checks": "1.1.1",
     "@defi-wonderland/keep3r-v2": "0.0.0-ab44125a",
+    "@defi-wonderland/solidity-utils": "0.0.0-e318b987",
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@uniswap/v3-core": "1.0.2-solc-0.8-simulate",
@@ -135,6 +136,6 @@
     "typescript": "4.6.4"
   },
   "engines": {
-    "node": "^16.0.0"
+    "node": ">=16.0.0"
   }
 }

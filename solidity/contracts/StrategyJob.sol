@@ -25,7 +25,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
     IDataFeed _dataFeed,
     IBridgeSenderAdapter _defaultBridgeSenderAdapter
   ) Governable(_governor) {
-    if (address(_dataFeedStrategy) == address(0) || address(_dataFeed) == address(0)) revert ZeroAddress();
+    if (address(_dataFeedStrategy) == address(0) || address(_dataFeed) == address(0)) revert StrategyJob_ZeroAddress();
     dataFeedStrategy = _dataFeedStrategy;
     dataFeed = _dataFeed;
     _setDefaultBridgeSenderAdapter(_defaultBridgeSenderAdapter);
@@ -38,7 +38,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
   ) external upkeep {
-    if (!_workable(_chainId, _poolSalt, _poolNonce)) revert NotWorkable();
+    if (!_workable(_chainId, _poolSalt, _poolNonce)) revert StrategyJob_NotWorkable();
     lastPoolNonceBridged[_chainId][_poolSalt] = _poolNonce;
     dataFeed.sendObservations(defaultBridgeSenderAdapter, _chainId, _poolSalt, _poolNonce, _observationsData);
   }
@@ -88,7 +88,7 @@ contract StrategyJob is IStrategyJob, Keep3rJob {
   }
 
   function _setDefaultBridgeSenderAdapter(IBridgeSenderAdapter _defaultBridgeSenderAdapter) private {
-    if (address(_defaultBridgeSenderAdapter) == address(0)) revert ZeroAddress();
+    if (address(_defaultBridgeSenderAdapter) == address(0)) revert StrategyJob_ZeroAddress();
 
     defaultBridgeSenderAdapter = _defaultBridgeSenderAdapter;
     emit DefaultBridgeSenderAdapterSet(_defaultBridgeSenderAdapter);

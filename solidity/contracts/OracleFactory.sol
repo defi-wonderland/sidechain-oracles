@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './peripherals/Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IOracleFactory, IOracleSidechain, IDataReceiver} from '../interfaces/IOracleFactory.sol';
-import {Create2Address} from '../libraries/Create2Address.sol';
+import {Create2Address} from '@defi-wonderland/solidity-utils/solidity/libraries/Create2Address.sol';
 
 /// @title The OracleFactory contract
 /// @notice Handles the deployment of new OracleSidechains
@@ -41,7 +41,7 @@ contract OracleFactory is IOracleFactory, Governable {
 
   /// @inheritdoc IOracleFactory
   function setInitialCardinality(uint16 _initialCardinality) external onlyGovernor {
-    if (_initialCardinality == 0) revert ZeroCardinality();
+    if (_initialCardinality == 0) revert OracleFactory_ZeroCardinality();
 
     initialCardinality = _initialCardinality;
     emit InitialCardinalitySet(_initialCardinality);
@@ -79,14 +79,14 @@ contract OracleFactory is IOracleFactory, Governable {
   }
 
   function _setDataReceiver(IDataReceiver _dataReceiver) private {
-    if (address(_dataReceiver) == address(0)) revert ZeroAddress();
+    if (address(_dataReceiver) == address(0)) revert OracleFactory_ZeroAddress();
 
     dataReceiver = _dataReceiver;
     emit DataReceiverSet(_dataReceiver);
   }
 
   modifier onlyDataReceiver() {
-    if (msg.sender != address(dataReceiver)) revert OnlyDataReceiver();
+    if (msg.sender != address(dataReceiver)) revert OracleFactory_OnlyDataReceiver();
     _;
   }
 }

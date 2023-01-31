@@ -15,9 +15,6 @@ interface IBridgeReceiverAdapter {
 
   // ERRORS
 
-  /// @notice Thrown if a caller is not authorized
-  error UnauthorizedCaller();
-
-  /// @notice Thrown if a state variable is set to the zero address
-  error ZeroAddress();
+  /// @notice Thrown if DataReceiver is set to the zero address
+  error BridgeReceiverAdapter_ZeroAddress();
 }

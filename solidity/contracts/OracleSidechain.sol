@@ -74,10 +74,10 @@ contract OracleSidechain is IOracleSidechain {
     address _tokenB,
     uint24 _fee
   ) external {
-    if (!slot0.unlocked) revert AI();
+    if (!slot0.unlocked) revert OracleSidechain_AI();
 
     (address _token0, address _token1) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenB, _tokenA);
-    if (poolSalt != keccak256(abi.encode(_token0, _token1, _fee))) revert InvalidPool();
+    if (poolSalt != keccak256(abi.encode(_token0, _token1, _fee))) revert OracleSidechain_InvalidPool();
 
     token0 = _token0;
     token1 = _token1;
@@ -116,7 +116,7 @@ contract OracleSidechain is IOracleSidechain {
 
   function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external onlyFactory {
     uint16 _observationCardinalityNextOld = slot0.observationCardinalityNext;
-    if (_observationCardinalityNext <= _observationCardinalityNextOld) revert AI();
+    if (_observationCardinalityNext <= _observationCardinalityNextOld) revert OracleSidechain_AI();
     slot0.observationCardinalityNext = _observationCardinalityNext;
     emit IncreaseObservationCardinalityNext(_observationCardinalityNextOld, _observationCardinalityNext);
   }
@@ -135,12 +135,12 @@ contract OracleSidechain is IOracleSidechain {
   }
 
   modifier onlyDataReceiver() {
-    if (msg.sender != address(factory.dataReceiver())) revert OnlyDataReceiver();
+    if (msg.sender != address(factory.dataReceiver())) revert OracleSidechain_OnlyDataReceiver();
     _;
   }
 
   modifier onlyFactory() {
-    if (msg.sender != address(factory)) revert OnlyFactory();
+    if (msg.sender != address(factory)) revert OracleSidechain_OnlyFactory();
     _;
   }
 }

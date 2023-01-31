@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {IKeep3rJob, IKeep3r} from '../../interfaces/peripherals/IKeep3rJob.sol';
 
 abstract contract Keep3rJob is IKeep3rJob, Governable {
@@ -19,7 +19,7 @@ abstract contract Keep3rJob is IKeep3rJob, Governable {
   }
 
   function _isValidKeeper(address _keeper) internal virtual {
-    if (!keep3r.isKeeper(_keeper)) revert KeeperNotValid();
+    if (!keep3r.isKeeper(_keeper)) revert Keep3rJob_KeeperNotValid();
   }
 
   modifier upkeep() {

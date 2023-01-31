@@ -12,7 +12,7 @@ import {
   ConnextHandlerForTest,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
-  ERC20,
+  IERC20,
 } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
@@ -126,9 +126,9 @@ export async function setupContracts(): Promise<{
 
 export async function getEnvironment(): Promise<{
   uniswapV3Factory: UniswapV3Factory;
-  uniV3Pool: UniswapV3Pool;
-  tokenA: ERC20;
-  tokenB: ERC20;
+  uniswapV3Pool: UniswapV3Pool;
+  tokenA: IERC20;
+  tokenB: IERC20;
   fee: number;
   keep3rV2: Keep3rV2;
   keeper: JsonRpcSigner;
@@ -136,32 +136,32 @@ export async function getEnvironment(): Promise<{
 }> {
   const [signer] = await ethers.getSigners();
   const uniswapV3Factory = getMainnetSdk(signer).uniswapV3Factory;
-  const uniV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
-  const tokenA = (await ethers.getContractAt('ERC20', WETH)) as ERC20;
-  const tokenB = (await ethers.getContractAt('ERC20', KP3R)) as ERC20;
+  const uniswapV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
+  const tokenA = (await ethers.getContractAt('IERC20', WETH)) as IERC20;
+  const tokenB = (await ethers.getContractAt('IERC20', KP3R)) as IERC20;
   const keep3rV2 = getMainnetSdk(signer).keep3rV2;
   const keeper = await wallet.impersonate(KP3R_WHALE_ADDRESS);
   const kp3rProxyGovernor = await wallet.impersonate(KP3R_V1_PROXY_GOVERNANCE_ADDRESS);
   await wallet.setBalance(KP3R_WHALE_ADDRESS, toUnit(10));
   await wallet.setBalance(kp3rProxyGovernor._address, toUnit(10));
 
-  return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE, keep3rV2, keeper, kp3rProxyGovernor };
+  return { uniswapV3Factory, uniswapV3Pool, tokenA, tokenB, fee: FEE, keep3rV2, keeper, kp3rProxyGovernor };
 }
 
 export async function getOLDEnvironment(): Promise<{
   uniswapV3Factory: UniswapV3Factory;
-  uniV3Pool: UniswapV3Pool;
-  tokenA: ERC20;
-  tokenB: ERC20;
+  uniswapV3Pool: UniswapV3Pool;
+  tokenA: IERC20;
+  tokenB: IERC20;
   fee: number;
 }> {
   const [signer] = await ethers.getSigners();
   const uniswapV3Factory = getMainnetSdk(signer).uniswapV3Factory;
-  const uniV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_USDC_ADDRESS);
-  const tokenA = (await ethers.getContractAt('ERC20', WETH)) as ERC20;
-  const tokenB = (await ethers.getContractAt('ERC20', USDC)) as ERC20;
+  const uniswapV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_USDC_ADDRESS);
+  const tokenA = (await ethers.getContractAt('IERC20', WETH)) as IERC20;
+  const tokenB = (await ethers.getContractAt('IERC20', USDC)) as IERC20;
 
-  return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE };
+  return { uniswapV3Factory, uniswapV3Pool, tokenA, tokenB, fee: FEE };
 }
 
 export async function getOracle(

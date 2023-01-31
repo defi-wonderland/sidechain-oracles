@@ -3,7 +3,7 @@ pragma solidity >=0.8.8 <0.9.0;
 
 import {PipelineManagement, Governable} from './peripherals/PipelineManagement.sol';
 import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
-import {Create2Address} from '../libraries/Create2Address.sol';
+import {Create2Address} from '@defi-wonderland/solidity-utils/solidity/libraries/Create2Address.sol';
 
 /// @title The DataFeed contract
 /// @notice Queries UniV3Pools, stores history proofs on chain, handles data broadcast
@@ -32,12 +32,6 @@ contract DataFeed is IDataFeed, PipelineManagement {
   }
 
   /// @inheritdoc IDataFeed
-  function getPoolNonce(bytes32 _poolSalt) public view virtual override(PipelineManagement, IDataFeed) returns (uint24 _poolNonce) {
-    PoolState memory _poolState = lastPoolStateObserved[_poolSalt];
-    return _poolState.poolNonce;
-  }
-
-  /// @inheritdoc IDataFeed
   function sendObservations(
     IBridgeSenderAdapter _bridgeSenderAdapter,
     uint32 _chainId,
@@ -49,7 +43,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
 
     {
       bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _poolNonce, _observationsData));
-      if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
+      if (!_observedKeccak[_resultingKeccak]) revert DataFeed_UnknownHash();
     }
 
     _bridgeSenderAdapter.bridgeObservations{value: msg.value}(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
@@ -74,7 +68,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
 
       // If first fetched observation
       if (_lastPoolStateObserved.blockTimestamp == 0) {
-        if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
+        if (_secondsAgosLength == 1) revert DataFeed_InvalidSecondsAgos();
         // Initializes timestamp and cumulative with first item
         _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
         _secondsAgo = _secondsAgos[0];
@@ -119,7 +113,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
         }
       }
 
-      if (_delta < minLastOracleDelta) revert InsufficientDelta();
+      if (_delta < minLastOracleDelta) revert DataFeed_InsufficientDelta();
 
       _lastPoolStateObserved = PoolState({
         poolNonce: _lastPoolStateObserved.poolNonce + 1,
@@ -145,26 +139,33 @@ contract DataFeed is IDataFeed, PipelineManagement {
     _setStrategy(_strategy);
   }
 
+  /// @inheritdoc IDataFeed
   function setMinLastOracleDelta(uint32 _minLastOracleDelta) external onlyGovernor {
     _setMinLastOracleDelta(_minLastOracleDelta);
   }
 
+  /// @inheritdoc IDataFeed
+  function getPoolNonce(bytes32 _poolSalt) public view override(IDataFeed, PipelineManagement) returns (uint24 _poolNonce) {
+    PoolState memory _lastPoolStateObserved = lastPoolStateObserved[_poolSalt];
+    return _lastPoolStateObserved.poolNonce;
+  }
+
   function _setStrategy(IDataFeedStrategy _strategy) private {
-    if (address(_strategy) == address(0)) revert ZeroAddress();
+    if (address(_strategy) == address(0)) revert DataFeed_ZeroAddress();
 
     strategy = _strategy;
     emit StrategySet(_strategy);
   }
 
   function _setMinLastOracleDelta(uint32 _minLastOracleDelta) private {
-    if (_minLastOracleDelta == 0) revert ZeroDelta();
+    if (_minLastOracleDelta == 0) revert DataFeed_ZeroDelta();
 
     minLastOracleDelta = _minLastOracleDelta;
     emit MinLastOracleDeltaSet(_minLastOracleDelta);
   }
 
   modifier onlyStrategy() {
-    if (msg.sender != address(strategy)) revert OnlyStrategy();
+    if (msg.sender != address(strategy)) revert DataFeed_OnlyStrategy();
     _;
   }
 }

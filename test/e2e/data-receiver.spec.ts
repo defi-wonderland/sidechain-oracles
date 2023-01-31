@@ -1,7 +1,7 @@
 import { ContractTransaction } from 'ethers';
 import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, ERC20 } from '@typechained';
+import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, IERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { readArgFromEvent } from '@utils/event-utils';
 import { ZERO_ADDRESS } from '@utils/constants';
@@ -19,8 +19,8 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
-  let tokenA: ERC20;
-  let tokenB: ERC20;
+  let tokenA: IERC20;
+  let tokenB: IERC20;
   let fee: number;
   let salt: string;
   let tx: ContractTransaction;

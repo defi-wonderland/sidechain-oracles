@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IGovernable} from './peripherals/IGovernable.sol';
+import {IGovernable} from '@defi-wonderland/solidity-utils/solidity/interfaces/IGovernable.sol';
 import {IOracleSidechain} from './IOracleSidechain.sol';
 import {IDataReceiver} from './IDataReceiver.sol';
 
@@ -57,10 +57,13 @@ interface IOracleFactory is IGovernable {
   // ERRORS
 
   /// @notice Thrown when a contract other than the DataReceiver tries to deploy an oracle
-  error OnlyDataReceiver();
+  error OracleFactory_OnlyDataReceiver();
+
+  /// @notice Thrown if DataReceiver is set to the zero address
+  error OracleFactory_ZeroAddress();
 
   /// @notice Thrown if initialCardinality is set to zero
-  error ZeroCardinality();
+  error OracleFactory_ZeroCardinality();
 
   // FUNCTIONS
 

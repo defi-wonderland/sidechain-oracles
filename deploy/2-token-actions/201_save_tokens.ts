@@ -1,4 +1,4 @@
-import ERC20 from '../../artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json';
+import IERC20 from '../../artifacts/@openzeppelin/contracts/token/ERC20/IERC20.sol/IERC20.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 
@@ -7,12 +7,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await hre.deployments.save('TokenA', {
     address: tokenA,
-    abi: ERC20.abi,
+    abi: IERC20.abi,
   });
 
   await hre.deployments.save('TokenB', {
     address: tokenB,
-    abi: ERC20.abi,
+    abi: IERC20.abi,
   });
 };
 

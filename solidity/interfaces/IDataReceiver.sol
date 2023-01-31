@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IGovernable} from './peripherals/IGovernable.sol';
+import {IGovernable} from '@defi-wonderland/solidity-utils/solidity/interfaces/IGovernable.sol';
 import {IOracleFactory} from './IOracleFactory.sol';
 import {IOracleSidechain} from './IOracleSidechain.sol';
 import {IBridgeReceiverAdapter} from './bridges/IBridgeReceiverAdapter.sol';
@@ -44,13 +44,16 @@ interface IDataReceiver is IGovernable {
   // ERRORS
 
   /// @notice Thrown when the broadcast nonce is incorrect
-  error ObservationsNotWritable();
+  error DataReceiver_ObservationsNotWritable();
 
   /// @notice Thrown when a not-whitelisted adapter triggers an update
-  error UnallowedAdapter();
+  error DataReceiver_UnallowedAdapter();
 
   /// @notice Thrown when mismatching lists length
-  error LengthMismatch();
+  error DataReceiver_LengthMismatch();
+
+  /// @notice Thrown if OracleFactory is set to the zero address
+  error DataReceiver_ZeroAddress();
 
   // FUNCTIONS
 

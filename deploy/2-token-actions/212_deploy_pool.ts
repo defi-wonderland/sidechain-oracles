@@ -13,7 +13,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  await hre.deployments.save('UniV3Factory', {
+  await hre.deployments.save('UniswapV3Factory', {
     abi: IUniswapV3Factory.abi,
     address: UNI_V3_FACTORY,
   });
@@ -23,15 +23,15 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const tokenA = await hre.deployments.get('TokenA');
   const tokenB = await hre.deployments.get('TokenB');
 
-  let UNI_V3_POOL_ADDRESS = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
+  let UNI_V3_POOL_ADDRESS = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
   const poolExists = UNI_V3_POOL_ADDRESS != addressZero;
 
   if (!poolExists) {
-    await hre.deployments.execute('UniV3Factory', txSettings, 'createPool', tokenA.address, tokenB.address, TEST_FEE);
-    UNI_V3_POOL_ADDRESS = await hre.deployments.read('UniV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
+    await hre.deployments.execute('UniswapV3Factory', txSettings, 'createPool', tokenA.address, tokenB.address, TEST_FEE);
+    UNI_V3_POOL_ADDRESS = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA.address, tokenB.address, TEST_FEE);
   }
 
-  await hre.deployments.save('UniV3Pool', {
+  await hre.deployments.save('UniswapV3Pool', {
     abi: IUniswapV3Pool.abi,
     address: UNI_V3_POOL_ADDRESS,
   });
@@ -45,12 +45,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   /* INITIALIZE POOL */
 
-  let poolSlot0 = await hre.deployments.read('UniV3Pool', 'slot0');
+  let poolSlot0 = await hre.deployments.read('UniswapV3Pool', 'slot0');
 
   if (!poolSlot0.unlocked) {
     const sqrtPriceX96 = '79230197817658830592443'; // ~ 1=1
-    await hre.deployments.execute('UniV3Pool', txSettings, 'initialize', sqrtPriceX96);
-    await hre.deployments.execute('UniV3Pool', txSettings, 'increaseObservationCardinalityNext', 64);
+    await hre.deployments.execute('UniswapV3Pool', txSettings, 'initialize', sqrtPriceX96);
+    await hre.deployments.execute('UniswapV3Pool', txSettings, 'increaseObservationCardinalityNext', 64);
   }
 };
 

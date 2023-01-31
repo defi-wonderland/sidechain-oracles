@@ -18,8 +18,8 @@ describe('@skip-on-coverage Fixture', () => {
   let dataReceiver: Type.DataReceiver;
   let oracleFactory: Type.OracleFactory;
   let oracleSidechain: Type.OracleSidechain;
-  let uniV3Pool: Type.IUniswapV3Pool;
-  let uniV3Factory: Type.IUniswapV3Factory;
+  let uniswapV3Factory: Type.IUniswapV3Factory;
+  let uniswapV3Pool: Type.IUniswapV3Pool;
   let tokenA: Type.IERC20;
   let tokenB: Type.IERC20;
 
@@ -73,9 +73,9 @@ describe('@skip-on-coverage Fixture', () => {
       beforeEach(async () => {
         await deployments.fixture(['save-tokens', 'pool-whitelisting'], { keepExistingDeployments: true });
 
-        tokenA = (await getContractFromFixture('TokenA', 'ERC20ForTest')) as Type.IERC20;
-        tokenB = (await getContractFromFixture('TokenB', 'ERC20ForTest')) as Type.IERC20;
-        uniV3Pool = (await getContractFromFixture('UniV3Pool', 'IUniswapV3Pool')) as Type.IUniswapV3Pool;
+        tokenA = (await getContractFromFixture('TokenA', 'IERC20')) as Type.IERC20;
+        tokenB = (await getContractFromFixture('TokenB', 'IERC20')) as Type.IERC20;
+        uniswapV3Pool = (await getContractFromFixture('UniswapV3Pool', 'IUniswapV3Pool')) as Type.IUniswapV3Pool;
         poolSalt = calculateSalt(tokenA.address, tokenB.address, TEST_FEE);
         await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
       });

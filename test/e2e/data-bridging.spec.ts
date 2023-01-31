@@ -13,7 +13,7 @@ import {
   OracleFactory,
   OracleSidechain,
   IOracleSidechain,
-  ERC20,
+  IERC20,
 } from '@typechained';
 import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
@@ -42,9 +42,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let kp3rProxyGovernor: JsonRpcSigner;
   let keep3rV2: Keep3rV2;
   let uniswapV3Factory: UniswapV3Factory;
-  let uniV3Pool: UniswapV3Pool;
-  let tokenA: ERC20;
-  let tokenB: ERC20;
+  let uniswapV3Pool: UniswapV3Pool;
+  let tokenA: IERC20;
+  let tokenB: IERC20;
   let fee: number;
   let salt: string;
   let dataFeed: DataFeed;
@@ -74,7 +74,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    ({ uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee, keep3rV2, keeper, kp3rProxyGovernor } = await getEnvironment());
+    ({ uniswapV3Factory, uniswapV3Pool, tokenA, tokenB, fee, keep3rV2, keeper, kp3rProxyGovernor } = await getEnvironment());
 
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
@@ -127,7 +127,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           /// @notice: swap happens at now - 1.5 hours                         / here
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
+          ({ arithmeticMeanTicks } = await observePool(uniswapV3Pool, blockTimestamps, 0, toBN(0)));
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
@@ -179,7 +179,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
-          let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+          let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
           let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
           let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -208,7 +208,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           /// @notice: swap happens at now - 1.5 hours                         / here
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
+          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniswapV3Pool, blockTimestamps, 0, toBN(0)));
 
           lastBlockTimestampObserved = blockTimestamps[blockTimestamps.length - 1];
           lastTickCumulativeObserved = tickCumulatives[tickCumulatives.length - 1];
@@ -254,7 +254,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           beforeEach(async () => {
             blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
 
-            ({ arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, lastBlockTimestampObserved, lastTickCumulativeObserved));
+            ({ arithmeticMeanTicks } = await observePool(
+              uniswapV3Pool,
+              blockTimestamps,
+              lastBlockTimestampObserved,
+              lastTickCumulativeObserved
+            ));
 
             ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
@@ -317,7 +322,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
-            let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+            let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
             let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
             let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -364,7 +369,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when no thresholds are surpassed', () => {
           it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.be.revertedWith('DataFeedStrategy_NotStrategic()');
           });
         });
 
@@ -396,9 +401,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   });
 
   describe('OLD triggering', () => {
-    let uniV3Pool: UniswapV3Pool;
-    let tokenA: ERC20;
-    let tokenB: ERC20;
+    let uniswapV3Pool: UniswapV3Pool;
+    let tokenA: IERC20;
+    let tokenB: IERC20;
     let fee: number;
     let salt: string;
     let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
@@ -407,7 +412,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     const hours = 10_000;
 
     before(async () => {
-      ({ uniV3Pool, tokenA, tokenB, fee } = await getOLDEnvironment());
+      ({ uniswapV3Pool, tokenA, tokenB, fee } = await getOLDEnvironment());
 
       salt = calculateSalt(tokenA.address, tokenB.address, fee);
     });
@@ -452,13 +457,13 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when the last pool state observed is not older than the oldest observation', () => {
           it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.be.revertedWith('NotStrategic()');
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.be.revertedWith('DataFeedStrategy_NotStrategic()');
           });
         });
 
         context('when the last pool state observed is older than the oldest observation', () => {
           beforeEach(async () => {
-            [, , , , observationCardinalityNext, ,] = await uniV3Pool.slot0();
+            [, , , , observationCardinalityNext, ,] = await uniswapV3Pool.slot0();
             for (let i = 0; i < Math.round(observationCardinalityNext / 2); ++i) {
               await uniswapV3Swap(tokenB.address, swapAmount, tokenA.address, fee);
               await uniswapV3Swap(tokenA.address, toUnit(100), tokenB.address, fee);
@@ -499,10 +504,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
+        await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('Keep3rJob_KeeperNotValid()');
         await expect(
           strategyJob.connect(governor)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
-        ).to.be.revertedWith('KeeperNotValid()');
+        ).to.be.revertedWith('Keep3rJob_KeeperNotValid()');
       });
 
       it('should work the job', async () => {
@@ -612,7 +617,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
               const secondsAgos = [sampleDelta, 0];
 
-              let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+              let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
               let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
               let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -677,7 +682,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
               const secondsAgos = [sampleDelta, 0];
 
-              let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+              let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
               let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
               let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);

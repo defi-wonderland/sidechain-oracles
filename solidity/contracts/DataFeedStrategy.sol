@@ -1,10 +1,10 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './peripherals/Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {IDataFeedStrategy, IUniswapV3Pool, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeedStrategy.sol';
 import {OracleLibrary} from '@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol';
-import {Create2Address} from '../libraries/Create2Address.sol';
+import {Create2Address} from '@defi-wonderland/solidity-utils/solidity/libraries/Create2Address.sol';
 
 /// @title The DataFeed Strategy contract
 /// @notice Handles when and how a history of a pool should be updated
@@ -34,7 +34,7 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     IDataFeed _dataFeed,
     StrategySettings memory _params
   ) Governable(_governor) {
-    if (address(_dataFeed) == address(0)) revert ZeroAddress();
+    if (address(_dataFeed) == address(0)) revert DataFeedStrategy_ZeroAddress();
     dataFeed = _dataFeed;
     _setStrategyCooldown(_params.strategyCooldown);
     _setDefaultTwapThreshold(_params.defaultTwapThreshold);
@@ -53,10 +53,10 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     if (_reason == TriggerReason.OLD) {
       uint32 _timeSinceLastObservation = _secondsNow - _lastPoolStateObserved.blockTimestamp;
       uint32 _poolOldestSecondsAgo = _getPoolOldestSecondsAgo(_poolSalt);
-      if (!(_timeSinceLastObservation > _poolOldestSecondsAgo)) revert NotStrategic();
+      if (!(_timeSinceLastObservation > _poolOldestSecondsAgo)) revert DataFeedStrategy_NotStrategic();
       _fromSecondsAgo = _poolOldestSecondsAgo;
     } else {
-      if (!_isStrategic(_poolSalt, _lastPoolStateObserved, _reason)) revert NotStrategic();
+      if (!_isStrategic(_poolSalt, _lastPoolStateObserved, _reason)) revert DataFeedStrategy_NotStrategic();
       _fromSecondsAgo = _secondsNow - _lastPoolStateObserved.blockTimestamp;
     }
 
@@ -212,14 +212,14 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   function _setStrategyCooldown(uint32 _strategyCooldown) private {
-    if (_strategyCooldown < twapLength) revert WrongSetting();
+    if (_strategyCooldown < twapLength) revert DataFeedStrategy_WrongSetting();
 
     strategyCooldown = _strategyCooldown;
     emit StrategyCooldownSet(_strategyCooldown);
   }
 
   function _setDefaultTwapThreshold(uint24 _defaultTwapThreshold) private {
-    if (_defaultTwapThreshold == 0) revert ZeroThreshold();
+    if (_defaultTwapThreshold == 0) revert DataFeedStrategy_ZeroThreshold();
 
     defaultTwapThreshold = _defaultTwapThreshold;
     emit DefaultTwapThresholdSet(_defaultTwapThreshold);
@@ -231,14 +231,14 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   function _setTwapLength(uint32 _twapLength) private {
-    if ((_twapLength > strategyCooldown) || (_twapLength < periodDuration)) revert WrongSetting();
+    if ((_twapLength > strategyCooldown) || (_twapLength < periodDuration)) revert DataFeedStrategy_WrongSetting();
 
     twapLength = _twapLength;
     emit TwapLengthSet(_twapLength);
   }
 
   function _setPeriodDuration(uint32 _periodDuration) private {
-    if (_periodDuration > twapLength || _periodDuration == 0) revert WrongSetting();
+    if (_periodDuration > twapLength || _periodDuration == 0) revert DataFeedStrategy_WrongSetting();
 
     periodDuration = _periodDuration;
     emit PeriodDurationSet(_periodDuration);

@@ -19,4 +19,12 @@ interface IConnextReceiverAdapter is IXReceiver, IBridgeReceiverAdapter {
   /// @notice Gets the origin domain id
   /// @return _originDomain The origin domain id
   function originDomain() external view returns (uint32 _originDomain);
+
+  // ERRORS
+
+  /// @notice Thrown if a caller is not authorized
+  error ConnextReceiverAdapter_UnauthorizedCaller();
+
+  /// @notice Thrown if a state variable is set to the zero address
+  error ConnextReceiverAdapter_ZeroAddress();
 }

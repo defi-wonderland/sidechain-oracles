@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IGovernable} from './IGovernable.sol';
+import {IGovernable} from '@defi-wonderland/solidity-utils/solidity/interfaces/IGovernable.sol';
 import {IBridgeSenderAdapter} from '../bridges/IBridgeSenderAdapter.sol';
 
 interface IPipelineManagement is IGovernable {
@@ -58,28 +58,28 @@ interface IPipelineManagement is IGovernable {
   // ERRORS
 
   /// @notice Thrown if the pipeline is already whitelisted
-  error AlreadyAllowedPipeline();
+  error PipelineManagement_AlreadyAllowedPipeline();
 
   /// @notice Thrown if the pool is not whitelisted
-  error UnallowedPool();
+  error PipelineManagement_UnallowedPool();
 
   /// @notice Thrown if the pipeline is not whitelisted
-  error UnallowedPipeline();
+  error PipelineManagement_UnallowedPipeline();
 
   /// @notice Thrown if the nonce is below the whitelisted nonce
-  error WrongNonce();
+  error PipelineManagement_WrongNonce();
 
   /// @notice Thrown if the bridge sender adapter is not whitelisted
-  error UnallowedAdapter();
+  error PipelineManagement_UnallowedAdapter();
 
   /// @notice Thrown if the destination domain id is not set
-  error DestinationDomainIdNotSet();
+  error PipelineManagement_DestinationDomainIdNotSet();
 
   /// @notice Thrown if the DataReceiver contract is not set
-  error ReceiverNotSet();
+  error PipelineManagement_ReceiverNotSet();
 
   /// @notice Thrown if the lenths of a set of lists mismatch
-  error LengthMismatch();
+  error PipelineManagement_LengthMismatch();
 
   // FUNCTIONS
 

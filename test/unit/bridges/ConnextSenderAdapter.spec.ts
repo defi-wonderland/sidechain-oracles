@@ -40,11 +40,15 @@ describe('ConnextSenderAdapter.sol', () => {
 
   describe('constructor(...)', () => {
     it('should revert if dataFeed is set to the zero address', async () => {
-      await expect(connextSenderAdapterFactory.deploy(ZERO_ADDRESS, connextHandler.address)).to.be.revertedWith('ZeroAddress()');
+      await expect(connextSenderAdapterFactory.deploy(ZERO_ADDRESS, connextHandler.address)).to.be.revertedWith(
+        'ConnextSenderAdapter_ZeroAddress()'
+      );
     });
 
     it('should revert if connext is set to the zero address', async () => {
-      await expect(connextSenderAdapterFactory.deploy(randomFeed.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+      await expect(connextSenderAdapterFactory.deploy(randomFeed.address, ZERO_ADDRESS)).to.be.revertedWith(
+        'ConnextSenderAdapter_ZeroAddress()'
+      );
     });
 
     it('should initialize dataFeed interface', async () => {

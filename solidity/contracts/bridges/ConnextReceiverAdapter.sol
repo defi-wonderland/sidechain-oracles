@@ -20,7 +20,7 @@ contract ConnextReceiverAdapter is IConnextReceiverAdapter, BridgeReceiverAdapte
     address _source,
     uint32 _originDomain
   ) BridgeReceiverAdapter(_dataReceiver) {
-    if (address(_connext) == address(0) || _source == address(0)) revert ZeroAddress();
+    if (address(_connext) == address(0) || _source == address(0)) revert ConnextReceiverAdapter_ZeroAddress();
     connext = _connext;
     source = _source;
     originDomain = _originDomain;
@@ -44,7 +44,8 @@ contract ConnextReceiverAdapter is IConnextReceiverAdapter, BridgeReceiverAdapte
   }
 
   modifier onlyExecutor(address _originSender, uint32 _originDomain) {
-    if (msg.sender != address(connext) || _originSender != source || _originDomain != originDomain) revert UnauthorizedCaller();
+    if (msg.sender != address(connext) || _originSender != source || _originDomain != originDomain)
+      revert ConnextReceiverAdapter_UnauthorizedCaller();
     _;
   }
 }

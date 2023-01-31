@@ -1,9 +1,8 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {IPipelineManagement, IBridgeSenderAdapter} from '../../interfaces/peripherals/IPipelineManagement.sol';
-import {IDataFeed} from '../../interfaces/IDataFeed.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 abstract contract PipelineManagement is IPipelineManagement, Governable {
@@ -36,7 +35,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   /// @inheritdoc IPipelineManagement
   function whitelistPipelines(uint32[] calldata _chainIds, bytes32[] calldata _poolSalts) external onlyGovernor {
     uint256 _chainIdsLength = _chainIds.length;
-    if (_chainIdsLength != _poolSalts.length) revert LengthMismatch();
+    if (_chainIdsLength != _poolSalts.length) revert PipelineManagement_LengthMismatch();
     unchecked {
       for (uint256 _i; _i < _chainIdsLength; ++_i) {
         _whitelistPipeline(_chainIds[_i], _poolSalts[_i]);
@@ -52,7 +51,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   /// @inheritdoc IPipelineManagement
   function whitelistAdapters(IBridgeSenderAdapter[] calldata _bridgeSenderAdapters, bool[] calldata _isWhitelisted) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
-    if (_bridgeSenderAdapterLength != _isWhitelisted.length) revert LengthMismatch();
+    if (_bridgeSenderAdapterLength != _isWhitelisted.length) revert PipelineManagement_LengthMismatch();
     unchecked {
       for (uint256 _i; _i < _bridgeSenderAdapterLength; ++_i) {
         _whitelistAdapter(_bridgeSenderAdapters[_i], _isWhitelisted[_i]);
@@ -76,7 +75,8 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     uint32[] calldata _destinationDomainIds
   ) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
-    if (_bridgeSenderAdapterLength != _chainIds.length || _bridgeSenderAdapterLength != _destinationDomainIds.length) revert LengthMismatch();
+    if (_bridgeSenderAdapterLength != _chainIds.length || _bridgeSenderAdapterLength != _destinationDomainIds.length)
+      revert PipelineManagement_LengthMismatch();
     unchecked {
       for (uint256 _i; _i < _bridgeSenderAdapterLength; ++_i) {
         _setDestinationDomainId(_bridgeSenderAdapters[_i], _chainIds[_i], _destinationDomainIds[_i]);
@@ -101,7 +101,7 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   ) external onlyGovernor {
     uint256 _bridgeSenderAdapterLength = _bridgeSenderAdapters.length;
     if (_bridgeSenderAdapterLength != _destinationDomainIds.length || _bridgeSenderAdapterLength != _dataReceivers.length)
-      revert LengthMismatch();
+      revert PipelineManagement_LengthMismatch();
     unchecked {
       for (uint256 _i; _i < _bridgeSenderAdapterLength; ++_i) {
         _setReceiver(_bridgeSenderAdapters[_i], _destinationDomainIds[_i], _dataReceivers[_i]);
@@ -129,23 +129,25 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     return whitelistedNonces[_chainId][_poolSalt] != 0;
   }
 
+  function getPoolNonce(bytes32 _poolSalt) public view virtual returns (uint24 _poolNonce);
+
   /// @inheritdoc IPipelineManagement
   function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _chainId)
     public
     view
     returns (uint32 _destinationDomainId, address _dataReceiver)
   {
-    if (!whitelistedAdapters[_bridgeSenderAdapter]) revert UnallowedAdapter();
+    if (!whitelistedAdapters[_bridgeSenderAdapter]) revert PipelineManagement_UnallowedAdapter();
 
     _destinationDomainId = destinationDomainIds[_bridgeSenderAdapter][_chainId];
-    if (_destinationDomainId == 0) revert DestinationDomainIdNotSet();
+    if (_destinationDomainId == 0) revert PipelineManagement_DestinationDomainIdNotSet();
 
     _dataReceiver = receivers[_bridgeSenderAdapter][_destinationDomainId];
-    if (_dataReceiver == address(0)) revert ReceiverNotSet();
+    if (_dataReceiver == address(0)) revert PipelineManagement_ReceiverNotSet();
   }
 
   function _whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) internal {
-    if (whitelistedNonces[_chainId][_poolSalt] != 0) revert AlreadyAllowedPipeline();
+    if (whitelistedNonces[_chainId][_poolSalt] != 0) revert PipelineManagement_AlreadyAllowedPipeline();
 
     uint24 _whitelistedNonce = getPoolNonce(_poolSalt) + 1;
     whitelistedNonces[_chainId][_poolSalt] = _whitelistedNonce;
@@ -177,10 +179,8 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     emit ReceiverSet(_bridgeSenderAdapter, _destinationDomainId, _dataReceiver);
   }
 
-  function getPoolNonce(bytes32 _poolSalt) public view virtual returns (uint24 _poolNonce);
-
   modifier validatePool(bytes32 _poolSalt) {
-    if (!_whitelistedPools.contains(_poolSalt)) revert UnallowedPool();
+    if (!_whitelistedPools.contains(_poolSalt)) revert PipelineManagement_UnallowedPool();
     _;
   }
 
@@ -190,8 +190,8 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
     uint24 _poolNonce
   ) {
     uint24 _whitelistedNonce = whitelistedNonces[_chainId][_poolSalt];
-    if (_whitelistedNonce == 0) revert UnallowedPipeline();
-    if (_whitelistedNonce > _poolNonce) revert WrongNonce();
+    if (_whitelistedNonce == 0) revert PipelineManagement_UnallowedPipeline();
+    if (_whitelistedNonce > _poolNonce) revert PipelineManagement_WrongNonce();
     _;
   }
 }

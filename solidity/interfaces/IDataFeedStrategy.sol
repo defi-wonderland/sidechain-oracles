@@ -1,7 +1,7 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IGovernable} from './peripherals/IGovernable.sol';
+import {IGovernable} from '@defi-wonderland/solidity-utils/solidity/interfaces/IGovernable.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IDataFeed} from './IDataFeed.sol';
 import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
@@ -79,13 +79,16 @@ interface IDataFeedStrategy is IGovernable {
   // ERRORS
 
   /// @notice Thrown if the tx is not strategic
-  error NotStrategic();
+  error DataFeedStrategy_NotStrategic();
 
   /// @notice Thrown if setting breaks strategyCooldown >= twapLength >= periodDuration
-  error WrongSetting();
+  error DataFeedStrategy_WrongSetting();
+
+  /// @notice Thrown if DataFeed is set to the zero address
+  error DataFeedStrategy_ZeroAddress();
 
   /// @notice Thrown if defaultTwapThreshold is set to zero
-  error ZeroThreshold();
+  error DataFeedStrategy_ZeroThreshold();
 
   // FUNCTIONS
 

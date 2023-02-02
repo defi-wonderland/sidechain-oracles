@@ -65,7 +65,7 @@ describe('DataFeedStrategy.sol', () => {
           defaultTwapThreshold: initialDefaultTwapThreshold,
           twapLength: initialTwapLength,
         })
-      ).to.be.revertedWith('DataFeedStrategy_ZeroAddress()');
+      ).to.be.revertedWith('ZeroAddress()');
     });
 
     it('should set the governor', async () => {
@@ -106,9 +106,7 @@ describe('DataFeedStrategy.sol', () => {
 
       it('should revert if strategyCooldown has not expired', async () => {
         dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([1, now, 0, 0]);
-        await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TIME_TRIGGER)).to.be.revertedWith(
-          'DataFeedStrategy_NotStrategic()'
-        );
+        await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TIME_TRIGGER)).to.be.revertedWith('NotStrategic()');
       });
 
       it('should call to fetch observations (having calculated secondsAgos)', async () => {
@@ -176,9 +174,7 @@ describe('DataFeedStrategy.sol', () => {
             });
 
             it('should revert', async () => {
-              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith(
-                'DataFeedStrategy_NotStrategic()'
-              );
+              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
             });
           });
 
@@ -231,9 +227,7 @@ describe('DataFeedStrategy.sol', () => {
             });
 
             it('should revert', async () => {
-              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith(
-                'DataFeedStrategy_NotStrategic()'
-              );
+              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
             });
           });
 
@@ -277,7 +271,7 @@ describe('DataFeedStrategy.sol', () => {
 
       it('should revert if the last pool state observed is not older than the oldest observation', async () => {
         dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, poolOldestObservationTimestamp, 0, 0]);
-        await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, OLD_TRIGGER)).to.be.revertedWith('DataFeedStrategy_NotStrategic()');
+        await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, OLD_TRIGGER)).to.be.revertedWith('NotStrategic()');
       });
 
       it('should call to fetch observations (having calculated secondsAgos)', async () => {
@@ -309,9 +303,7 @@ describe('DataFeedStrategy.sol', () => {
     );
 
     it('should revert if strategyCooldown < twapLength', async () => {
-      await expect(dataFeedStrategy.connect(governor).setStrategyCooldown(initialTwapLength - 1)).to.be.revertedWith(
-        'DataFeedStrategy_WrongSetting()'
-      );
+      await expect(dataFeedStrategy.connect(governor).setStrategyCooldown(initialTwapLength - 1)).to.be.revertedWith('WrongSetting()');
       await expect(dataFeedStrategy.connect(governor).setStrategyCooldown(initialTwapLength)).not.to.be.reverted;
     });
 
@@ -338,7 +330,7 @@ describe('DataFeedStrategy.sol', () => {
     );
 
     it('should revert if set to zero', async () => {
-      await expect(dataFeedStrategy.connect(governor).setDefaultTwapThreshold(0)).to.be.revertedWith('DataFeedStrategy_ZeroThreshold()');
+      await expect(dataFeedStrategy.connect(governor).setDefaultTwapThreshold(0)).to.be.revertedWith('ZeroAmount()');
     });
 
     it('should update the defaultTwapThreshold', async () => {
@@ -393,16 +385,12 @@ describe('DataFeedStrategy.sol', () => {
     );
 
     it('should revert if twapLength > strategyCooldown', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialStrategyCooldown + 1)).to.be.revertedWith(
-        'DataFeedStrategy_WrongSetting()'
-      );
+      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialStrategyCooldown + 1)).to.be.revertedWith('WrongSetting()');
       await expect(dataFeedStrategy.connect(governor).setTwapLength(initialStrategyCooldown)).not.to.be.reverted;
     });
 
     it('should revert if twapLength < periodDuration', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodDuration - 1)).to.be.revertedWith(
-        'DataFeedStrategy_WrongSetting()'
-      );
+      await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodDuration - 1)).to.be.revertedWith('WrongSetting()');
       await expect(dataFeedStrategy.connect(governor).setTwapLength(initialPeriodDuration)).not.to.be.reverted;
     });
 
@@ -429,14 +417,12 @@ describe('DataFeedStrategy.sol', () => {
     );
 
     it('should revert if periodDuration > twapLength', async () => {
-      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength + 1)).to.be.revertedWith(
-        'DataFeedStrategy_WrongSetting()'
-      );
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
       await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength)).not.to.be.reverted;
     });
 
     it('should revert if periodDuration = 0', async () => {
-      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(0)).to.be.revertedWith('DataFeedStrategy_WrongSetting()');
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(0)).to.be.revertedWith('WrongSetting()');
     });
 
     it('should update the periodDuration', async () => {

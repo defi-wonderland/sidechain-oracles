@@ -91,7 +91,7 @@ describe('OracleFactory.sol', () => {
     );
 
     it('should revert if dataReceiver is set to the zero address', async () => {
-      await expect(oracleFactory.connect(governor).setDataReceiver(ZERO_ADDRESS)).to.be.revertedWith('OracleFactory_ZeroAddress()');
+      await expect(oracleFactory.connect(governor).setDataReceiver(ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
     });
 
     it('should set dataReceiver to the provided address', async () => {
@@ -115,7 +115,7 @@ describe('OracleFactory.sol', () => {
     );
 
     it('should revert if the initial cardinality is set to zero', async () => {
-      await expect(oracleFactory.connect(governor).setInitialCardinality(0)).to.be.revertedWith('OracleFactory_ZeroCardinality()');
+      await expect(oracleFactory.connect(governor).setInitialCardinality(0)).to.be.revertedWith('ZeroAmount()');
     });
 
     it('should set the initial cardinality to the provided address', async () => {

@@ -369,7 +369,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when no thresholds are surpassed', () => {
           it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.be.revertedWith('DataFeedStrategy_NotStrategic()');
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
           });
         });
 
@@ -457,7 +457,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         context('when the last pool state observed is not older than the oldest observation', () => {
           it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.be.revertedWith('DataFeedStrategy_NotStrategic()');
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.be.revertedWith('NotStrategic()');
           });
         });
 
@@ -504,10 +504,10 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       });
 
       it('should revert if the keeper is not valid', async () => {
-        await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('Keep3rJob_KeeperNotValid()');
+        await expect(strategyJob.connect(governor)['work(bytes32,uint8)'](salt, TIME_TRIGGER)).to.be.revertedWith('KeeperNotValid()');
         await expect(
           strategyJob.connect(governor)['work(uint32,bytes32,uint24,(uint32,int24)[])'](RANDOM_CHAIN_ID, salt, nonce, observationsData)
-        ).to.be.revertedWith('Keep3rJob_KeeperNotValid()');
+        ).to.be.revertedWith('KeeperNotValid()');
       });
 
       it('should work the job', async () => {

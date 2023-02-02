@@ -19,7 +19,7 @@ abstract contract Keep3rJob is IKeep3rJob, Governable {
   }
 
   function _isValidKeeper(address _keeper) internal virtual {
-    if (!keep3r.isKeeper(_keeper)) revert Keep3rJob_KeeperNotValid();
+    if (!keep3r.isKeeper(_keeper)) revert KeeperNotValid();
   }
 
   modifier upkeep() {

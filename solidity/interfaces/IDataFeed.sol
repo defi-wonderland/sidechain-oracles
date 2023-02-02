@@ -76,22 +76,16 @@ interface IDataFeed is IPipelineManagement {
   // ERRORS
 
   /// @notice Thrown if set of secondsAgos is invalid to update the oracle
-  error DataFeed_InvalidSecondsAgos();
+  error InvalidSecondsAgos();
 
   /// @notice Thrown if the last oracle delta is less than minLastOracleDelta
-  error DataFeed_InsufficientDelta();
+  error InsufficientDelta();
 
   /// @notice Thrown if an unknown dataset is being broadcast
-  error DataFeed_UnknownHash();
+  error UnknownHash();
 
   /// @notice Thrown if a contract other than Strategy calls an update
-  error DataFeed_OnlyStrategy();
-
-  /// @notice Thrown if Strategy is set to the zero address
-  error DataFeed_ZeroAddress();
-
-  /// @notice Thrown if minLastOracleDelta is set to zero
-  error DataFeed_ZeroDelta();
+  error OnlyStrategy();
 
   // FUNCTIONS
 

@@ -64,9 +64,7 @@ describe('PipelineManagement.sol', () => {
 
     it('should revert if the pipeline has already been whitelisted', async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
-      await expect(dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt)).to.be.revertedWith(
-        'PipelineManagement_AlreadyAllowedPipeline()'
-      );
+      await expect(dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt)).to.be.revertedWith('AlreadyAllowedPipeline()');
     });
 
     it('should whitelist the next pool nonce to be observed', async () => {
@@ -117,15 +115,13 @@ describe('PipelineManagement.sol', () => {
       const mismatchedArgs = [[randomChainId, randomChainId2], [randomSalt]];
       const mismatchedArgs2 = [[randomChainId], [randomSalt, randomSalt2]];
 
-      await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs)).to.be.revertedWith('PipelineManagement_LengthMismatch()');
-      await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs2)).to.be.revertedWith('PipelineManagement_LengthMismatch()');
+      await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
+      await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
     });
 
     it('should revert if the pipelines have already been whitelisted', async () => {
       await dataFeed.connect(governor).whitelistPipelines(...validArgs);
-      await expect(dataFeed.connect(governor).whitelistPipelines(...validArgs)).to.be.revertedWith(
-        'PipelineManagement_AlreadyAllowedPipeline()'
-      );
+      await expect(dataFeed.connect(governor).whitelistPipelines(...validArgs)).to.be.revertedWith('AlreadyAllowedPipeline()');
     });
 
     it('should whitelist the next pool nonces to be observed', async () => {
@@ -198,11 +194,11 @@ describe('PipelineManagement.sol', () => {
 
     it('should revert if the lengths of the arguments do not match', async () => {
       await expect(dataFeed.connect(governor).whitelistAdapters([connextSenderAdapter.address, fakeAdapter.address], [true])).to.be.revertedWith(
-        'PipelineManagement_LengthMismatch()'
+        'LengthMismatch()'
       );
 
       await expect(dataFeed.connect(governor).whitelistAdapters([connextSenderAdapter.address], [true, true])).to.be.revertedWith(
-        'PipelineManagement_LengthMismatch()'
+        'LengthMismatch()'
       );
     });
 
@@ -293,15 +289,9 @@ describe('PipelineManagement.sol', () => {
         [randomDestinationDomainId, randomDestinationDomainId2],
       ];
 
-      await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs)).to.be.revertedWith(
-        'PipelineManagement_LengthMismatch()'
-      );
-      await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs2)).to.be.revertedWith(
-        'PipelineManagement_LengthMismatch()'
-      );
-      await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs3)).to.be.revertedWith(
-        'PipelineManagement_LengthMismatch()'
-      );
+      await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
+      await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
+      await expect(dataFeed.connect(governor).setDestinationDomainIds(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
     });
 
     it('should set the destination domain ids', async () => {
@@ -381,9 +371,9 @@ describe('PipelineManagement.sol', () => {
         [randomDataReceiverAddress, randomDataReceiverAddress2],
       ];
 
-      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs)).to.be.revertedWith('PipelineManagement_LengthMismatch()');
-      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs2)).to.be.revertedWith('PipelineManagement_LengthMismatch()');
-      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs3)).to.be.revertedWith('PipelineManagement_LengthMismatch()');
+      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
+      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
+      await expect(dataFeed.connect(governor).setReceivers(...mismatchedArgs3)).to.be.revertedWith('LengthMismatch()');
     });
 
     it('should set the receivers', async () => {
@@ -462,9 +452,7 @@ describe('PipelineManagement.sol', () => {
   describe('validateSenderAdapter(...)', () => {
     context('when the adapter is not whitelisted', () => {
       it('should revert', async () => {
-        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith(
-          'PipelineManagement_UnallowedAdapter'
-        );
+        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith('UnallowedAdapter');
       });
     });
 
@@ -472,7 +460,7 @@ describe('PipelineManagement.sol', () => {
       it('should revert', async () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith(
-          'PipelineManagement_DestinationDomainIdNotSet'
+          'DestinationDomainIdNotSet'
         );
       });
     });
@@ -481,9 +469,7 @@ describe('PipelineManagement.sol', () => {
       it('should revert', async () => {
         await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
         await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, randomChainId, randomDestinationDomainId);
-        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith(
-          'PipelineManagement_ReceiverNotSet'
-        );
+        await expect(dataFeed.validateSenderAdapter(connextSenderAdapter.address, randomChainId)).to.be.revertedWith('ReceiverNotSet');
       });
     });
 

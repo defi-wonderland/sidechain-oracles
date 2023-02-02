@@ -1,11 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IBaseErrors} from '@defi-wonderland/solidity-utils/solidity/interfaces/IBaseErrors.sol';
 import {IConnext} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IConnext.sol';
 import {IBridgeSenderAdapter, IOracleSidechain} from './IBridgeSenderAdapter.sol';
 import {IDataFeed} from '../IDataFeed.sol';
 
-interface IConnextSenderAdapter is IBridgeSenderAdapter {
+interface IConnextSenderAdapter is IBaseErrors, IBridgeSenderAdapter {
   // STATE VARIABLES
 
   /// @notice Gets the address of the DataFeed contract
@@ -19,8 +20,5 @@ interface IConnextSenderAdapter is IBridgeSenderAdapter {
   // ERRORS
 
   /// @notice Thrown if the DataFeed contract is not the one calling for bridging observations
-  error ConnextSenderAdapter_OnlyDataFeed();
-
-  /// @notice Thrown if a state variable is set to the zero address
-  error ConnextSenderAdapter_ZeroAddress();
+  error OnlyDataFeed();
 }

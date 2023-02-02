@@ -57,13 +57,7 @@ interface IOracleFactory is IGovernable {
   // ERRORS
 
   /// @notice Thrown when a contract other than the DataReceiver tries to deploy an oracle
-  error OracleFactory_OnlyDataReceiver();
-
-  /// @notice Thrown if DataReceiver is set to the zero address
-  error OracleFactory_ZeroAddress();
-
-  /// @notice Thrown if initialCardinality is set to zero
-  error OracleFactory_ZeroCardinality();
+  error OnlyDataReceiver();
 
   // FUNCTIONS
 

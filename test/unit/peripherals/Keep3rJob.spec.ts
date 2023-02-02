@@ -60,7 +60,7 @@ describe('Keep3rJob.sol', () => {
 
     it('should revert with the correct error', async () => {
       keep3r.isKeeper.whenCalledWith(randomAddress).returns(false);
-      await expect(keep3rJob.internalIsValidKeeper(randomAddress)).to.be.revertedWith('Keep3rJob_KeeperNotValid()');
+      await expect(keep3rJob.internalIsValidKeeper(randomAddress)).to.be.revertedWith('KeeperNotValid()');
     });
   });
 });

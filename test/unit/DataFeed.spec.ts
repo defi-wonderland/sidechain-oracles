@@ -83,19 +83,19 @@ describe('DataFeed.sol', () => {
     it('should revert if the pipeline is not whitelisted', async () => {
       await expect(
         dataFeed.sendObservations(connextSenderAdapter.address, randomChainId2, randomSalt, nonce, observationsData)
-      ).to.be.revertedWith('PipelineManagement_UnallowedPipeline()');
+      ).to.be.revertedWith('UnallowedPipeline()');
     });
 
     it('should revert if the nonce is lower than the whitelisted nonce', async () => {
       await expect(
         dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, nonce - 1, observationsData)
-      ).to.be.revertedWith('PipelineManagement_WrongNonce()');
+      ).to.be.revertedWith('WrongNonce()');
     });
 
     it('should revert if the hash is unknown', async () => {
       await expect(
         dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, nonce, observationsData)
-      ).to.be.revertedWith('DataFeed_UnknownHash()');
+      ).to.be.revertedWith('UnknownHash()');
     });
 
     context('when the hash is valid', () => {
@@ -164,9 +164,7 @@ describe('DataFeed.sol', () => {
     );
 
     it('should revert if the pool is not whitelisted', async () => {
-      await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
-        'PipelineManagement_UnallowedPool()'
-      );
+      await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('UnallowedPool()');
     });
 
     context('when the pool is whitelisted', () => {
@@ -208,9 +206,7 @@ describe('DataFeed.sol', () => {
           tickCumulatives = [0];
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
-          await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
-            'DataFeed_InvalidSecondsAgos()'
-          );
+          await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InvalidSecondsAgos()');
         });
 
         it('should revert if the last oracle delta is insufficient', async () => {
@@ -218,7 +214,7 @@ describe('DataFeed.sol', () => {
           tickCumulatives = [0, 0];
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
-          await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('DataFeed_InsufficientDelta()');
+          await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InsufficientDelta()');
         });
 
         // arithmeticMeanTick = tickCumulativesDelta / delta
@@ -402,9 +398,7 @@ describe('DataFeed.sol', () => {
               tickCumulatives = [0];
               uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
-              await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
-                'DataFeed_InsufficientDelta()'
-              );
+              await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InsufficientDelta()');
             });
 
             it('should revert with more than 1 datapoint', async () => {
@@ -412,9 +406,7 @@ describe('DataFeed.sol', () => {
               tickCumulatives = [0, 0];
               uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
-              await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
-                'DataFeed_InsufficientDelta()'
-              );
+              await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InsufficientDelta()');
             });
           });
 
@@ -568,7 +560,7 @@ describe('DataFeed.sol', () => {
     );
 
     it('should revert if set to the zero address', async () => {
-      await expect(dataFeed.connect(governor).setStrategy(ZERO_ADDRESS)).to.be.revertedWith('DataFeed_ZeroAddress()');
+      await expect(dataFeed.connect(governor).setStrategy(ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
     });
 
     it('should update the strategy', async () => {
@@ -592,7 +584,7 @@ describe('DataFeed.sol', () => {
     );
 
     it('should revert if set to zero', async () => {
-      await expect(dataFeed.connect(governor).setMinLastOracleDelta(0)).to.be.revertedWith('DataFeed_ZeroDelta()');
+      await expect(dataFeed.connect(governor).setMinLastOracleDelta(0)).to.be.revertedWith('ZeroAmount()');
     });
 
     it('should update the minLastOracleDelta', async () => {

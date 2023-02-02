@@ -41,7 +41,7 @@ contract OracleFactory is IOracleFactory, Governable {
 
   /// @inheritdoc IOracleFactory
   function setInitialCardinality(uint16 _initialCardinality) external onlyGovernor {
-    if (_initialCardinality == 0) revert OracleFactory_ZeroCardinality();
+    if (_initialCardinality == 0) revert ZeroAmount();
 
     initialCardinality = _initialCardinality;
     emit InitialCardinalitySet(_initialCardinality);
@@ -79,14 +79,14 @@ contract OracleFactory is IOracleFactory, Governable {
   }
 
   function _setDataReceiver(IDataReceiver _dataReceiver) private {
-    if (address(_dataReceiver) == address(0)) revert OracleFactory_ZeroAddress();
+    if (address(_dataReceiver) == address(0)) revert ZeroAddress();
 
     dataReceiver = _dataReceiver;
     emit DataReceiverSet(_dataReceiver);
   }
 
   modifier onlyDataReceiver() {
-    if (msg.sender != address(dataReceiver)) revert OracleFactory_OnlyDataReceiver();
+    if (msg.sender != address(dataReceiver)) revert OnlyDataReceiver();
     _;
   }
 }

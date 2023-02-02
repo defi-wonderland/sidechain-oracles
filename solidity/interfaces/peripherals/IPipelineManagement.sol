@@ -58,28 +58,25 @@ interface IPipelineManagement is IGovernable {
   // ERRORS
 
   /// @notice Thrown if the pipeline is already whitelisted
-  error PipelineManagement_AlreadyAllowedPipeline();
+  error AlreadyAllowedPipeline();
 
   /// @notice Thrown if the pool is not whitelisted
-  error PipelineManagement_UnallowedPool();
+  error UnallowedPool();
 
   /// @notice Thrown if the pipeline is not whitelisted
-  error PipelineManagement_UnallowedPipeline();
+  error UnallowedPipeline();
 
   /// @notice Thrown if the nonce is below the whitelisted nonce
-  error PipelineManagement_WrongNonce();
+  error WrongNonce();
 
   /// @notice Thrown if the bridge sender adapter is not whitelisted
-  error PipelineManagement_UnallowedAdapter();
+  error UnallowedAdapter();
 
   /// @notice Thrown if the destination domain id is not set
-  error PipelineManagement_DestinationDomainIdNotSet();
+  error DestinationDomainIdNotSet();
 
   /// @notice Thrown if the DataReceiver contract is not set
-  error PipelineManagement_ReceiverNotSet();
-
-  /// @notice Thrown if the lenths of a set of lists mismatch
-  error PipelineManagement_LengthMismatch();
+  error ReceiverNotSet();
 
   // FUNCTIONS
 

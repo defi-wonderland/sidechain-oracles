@@ -12,7 +12,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
   IConnext public immutable connext;
 
   constructor(IDataFeed _dataFeed, IConnext _connext) {
-    if (address(_dataFeed) == address(0) || address(_connext) == address(0)) revert ConnextSenderAdapter_ZeroAddress();
+    if (address(_dataFeed) == address(0) || address(_connext) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
     connext = _connext;
   }
@@ -39,7 +39,7 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
   }
 
   modifier onlyDataFeed() {
-    if (msg.sender != address(dataFeed)) revert ConnextSenderAdapter_OnlyDataFeed();
+    if (msg.sender != address(dataFeed)) revert OnlyDataFeed();
     _;
   }
 }

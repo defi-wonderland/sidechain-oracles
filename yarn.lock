@@ -292,10 +292,10 @@
     rxjs "^7.2.0"
     semver "^7.3.5"
 
-"@defi-wonderland/solidity-utils@0.0.0-e318b987":
-  version "0.0.0-e318b987"
-  resolved "https://registry.yarnpkg.com/@defi-wonderland/solidity-utils/-/solidity-utils-0.0.0-e318b987.tgz#2db3ef5154e73a7b4d04718497a4de3947ba498d"
-  integrity sha512-98cazKHRswoy3mSXM5GgjjEHThFDUnyKM7TLbji5AIGCngERrV7RBxURTf0R8DOqOvWCqnARTXXAvmEA4dnulg==
+"@defi-wonderland/solidity-utils@0.0.0-6c86c0fc":
+  version "0.0.0-6c86c0fc"
+  resolved "https://registry.yarnpkg.com/@defi-wonderland/solidity-utils/-/solidity-utils-0.0.0-6c86c0fc.tgz#36da2deab6e181299c4ec328a0719d044142cab3"
+  integrity sha512-JVRPMw06UiK0LRMi5wuIH9bkx33+3DSIUdN4QHhlqqGQa9rm9r6H/yVBWDOchACiJIfaShfLZZA0gAnL8tkkvA==
   dependencies:
     "@openzeppelin/contracts" "4.8.1"
     ds-test "https://github.com/dapphub/ds-test"

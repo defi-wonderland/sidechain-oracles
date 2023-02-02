@@ -79,16 +79,10 @@ interface IDataFeedStrategy is IGovernable {
   // ERRORS
 
   /// @notice Thrown if the tx is not strategic
-  error DataFeedStrategy_NotStrategic();
+  error NotStrategic();
 
   /// @notice Thrown if setting breaks strategyCooldown >= twapLength >= periodDuration
-  error DataFeedStrategy_WrongSetting();
-
-  /// @notice Thrown if DataFeed is set to the zero address
-  error DataFeedStrategy_ZeroAddress();
-
-  /// @notice Thrown if defaultTwapThreshold is set to zero
-  error DataFeedStrategy_ZeroThreshold();
+  error WrongSetting();
 
   // FUNCTIONS
 

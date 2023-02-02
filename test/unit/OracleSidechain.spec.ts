@@ -91,22 +91,14 @@ describe('OracleSidechain.sol', () => {
 
   describe('initializePoolInfo(...)', () => {
     it('should revert if pool info is incorrect', async () => {
-      await expect(oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, 0)).to.be.revertedWith('OracleSidechain_InvalidPool()');
-      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, randomTokenB, randomFee)).to.be.revertedWith(
-        'OracleSidechain_InvalidPool()'
-      );
-      await expect(oracleSidechain.initializePoolInfo(randomTokenA, ZERO_ADDRESS, randomFee)).to.be.revertedWith(
-        'OracleSidechain_InvalidPool()'
-      );
+      await expect(oracleSidechain.initializePoolInfo(randomTokenA, randomTokenB, 0)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, randomTokenB, randomFee)).to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.initializePoolInfo(randomTokenA, ZERO_ADDRESS, randomFee)).to.be.revertedWith('InvalidPool()');
     });
 
     it('should work with disordered tokens', async () => {
-      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenA, randomTokenB, randomFee)).not.to.be.revertedWith(
-        'OracleSidechain_InvalidPool()'
-      );
-      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenB, randomTokenA, randomFee)).not.to.be.revertedWith(
-        'OracleSidechain_InvalidPool()'
-      );
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenA, randomTokenB, randomFee)).not.to.be.revertedWith('InvalidPool()');
+      await expect(oracleSidechain.callStatic.initializePoolInfo(randomTokenB, randomTokenA, randomFee)).not.to.be.revertedWith('InvalidPool()');
     });
 
     it('should set token0', async () => {
@@ -138,7 +130,7 @@ describe('OracleSidechain.sol', () => {
     it('should revert after pool info was initialized', async () => {
       await oracleSidechain.setVariable('slot0', { ['unlocked']: false });
 
-      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith('OracleSidechain_AI()');
+      await expect(oracleSidechain.initializePoolInfo(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith('AI()');
     });
   });
 
@@ -354,8 +346,8 @@ describe('OracleSidechain.sol', () => {
     );
 
     it('should revert if not increasing', async () => {
-      await expect(oracleSidechain.increaseObservationCardinalityNext(CARDINALITY - 1)).to.be.revertedWith('OracleSidechain_AI()');
-      await expect(oracleSidechain.increaseObservationCardinalityNext(CARDINALITY)).to.be.revertedWith('OracleSidechain_AI()');
+      await expect(oracleSidechain.increaseObservationCardinalityNext(CARDINALITY - 1)).to.be.revertedWith('AI()');
+      await expect(oracleSidechain.increaseObservationCardinalityNext(CARDINALITY)).to.be.revertedWith('AI()');
     });
 
     it('should update the slot0', async () => {

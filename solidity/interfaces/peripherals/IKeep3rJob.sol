@@ -19,7 +19,7 @@ interface IKeep3rJob is IGovernable {
   // ERRORS
 
   /// @notice Throws when a keeper fails the validation
-  error Keep3rJob_KeeperNotValid();
+  error KeeperNotValid();
 
   // FUNCTIONS
 

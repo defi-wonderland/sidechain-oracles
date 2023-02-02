@@ -44,16 +44,10 @@ interface IDataReceiver is IGovernable {
   // ERRORS
 
   /// @notice Thrown when the broadcast nonce is incorrect
-  error DataReceiver_ObservationsNotWritable();
+  error ObservationsNotWritable();
 
   /// @notice Thrown when a not-whitelisted adapter triggers an update
-  error DataReceiver_UnallowedAdapter();
-
-  /// @notice Thrown when mismatching lists length
-  error DataReceiver_LengthMismatch();
-
-  /// @notice Thrown if OracleFactory is set to the zero address
-  error DataReceiver_ZeroAddress();
+  error UnallowedAdapter();
 
   // FUNCTIONS
 

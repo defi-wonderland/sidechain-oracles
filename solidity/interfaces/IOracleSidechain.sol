@@ -92,16 +92,16 @@ interface IOracleSidechain {
   // ERRORS
 
   /// @notice Thrown if the pool info is already initialized or if the observationCardinalityNext is already increased
-  error OracleSidechain_AI();
+  error AI();
 
   /// @notice Thrown if the pool info does not correspond to the pool salt
-  error OracleSidechain_InvalidPool();
+  error InvalidPool();
 
   /// @notice Thrown if the DataReceiver contract is not the one calling for writing observations
-  error OracleSidechain_OnlyDataReceiver();
+  error OnlyDataReceiver();
 
   /// @notice Thrown if the OracleFactory contract is not the one calling for increasing observationCardinalityNext
-  error OracleSidechain_OnlyFactory();
+  error OnlyFactory();
 
   // FUNCTIONS
 

@@ -43,7 +43,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
 
     {
       bytes32 _resultingKeccak = keccak256(abi.encode(_poolSalt, _poolNonce, _observationsData));
-      if (!_observedKeccak[_resultingKeccak]) revert DataFeed_UnknownHash();
+      if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
     }
 
     _bridgeSenderAdapter.bridgeObservations{value: msg.value}(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
@@ -68,7 +68,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
 
       // If first fetched observation
       if (_lastPoolStateObserved.blockTimestamp == 0) {
-        if (_secondsAgosLength == 1) revert DataFeed_InvalidSecondsAgos();
+        if (_secondsAgosLength == 1) revert InvalidSecondsAgos();
         // Initializes timestamp and cumulative with first item
         _observationsData = new IOracleSidechain.ObservationData[](_secondsAgosLength - 1);
         _secondsAgo = _secondsAgos[0];
@@ -113,7 +113,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
         }
       }
 
-      if (_delta < minLastOracleDelta) revert DataFeed_InsufficientDelta();
+      if (_delta < minLastOracleDelta) revert InsufficientDelta();
 
       _lastPoolStateObserved = PoolState({
         poolNonce: _lastPoolStateObserved.poolNonce + 1,
@@ -151,21 +151,21 @@ contract DataFeed is IDataFeed, PipelineManagement {
   }
 
   function _setStrategy(IDataFeedStrategy _strategy) private {
-    if (address(_strategy) == address(0)) revert DataFeed_ZeroAddress();
+    if (address(_strategy) == address(0)) revert ZeroAddress();
 
     strategy = _strategy;
     emit StrategySet(_strategy);
   }
 
   function _setMinLastOracleDelta(uint32 _minLastOracleDelta) private {
-    if (_minLastOracleDelta == 0) revert DataFeed_ZeroDelta();
+    if (_minLastOracleDelta == 0) revert ZeroAmount();
 
     minLastOracleDelta = _minLastOracleDelta;
     emit MinLastOracleDeltaSet(_minLastOracleDelta);
   }
 
   modifier onlyStrategy() {
-    if (msg.sender != address(strategy)) revert DataFeed_OnlyStrategy();
+    if (msg.sender != address(strategy)) revert OnlyStrategy();
     _;
   }
 }

@@ -184,6 +184,16 @@ describe('@skip-on-coverage Fixture', () => {
               await deployments.fixture(['send-observation'], { keepExistingDeployments: true });
             });
           });
+
+          describe('when adapters redeploy', () => {
+            beforeEach(async () => {
+              await deployments.fixture(['setup-connext-default'], { keepExistingDeployments: true });
+            });
+
+            it('should not redeploy the job', async () => {
+              expect(strategyJob.address).to.eq((await getContractFromFixture('StrategyJob')).address);
+            });
+          });
         });
       });
     });

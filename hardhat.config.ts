@@ -56,6 +56,7 @@ const networks: NetworksUserConfig =
             receiver: 'optimisticGoerli',
             sender: 'polygonMumbai',
           },
+          gasPrice: 1e9,
         },
         polygonMumbai: {
           url: env.getNodeUrl('mumbai'),

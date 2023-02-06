@@ -4,7 +4,7 @@ import { verifyContract } from 'utils/deploy';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const connextReceiverAdapter = await hre.deployments.get('ConnextReceiverAdapter');
-  await verifyContract(hre, connextReceiverAdapter);
+  await verifyContract(hre, connextReceiverAdapter, 'solidity/contracts/bridges/ConnextReceiverAdapter.sol:ConnextReceiverAdapter');
 };
 
 deployFunction.tags = ['verify-connext-receiver'];

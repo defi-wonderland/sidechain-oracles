@@ -15,22 +15,20 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const RECEIVER_CHAIN_ID = await hre.getChainId();
 
   const dataFeed = await hre.deployments.get('DataFeed');
+  const dataFeedContract = await hre.ethers.getContractAt('DataFeed', dataFeed.address);
 
   const TIME_TRIGGER = 1;
   const FETCH_OBSERVATION_ARGS = [salt, TIME_TRIGGER];
-  const fetchTx = await hre.deployments.execute('StrategyJob', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
+  await hre.deployments.execute('StrategyJob', txSettings, 'work(bytes32,uint8)', ...FETCH_OBSERVATION_ARGS);
 
-  const fetchData = (await hre.ethers.getContractAt('DataFeed', dataFeed.address)).interface.decodeEventLog(
-    'PoolObserved',
-    fetchTx.logs![1].data
-  );
+  const lastPoolNonce = (await hre.deployments.read('DataFeed', 'lastPoolStateObserved', salt)).poolNonce;
+  const evtFilter = dataFeedContract.filters.PoolObserved(salt, lastPoolNonce);
+  const queryResults = await dataFeedContract.queryFilter(evtFilter);
 
-  const SEND_OBSERVATION_ARGS = [RECEIVER_CHAIN_ID, salt, fetchData._poolNonce, fetchData._observationsData];
+  const fetchData = dataFeedContract.interface.decodeEventLog('PoolObserved', queryResults[0].data);
+
+  const SEND_OBSERVATION_ARGS = [RECEIVER_CHAIN_ID, salt, lastPoolNonce, fetchData._observationsData];
   await hre.deployments.execute('StrategyJob', txSettings, 'work(uint32,bytes32,uint24,(uint32,int24)[])', ...SEND_OBSERVATION_ARGS);
-
-  // TODO: read event and log bridge txID for tracking
-  // XCalled topic = 0x9ff13ab44d4ea07af1c3b3ffb93494b9e0e32bb1564d8ba56e62e7ee9b7489d3
-  // console.log(event.data.transferId)
 };
 
 deployFunction.dependencies = ['setup-dummy-default', 'pool-whitelisting'];

@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IBridgeReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IBridgeReceiverAdapter.sol';
@@ -8,6 +8,7 @@ abstract contract BridgeReceiverAdapter is IBridgeReceiverAdapter {
   IDataReceiver public immutable dataReceiver;
 
   constructor(IDataReceiver _dataReceiver) {
+    if (address(_dataReceiver) == address(0)) revert ZeroAddress();
     dataReceiver = _dataReceiver;
   }
 

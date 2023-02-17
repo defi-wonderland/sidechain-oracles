@@ -1,8 +1,8 @@
-import { IDomainIDRecord, IStrategySettingsRecord } from './types';
-
-export const TEST_FEE = 10_000;
+import { IDomainIDRecord, IDataFeedSettingsRecord, IStrategySettingsRecord } from './types';
 
 export const UNI_V3_FACTORY = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
+
+export const TEST_FEE = 10_000;
 
 export const addressRegistry = {
   // KEEP3R DEPLOYMENTS
@@ -25,7 +25,7 @@ export const addressRegistry = {
     137: '0x11984dc4465481512eb5b777E44061C158CF2259',
     5: '0xFCa08024A6D4bCc87275b1E4A1E22B71fAD7f649',
     420: '0x5Ea1bb242326044699C3d81341c5f535d5Af1504',
-    80001: '0x8898B472C54c31894e3B9bb83cEA802a5d0e63C6',
+    80001: '0x2334937846Ab2A3FCE747b32587e1A1A2f6EEC5a',
   },
   // TOKENS
   tokenA: {
@@ -50,23 +50,29 @@ export const domainId: IDomainIDRecord = {
   42069: 42069,
 };
 
+export const dataFeedSettings: IDataFeedSettingsRecord = {
+  1: 1800, // 30min
+  5: 180, // 3min
+  80001: 180,
+};
+
 export const strategySettings: IStrategySettingsRecord = {
   1: {
-    cooldown: 172800, // 2d
-    twapLength: 28800, // 8hs
-    twapThreshold: 500, // 5%
     periodDuration: 14400, // 4hs
+    strategyCooldown: 172800, // 2d
+    defaultTwapThreshold: 500, // ~5%
+    twapLength: 28800, // 8hs
   },
   5: {
-    cooldown: 43200, // half-day
-    twapLength: 7200, // 2hs
-    twapThreshold: 500, // ~5%
     periodDuration: 3600, // 1hr
+    strategyCooldown: 43200, // half-day
+    defaultTwapThreshold: 500, // ~5%
+    twapLength: 7200, // 2hs
   },
   80001: {
-    cooldown: 3600, // 1hr
-    twapLength: 300, // 5min
-    twapThreshold: 500, // ~5%
     periodDuration: 300, // 5min
+    strategyCooldown: 3600, // 1hr
+    defaultTwapThreshold: 500, // ~5%
+    twapLength: 300, // 5min
   },
 };

@@ -1,7 +1,7 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IGovernable} from './peripherals/IGovernable.sol';
+import {IGovernable} from '@defi-wonderland/solidity-utils/solidity/interfaces/IGovernable.sol';
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IDataFeed} from './IDataFeed.sol';
 import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
@@ -13,15 +13,16 @@ interface IDataFeedStrategy is IGovernable {
   enum TriggerReason {
     NONE,
     TIME,
-    TWAP
+    TWAP,
+    OLD
   }
 
   // STRUCTS
 
   struct StrategySettings {
     uint32 periodDuration; // Resolution of the oracle, target twap length
-    uint32 cooldown; // Time since last update to wait to time-trigger update
-    uint24 twapThreshold; // Twap difference, in ticks, to twap-trigger update
+    uint32 strategyCooldown; // Time since last update to wait to time-trigger update
+    uint24 defaultTwapThreshold; // Default twap difference, in ticks, to twap-trigger update
     uint32 twapLength; // Twap length, in seconds, used for twap-trigger update
   }
 
@@ -30,15 +31,19 @@ interface IDataFeedStrategy is IGovernable {
   /// @return _dataFeed The address of the DataFeed contract
   function dataFeed() external view returns (IDataFeed _dataFeed);
 
-  /// @return _strategyCooldown Time in seconds since last update required to time-trigger an update
-  function strategyCooldown() external view returns (uint32 _strategyCooldown);
-
   /// @return _periodDuration The targetted amount of seconds between pool consultations
   /// @dev Defines the resolution of the oracle, averaging data between consultations
   function periodDuration() external view returns (uint32 _periodDuration);
 
+  /// @return _strategyCooldown Time in seconds since last update required to time-trigger an update
+  function strategyCooldown() external view returns (uint32 _strategyCooldown);
+
+  /// @return _defaultTwapThreshold Default twap difference, in ticks, to twap-trigger an update
+  function defaultTwapThreshold() external view returns (uint24 _defaultTwapThreshold);
+
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
   /// @return _twapThreshold Twap difference, in ticks, to twap-trigger an update
-  function twapThreshold() external view returns (uint24 _twapThreshold);
+  function twapThreshold(bytes32 _poolSalt) external view returns (uint24 _twapThreshold);
 
   /// @return _twapLength The time length, in seconds, used to calculate twap-trigger
   function twapLength() external view returns (uint32 _twapLength);
@@ -54,13 +59,18 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _strategyCooldown The new job cooldown
   event StrategyCooldownSet(uint32 _strategyCooldown);
 
+  /// @notice Emitted when the owner updates the job default twap threshold percentage
+  /// @param _defaultTwapThreshold The default twap difference threshold used to trigger an update of the oracle
+  event DefaultTwapThresholdSet(uint24 _defaultTwapThreshold);
+
+  /// @notice Emitted when the owner updates the job twap threshold percentage of a pool
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _twapThreshold The default twap difference threshold used to trigger an update of the oracle
+  event TwapThresholdSet(bytes32 _poolSalt, uint24 _twapThreshold);
+
   /// @notice Emitted when the owner updates the job twap length
   /// @param _twapLength The new length of the twap used to trigger an update of the oracle
   event TwapLengthSet(uint32 _twapLength);
-
-  /// @notice Emitted when the owner updates the job twap threshold percentage
-  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
-  event TwapThresholdSet(uint24 _twapThreshold);
 
   /// @notice Emitted when the owner updates the job period length
   /// @param _periodDuration The new length of reading resolution periods
@@ -81,22 +91,22 @@ interface IDataFeedStrategy is IGovernable {
   /// @param _reason Identifier of trigger reason (time/twap)
   function strategicFetchObservations(bytes32 _poolSalt, TriggerReason _reason) external;
 
-  /// @notice Permisioned, used to update the oracle state from a given timestamp
-  /// @param _poolSalt Identifier of the pool to fetch
-  /// @param _fromTimestamp Timestamp to start backfilling from
-  function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external;
-
   /// @notice Sets the job cooldown
   /// @param _strategyCooldown The job cooldown to be set
   function setStrategyCooldown(uint32 _strategyCooldown) external;
 
+  /// @notice Sets the job default twap threshold percentage
+  /// @param _defaultTwapThreshold The default twap difference threshold used to trigger an update of the oracle
+  function setDefaultTwapThreshold(uint24 _defaultTwapThreshold) external;
+
+  /// @notice Sets the job twap threshold percentage of a pool
+  /// @param _poolSalt The pool salt defined by token0 token1 and fee
+  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
+  function setTwapThreshold(bytes32 _poolSalt, uint24 _twapThreshold) external;
+
   /// @notice Sets the job twap length
   /// @param _twapLength The new length of the twap used to trigger an update of the oracle
   function setTwapLength(uint32 _twapLength) external;
-
-  /// @notice Sets the job twap threshold percentage
-  /// @param _twapThreshold The twap difference threshold used to trigger an update of the oracle
-  function setTwapThreshold(uint24 _twapThreshold) external;
 
   /// @notice Sets the job period length
   /// @param _periodDuration The new length of reading resolution periods
@@ -114,7 +124,7 @@ interface IDataFeedStrategy is IGovernable {
   function isStrategic(bytes32 _poolSalt, TriggerReason _reason) external view returns (bool _isStrategic);
 
   /// @notice Builds the secondsAgos array with periodDuration between each datapoint
-  /// @param _fromTimestamp Timestamp from which to backfill the oracle with
-  /// @return _secondsAgos Array of secondsAgo that backfills the history from fromTimestamp
-  function calculateSecondsAgos(uint32 _fromTimestamp) external view returns (uint32[] memory _secondsAgos);
+  /// @param _fromSecondsAgo Seconds ago of the timestamp from which to backfill the oracle with
+  /// @return _secondsAgos Array of secondsAgo that backfills the history from fromSecondsAgo
+  function calculateSecondsAgos(uint32 _fromSecondsAgo) external view returns (uint32[] memory _secondsAgos);
 }

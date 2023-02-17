@@ -1,19 +1,20 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
+import {IConnext, IConnextSenderAdapter, IBridgeSenderAdapter, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
 import {LibConnextStorage, TransferInfo} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
-import {IConnext, IConnextSenderAdapter, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
 
 contract ConnextSenderAdapter is IConnextSenderAdapter {
   /// @inheritdoc IConnextSenderAdapter
-  IConnext public immutable connext;
-
-  /// @inheritdoc IConnextSenderAdapter
   IDataFeed public immutable dataFeed;
 
-  constructor(IConnext _connext, IDataFeed _dataFeed) {
-    connext = _connext;
+  /// @inheritdoc IConnextSenderAdapter
+  IConnext public immutable connext;
+
+  constructor(IDataFeed _dataFeed, IConnext _connext) {
+    if (address(_dataFeed) == address(0) || address(_connext) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
+    connext = _connext;
   }
 
   /// @inheritdoc IBridgeSenderAdapter
@@ -22,11 +23,11 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
-    uint24 _poolNonce // TODO: review input parameters packing KMC-
+    uint24 _poolNonce
   ) external payable onlyDataFeed {
     bytes memory _callData = abi.encode(_observationsData, _poolSalt, _poolNonce);
 
-    connext.xcall({
+    connext.xcall{value: msg.value}({
       _destination: _destinationDomainId, // unique identifier for destination domain
       _to: _to, // recipient of funds, where calldata will be executed
       _asset: address(0), // asset being transferred

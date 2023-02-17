@@ -1,34 +1,33 @@
 import INFTPositionManager from '../../artifacts/solidity/for-test/UniswapV3Importer.sol/INFTPositionManager.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { ethers, BigNumber } from 'ethers';
 import { bn } from '@utils';
-import { BigNumber } from 'ethers';
 import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
   const uniswapV3PositionManagerAddress = '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
-  const maxUint256 = BigNumber.from('115792089237316195423570985008687907853269984665640564039457584007913129639935');
+  const maxUint256 = ethers.constants.MaxUint256;
 
   const txSettings = {
     from: deployer,
-
     log: true,
   };
+
+  const LIQUIDITY_IN_POOL = await hre.deployments.read('UniswapV3Pool', 'liquidity');
+  if (LIQUIDITY_IN_POOL > 0) {
+    return;
+  }
 
   await hre.deployments.save('PositionManager', {
     abi: INFTPositionManager.abi,
     address: uniswapV3PositionManagerAddress,
   });
-  const positionManager = await hre.deployments.get('PositionManager');
-
-  const LIQUIDITY_IN_POOL = await hre.deployments.read('UniV3Pool', 'liquidity');
-  if (LIQUIDITY_IN_POOL > 0) {
-    return;
-  }
 
   const tokenA = await hre.deployments.get('TokenA');
   const tokenB = await hre.deployments.get('TokenB');
+  const positionManager = await hre.deployments.get('PositionManager');
 
   const TOKEN_A_ALLOWANCE: BigNumber = await hre.deployments.read('TokenA', 'allowance', deployer, positionManager.address);
   const TOKEN_B_ALLOWANCE: BigNumber = await hre.deployments.read('TokenB', 'allowance', deployer, positionManager.address);

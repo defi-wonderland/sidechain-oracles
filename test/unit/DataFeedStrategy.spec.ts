@@ -3,10 +3,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeedStrategy, DataFeedStrategy__factory, IDataFeed, IUniswapV3Pool } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm } from '@utils';
-import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
+import { ZERO_ADDRESS, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor } from '@utils/behaviours';
-import { getCreate2Address } from '@utils/misc';
+import { getCreate2Address, getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -19,16 +19,18 @@ describe('DataFeedStrategy.sol', () => {
   let uniswapV3Pool: FakeContract<IUniswapV3Pool>;
   let snapshotId: string;
 
-  const initialStrategyCooldown = 3600;
-  const initialTwapLength = 2400;
-  const initialTwapThreshold = 500;
   const initialPeriodDuration = 1200;
+  const initialStrategyCooldown = 3600;
+  const initialDefaultTwapThreshold = 500;
+  const initialTwapLength = 2400;
 
   const randomSalt = VALID_POOL_SALT;
+  const randomSalt2 = getRandomBytes32();
 
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
+  const OLD_TRIGGER = 3;
 
   before(async () => {
     [, governor] = await ethers.getSigners();
@@ -42,9 +44,9 @@ describe('DataFeedStrategy.sol', () => {
     dataFeedStrategyFactory = await smock.mock('DataFeedStrategy');
     dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, {
       periodDuration: initialPeriodDuration,
-      cooldown: initialStrategyCooldown,
+      strategyCooldown: initialStrategyCooldown,
+      defaultTwapThreshold: initialDefaultTwapThreshold,
       twapLength: initialTwapLength,
-      twapThreshold: initialTwapThreshold,
     });
 
     snapshotId = await evm.snapshot.take();
@@ -55,6 +57,17 @@ describe('DataFeedStrategy.sol', () => {
   });
 
   describe('constructor(...)', () => {
+    it('should revert if dataFeed is set to the zero address', async () => {
+      await expect(
+        dataFeedStrategyFactory.deploy(governor.address, ZERO_ADDRESS, {
+          periodDuration: initialPeriodDuration,
+          strategyCooldown: initialStrategyCooldown,
+          defaultTwapThreshold: initialDefaultTwapThreshold,
+          twapLength: initialTwapLength,
+        })
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
     it('should set the governor', async () => {
       expect(await dataFeedStrategy.governor()).to.eq(governor.address);
     });
@@ -65,6 +78,14 @@ describe('DataFeedStrategy.sol', () => {
 
     it('should set the strategyCooldown', async () => {
       expect(await dataFeedStrategy.strategyCooldown()).to.eq(initialStrategyCooldown);
+    });
+
+    it('should set the defaultTwapThreshold', async () => {
+      expect(await dataFeedStrategy.defaultTwapThreshold()).to.eq(initialDefaultTwapThreshold);
+    });
+
+    it('should set the twapLength', async () => {
+      expect(await dataFeedStrategy.twapLength()).to.eq(initialTwapLength);
     });
 
     it('should set the periodDuration', async () => {
@@ -91,7 +112,7 @@ describe('DataFeedStrategy.sol', () => {
       it('should call to fetch observations (having calculated secondsAgos)', async () => {
         dataFeed.fetchObservations.reset();
         await dataFeedStrategy.strategicFetchObservations(randomSalt, TIME_TRIGGER);
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(lastBlockTimestampObserved);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(now);
         expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
       });
 
@@ -146,35 +167,38 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+        context('when the pool twap threshold is set', () => {
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsNotSurpassed);
+            });
+
+            it('should revert', async () => {
+              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
+            });
           });
 
-          it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
-          });
-        });
+          context('when the upper threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsSurpassed);
+            });
 
-        context('when the upper threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
-          });
+            it('should call to fetch observations (having calculated secondsAgos)', async () => {
+              dataFeed.fetchObservations.reset();
+              await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              const fromSecondsAgo = now - lastBlockTimestampObserved;
+              const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+              expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+            });
 
-          it('should call to fetch observations (having calculated secondsAgos)', async () => {
-            dataFeed.fetchObservations.reset();
-            await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(lastBlockTimestampObserved);
-            expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
-          });
+            it('should emit StrategicFetch', async () => {
+              const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+              let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
 
-          it('should emit StrategicFetch', async () => {
-            const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
-            let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
-
-            expect(eventPoolSalt).to.eq(randomSalt);
-            expect(eventReason).to.eq(TWAP_TRIGGER);
+              expect(eventPoolSalt).to.eq(randomSalt);
+              expect(eventReason).to.eq(TWAP_TRIGGER);
+            });
           });
         });
       });
@@ -196,51 +220,75 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
+        context('when the pool twap threshold is not set', () => {
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsNotSurpassed);
+            });
+
+            it('should revert', async () => {
+              await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
+            });
           });
 
-          it('should revert', async () => {
-            await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER)).to.be.revertedWith('NotStrategic()');
-          });
-        });
+          context('when the lower threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsSurpassed);
+            });
 
-        context('when the lower threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
-          });
+            it('should call to fetch observations (having calculated secondsAgos)', async () => {
+              dataFeed.fetchObservations.reset();
+              await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              const fromSecondsAgo = now - lastBlockTimestampObserved;
+              const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+              expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+            });
 
-          it('should call to fetch observations (having calculated secondsAgos)', async () => {
-            dataFeed.fetchObservations.reset();
-            await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
-            const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(lastBlockTimestampObserved);
-            expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+            it('should emit StrategicFetch', async () => {
+              const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, TWAP_TRIGGER);
+              let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+              let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
+
+              expect(eventPoolSalt).to.eq(randomSalt);
+              expect(eventReason).to.eq(TWAP_TRIGGER);
+            });
           });
         });
       });
     });
-  });
 
-  describe('forceFetchObservations(...)', () => {
-    let secondsAgos: number[];
-    const fromTimestamp = 0;
+    context('when the trigger reason is OLD', () => {
+      let poolOldestSecondsAgo = 60;
+      let poolOldestObservationTimestamp: number;
 
-    beforeEach(async () => {
-      secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-    });
+      beforeEach(async () => {
+        now = (await ethers.provider.getBlock('latest')).timestamp;
+        poolOldestObservationTimestamp = now - poolOldestSecondsAgo;
+        uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
+        uniswapV3Pool.observations.whenCalledWith(0).returns([poolOldestObservationTimestamp, 0, 0, true]);
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, poolOldestObservationTimestamp - 1, 0, 0]);
+      });
 
-    onlyGovernor(
-      () => dataFeedStrategy,
-      'forceFetchObservations',
-      () => governor,
-      () => [randomSalt, fromTimestamp]
-    );
+      it('should revert if the last pool state observed is not older than the oldest observation', async () => {
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, poolOldestObservationTimestamp, 0, 0]);
+        await expect(dataFeedStrategy.strategicFetchObservations(randomSalt, OLD_TRIGGER)).to.be.revertedWith('NotStrategic()');
+      });
 
-    it('should call to fetch observations (having calculated secondsAgos)', async () => {
-      dataFeed.fetchObservations.reset();
-      await dataFeedStrategy.connect(governor).forceFetchObservations(randomSalt, fromTimestamp);
-      expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+      it('should call to fetch observations (having calculated secondsAgos)', async () => {
+        dataFeed.fetchObservations.reset();
+        await dataFeedStrategy.strategicFetchObservations(randomSalt, OLD_TRIGGER);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(poolOldestSecondsAgo);
+        expect(dataFeed.fetchObservations).to.have.been.calledOnceWith(randomSalt, secondsAgos);
+      });
+
+      it('should emit StrategicFetch', async () => {
+        const tx = await dataFeedStrategy.strategicFetchObservations(randomSalt, OLD_TRIGGER);
+        let eventPoolSalt = await readArgFromEvent(tx, 'StrategicFetch', '_poolSalt');
+        let eventReason = await readArgFromEvent(tx, 'StrategicFetch', '_reason');
+
+        expect(eventPoolSalt).to.eq(randomSalt);
+        expect(eventReason).to.eq(OLD_TRIGGER);
+      });
     });
   });
 
@@ -268,6 +316,61 @@ describe('DataFeedStrategy.sol', () => {
       await expect(dataFeedStrategy.connect(governor).setStrategyCooldown(newStrategyCooldown))
         .to.emit(dataFeedStrategy, 'StrategyCooldownSet')
         .withArgs(newStrategyCooldown);
+    });
+  });
+
+  describe('setDefaultTwapThreshold(...)', () => {
+    let newDefaultTwapThreshold = initialDefaultTwapThreshold + 1000;
+
+    onlyGovernor(
+      () => dataFeedStrategy,
+      'setDefaultTwapThreshold',
+      () => governor,
+      () => [newDefaultTwapThreshold]
+    );
+
+    it('should revert if set to zero', async () => {
+      await expect(dataFeedStrategy.connect(governor).setDefaultTwapThreshold(0)).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('should update the defaultTwapThreshold', async () => {
+      await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(newDefaultTwapThreshold);
+      expect(await dataFeedStrategy.defaultTwapThreshold()).to.eq(newDefaultTwapThreshold);
+    });
+
+    it('should emit DefaultTwapThresholdSet', async () => {
+      await expect(dataFeedStrategy.connect(governor).setDefaultTwapThreshold(newDefaultTwapThreshold))
+        .to.emit(dataFeedStrategy, 'DefaultTwapThresholdSet')
+        .withArgs(newDefaultTwapThreshold);
+    });
+  });
+
+  describe('setTwapThreshold(...)', () => {
+    let newTwapThreshold = initialDefaultTwapThreshold + 1000;
+
+    onlyGovernor(
+      () => dataFeedStrategy,
+      'setTwapThreshold',
+      () => governor,
+      () => [randomSalt, newTwapThreshold]
+    );
+
+    it('should update a twapThreshold', async () => {
+      await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, newTwapThreshold);
+      expect(await dataFeedStrategy.twapThreshold(randomSalt)).to.eq(newTwapThreshold);
+      expect(await dataFeedStrategy.twapThreshold(randomSalt2)).to.eq(initialDefaultTwapThreshold);
+    });
+
+    it('should fallback to default if set to 0', async () => {
+      await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, newTwapThreshold);
+      await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, 0);
+      expect(await dataFeedStrategy.twapThreshold(randomSalt)).to.eq(initialDefaultTwapThreshold);
+    });
+
+    it('should emit TwapThresholdSet', async () => {
+      await expect(dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, newTwapThreshold))
+        .to.emit(dataFeedStrategy, 'TwapThresholdSet')
+        .withArgs(randomSalt, newTwapThreshold);
     });
   });
 
@@ -303,28 +406,6 @@ describe('DataFeedStrategy.sol', () => {
     });
   });
 
-  describe('setTwapThreshold(...)', () => {
-    let newTwapThreshold = initialTwapThreshold + 1000;
-
-    onlyGovernor(
-      () => dataFeedStrategy,
-      'setTwapThreshold',
-      () => governor,
-      () => [newTwapThreshold]
-    );
-
-    it('should update the twapThreshold', async () => {
-      await dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold);
-      expect(await dataFeedStrategy.twapThreshold()).to.eq(newTwapThreshold);
-    });
-
-    it('should emit TwapThresholdSet', async () => {
-      await expect(dataFeedStrategy.connect(governor).setTwapThreshold(newTwapThreshold))
-        .to.emit(dataFeedStrategy, 'TwapThresholdSet')
-        .withArgs(newTwapThreshold);
-    });
-  });
-
   describe('setPeriodDuration(...)', () => {
     let newPeriodDuration = initialPeriodDuration + 1000;
 
@@ -338,6 +419,10 @@ describe('DataFeedStrategy.sol', () => {
     it('should revert if periodDuration > twapLength', async () => {
       await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength + 1)).to.be.revertedWith('WrongSetting()');
       await expect(dataFeedStrategy.connect(governor).setPeriodDuration(initialTwapLength)).not.to.be.reverted;
+    });
+
+    it('should revert if periodDuration = 0', async () => {
+      await expect(dataFeedStrategy.connect(governor).setPeriodDuration(0)).to.be.revertedWith('WrongSetting()');
     });
 
     it('should update the periodDuration', async () => {
@@ -372,10 +457,15 @@ describe('DataFeedStrategy.sol', () => {
     let thresholdIsNotSurpassed = 50;
     let reason: number;
 
-    it('should return TIME if strategyCooldown is 0', async () => {
-      dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
-      reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-      expect(reason).to.eq(TIME_TRIGGER);
+    context('when strategyCooldown is 0', () => {
+      beforeEach(async () => {
+        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
+      });
+
+      it('should return TIME', async () => {
+        reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+        expect(reason).to.eq(TIME_TRIGGER);
+      });
     });
 
     context('when strategyCooldown has expired', () => {
@@ -414,25 +504,45 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the upper threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+        context('when the pool twap threshold is set', () => {
+          context('when the upper threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsSurpassed);
+            });
+
+            it('should return TWAP', async () => {
+              reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+              expect(reason).to.eq(TWAP_TRIGGER);
+            });
           });
 
-          it('should return TWAP', async () => {
-            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-            expect(reason).to.eq(TWAP_TRIGGER);
-          });
-        });
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsNotSurpassed);
+              uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
+            });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-          });
+            context('when the last pool state observed is older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved + 1, 0, 0, true]);
+              });
 
-          it('should return NONE', async () => {
-            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-            expect(reason).to.eq(NONE_TRIGGER);
+              it('should return OLD', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(OLD_TRIGGER);
+              });
+            });
+
+            context('when the last pool state observed is not older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved, 0, 0, true]);
+              });
+
+              it('should return NONE', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(NONE_TRIGGER);
+              });
+            });
           });
         });
       });
@@ -454,25 +564,45 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the lower threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+        context('when the pool twap threshold is not set', () => {
+          context('when the lower threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsSurpassed);
+            });
+
+            it('should return TWAP', async () => {
+              reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+              expect(reason).to.eq(TWAP_TRIGGER);
+            });
           });
 
-          it('should return TWAP', async () => {
-            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-            expect(reason).to.eq(TWAP_TRIGGER);
-          });
-        });
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsNotSurpassed);
+              uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
+            });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-          });
+            context('when the last pool state observed is older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved + 1, 0, 0, true]);
+              });
 
-          it('should return NONE', async () => {
-            reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
-            expect(reason).to.eq(NONE_TRIGGER);
+              it('should return OLD', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(OLD_TRIGGER);
+              });
+            });
+
+            context('when the last pool state observed is not older than the oldest observation', () => {
+              beforeEach(async () => {
+                uniswapV3Pool.observations.whenCalledWith(0).returns([lastBlockTimestampObserved, 0, 0, true]);
+              });
+
+              it('should return NONE', async () => {
+                reason = await dataFeedStrategy['isStrategic(bytes32)'](randomSalt);
+                expect(reason).to.eq(NONE_TRIGGER);
+              });
+            });
           });
         });
       });
@@ -488,22 +618,37 @@ describe('DataFeedStrategy.sol', () => {
         now = (await ethers.provider.getBlock('latest')).timestamp;
       });
 
-      it('should return true if strategyCooldown is 0', async () => {
-        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
-        isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
-        expect(isStrategic).to.eq(true);
+      context('when strategyCooldown is 0', () => {
+        beforeEach(async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, 0, 0, 0]);
+        });
+
+        it('should return true', async () => {
+          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+          expect(isStrategic).to.eq(true);
+        });
       });
 
-      it('should return true if strategyCooldown has expired', async () => {
-        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialStrategyCooldown, 0, 0]);
-        isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
-        expect(isStrategic).to.eq(true);
+      context('when strategyCooldown has expired', () => {
+        beforeEach(async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialStrategyCooldown, 0, 0]);
+        });
+
+        it('should return true', async () => {
+          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+          expect(isStrategic).to.eq(true);
+        });
       });
 
-      it('should return false if strategyCooldown has not expired', async () => {
-        dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialStrategyCooldown + 1, 0, 0]);
-        isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
-        expect(isStrategic).to.eq(false);
+      context('when strategyCooldown has not expired', () => {
+        beforeEach(async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, now - initialStrategyCooldown + 1, 0, 0]);
+        });
+
+        it('should return false', async () => {
+          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TIME_TRIGGER);
+          expect(isStrategic).to.eq(false);
+        });
       });
     });
 
@@ -548,25 +693,27 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the upper threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+        context('when the pool twap threshold is set', () => {
+          context('when the upper threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsSurpassed);
+            });
+
+            it('should return true', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(true);
+            });
           });
 
-          it('should return true', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(true);
-          });
-        });
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setTwapThreshold(randomSalt, thresholdIsNotSurpassed);
+            });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-          });
-
-          it('should return false', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(false);
+            it('should return false', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(false);
+            });
           });
         });
       });
@@ -588,142 +735,228 @@ describe('DataFeedStrategy.sol', () => {
             .returns([0, lastBlockTimestampObserved, lastTickCumulativeObserved, lastArithmeticMeanTickObserved]);
         });
 
-        context('when the lower threshold is surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsSurpassed);
+        context('when the pool twap threshold is not set', () => {
+          context('when the lower threshold is surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsSurpassed);
+            });
+
+            it('should return true', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(true);
+            });
           });
 
-          it('should return true', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(true);
+          context('when no thresholds are surpassed', () => {
+            beforeEach(async () => {
+              await dataFeedStrategy.connect(governor).setDefaultTwapThreshold(thresholdIsNotSurpassed);
+            });
+
+            it('should return false', async () => {
+              isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
+              expect(isStrategic).to.eq(false);
+            });
           });
         });
+      });
+    });
 
-        context('when no thresholds are surpassed', () => {
-          beforeEach(async () => {
-            await dataFeedStrategy.connect(governor).setTwapThreshold(thresholdIsNotSurpassed);
-          });
+    context('when the trigger reason is OLD', () => {
+      let poolOldestSecondsAgo = 60;
+      let poolOldestObservationTimestamp: number;
 
-          it('should return false', async () => {
-            isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, TWAP_TRIGGER);
-            expect(isStrategic).to.eq(false);
-          });
+      beforeEach(async () => {
+        now = (await ethers.provider.getBlock('latest')).timestamp;
+        poolOldestObservationTimestamp = now - poolOldestSecondsAgo;
+        uniswapV3Pool.slot0.returns([0, 0, 1, 2, 0, 0, false]);
+        uniswapV3Pool.observations.whenCalledWith(0).returns([poolOldestObservationTimestamp, 0, 0, true]);
+      });
+
+      context('when the last pool state observed is older than the oldest observation', () => {
+        beforeEach(async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, poolOldestObservationTimestamp - 1, 0, 0]);
+        });
+
+        it('should return true', async () => {
+          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, OLD_TRIGGER);
+          expect(isStrategic).to.eq(true);
+        });
+      });
+
+      context('when the last pool state observed is not older than the oldest observation', () => {
+        beforeEach(async () => {
+          dataFeed.lastPoolStateObserved.whenCalledWith(randomSalt).returns([0, poolOldestObservationTimestamp, 0, 0]);
+        });
+
+        it('should return false', async () => {
+          isStrategic = await dataFeedStrategy['isStrategic(bytes32,uint8)'](randomSalt, OLD_TRIGGER);
+          expect(isStrategic).to.eq(false);
         });
       });
     });
   });
 
   describe('calculateSecondsAgos(...)', () => {
-    let fromTimestamp: number;
-    let now: number;
-    let timeSinceLastObservation: number;
+    let fromSecondsAgo: number;
+    let totalPeriods: number;
     let periods: number;
     let remainder: number;
+    const maxPeriods = Math.trunc(initialStrategyCooldown / initialPeriodDuration);
 
-    context('when less than a period has passed since fromTimestamp', () => {
+    context('when less than a period has passed', () => {
       beforeEach(async () => {
-        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration / 2);
+        fromSecondsAgo = initialPeriodDuration / 2;
       });
 
       it('should return a single datapoint array with 0', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
         expect(secondsAgos).to.eql([0]);
       });
     });
 
-    context('when more than a period has passed since fromTimestamp', () => {
-      beforeEach(async () => {
-        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * 3.14);
-        now = (await ethers.provider.getBlock('latest')).timestamp;
-        timeSinceLastObservation = now - fromTimestamp;
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
-        remainder = timeSinceLastObservation % initialPeriodDuration;
-        periods++; // adds the bridged remainder
+    context('when more than a period has passed', () => {
+      context('when the amount of periods to bridge is not above the maximum', () => {
+        beforeEach(async () => {
+          fromSecondsAgo = Math.round(initialPeriodDuration * (maxPeriods + 0.14));
+          periods = Math.trunc(fromSecondsAgo / initialPeriodDuration);
+          remainder = fromSecondsAgo % initialPeriodDuration;
+          periods++; // adds the bridged remainder
+        });
+
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos.length).to.eq(periods);
+        });
+
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
+
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = fromSecondsAgo - remainder - i * initialPeriodDuration;
+          }
+
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
 
-      it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos.length).to.eq(periods);
-      });
+      context('when the amount of periods to bridge is above the maximum', () => {
+        beforeEach(async () => {
+          fromSecondsAgo = Math.round(initialPeriodDuration * (maxPeriods + 3.14));
+          totalPeriods = Math.trunc(fromSecondsAgo / initialPeriodDuration);
+          periods = maxPeriods;
+          remainder = (fromSecondsAgo % initialPeriodDuration) + (totalPeriods - maxPeriods) * initialPeriodDuration;
+          periods++; // adds the bridged remainder
+        });
 
-      it('should build the array of secondsAgos', async () => {
-        let expectedSecondsAgos: number[] = [];
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos.length).to.eq(periods);
+        });
 
-        for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
-        }
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos).to.eql(expectedSecondsAgos);
-      });
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = fromSecondsAgo - remainder - i * initialPeriodDuration;
+          }
 
-      it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
     });
 
-    context('when exactly n periods have passed since fromTimestamp', () => {
-      beforeEach(async () => {
-        fromTimestamp = (await ethers.provider.getBlock('latest')).timestamp;
-        await evm.advanceToTimeAndBlock(fromTimestamp + initialPeriodDuration * 3);
-        now = (await ethers.provider.getBlock('latest')).timestamp;
-        timeSinceLastObservation = now - fromTimestamp;
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
+    context('when exactly n periods have passed', () => {
+      context('when the amount of periods to bridge is not above the maximum', () => {
+        beforeEach(async () => {
+          fromSecondsAgo = initialPeriodDuration * maxPeriods;
+          periods = Math.trunc(fromSecondsAgo / initialPeriodDuration);
+        });
+
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos.length).to.eq(periods);
+        });
+
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
+
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = fromSecondsAgo - (i + 1) * initialPeriodDuration;
+          }
+
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
 
-      it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos.length).to.eq(periods);
-      });
+      context('when the amount of periods to bridge is above the maximum', () => {
+        beforeEach(async () => {
+          fromSecondsAgo = initialPeriodDuration * (maxPeriods + 3);
+          totalPeriods = Math.trunc(fromSecondsAgo / initialPeriodDuration);
+          periods = maxPeriods;
+          remainder = (totalPeriods - maxPeriods) * initialPeriodDuration;
+          periods++; // adds the bridged remainder
+        });
 
-      it('should build the array of secondsAgos', async () => {
-        let expectedSecondsAgos: number[] = [];
+        it('should return an array with proper length', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos.length).to.eq(periods);
+        });
 
-        for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - (i + 1) * initialPeriodDuration;
-        }
+        it('should build the array of secondsAgos', async () => {
+          let expectedSecondsAgos: number[] = [];
 
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos).to.eql(expectedSecondsAgos);
-      });
+          for (let i = 0; i < periods; i++) {
+            expectedSecondsAgos[i] = fromSecondsAgo - remainder - i * initialPeriodDuration;
+          }
 
-      it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos).to.eql(expectedSecondsAgos);
+        });
+
+        it('should have 0 as last item', async () => {
+          const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+          expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
+        });
       });
     });
 
-    context('when fromTimestamp is 0', () => {
+    context('when fromSecondsAgo is the block timestamp', () => {
       beforeEach(async () => {
-        fromTimestamp = 0;
-        now = (await ethers.provider.getBlock('latest')).timestamp;
-        timeSinceLastObservation = now - (now - (initialPeriodDuration + 1));
-        periods = Math.trunc(timeSinceLastObservation / initialPeriodDuration);
-        remainder = timeSinceLastObservation % initialPeriodDuration;
-        periods++; // adds the bridged remainder
+        fromSecondsAgo = (await ethers.provider.getBlock('latest')).timestamp;
       });
 
       it('should return an array with proper length', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
-        expect(secondsAgos.length).to.eq(periods);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
+        expect(secondsAgos.length).to.eq(2);
       });
 
       it('should build the array of secondsAgos', async () => {
-        let expectedSecondsAgos: number[] = [];
+        let expectedSecondsAgos = [initialPeriodDuration, 0];
 
-        for (let i = 0; i < periods; i++) {
-          expectedSecondsAgos[i] = timeSinceLastObservation - remainder - i * initialPeriodDuration;
-        }
-
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
         expect(secondsAgos).to.eql(expectedSecondsAgos);
       });
 
       it('should have 0 as last item', async () => {
-        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromTimestamp);
+        const secondsAgos = await dataFeedStrategy.calculateSecondsAgos(fromSecondsAgo);
         expect(secondsAgos[secondsAgos.length - 1]).to.eq(0);
       });
     });

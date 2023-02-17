@@ -1,6 +1,6 @@
 import { DeployFunction } from 'hardhat-deploy/types';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { ZERO_ADDRESS } from '@utils/constants';
+import { PLACEHOLDER_ADDRESS } from 'test/utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, keep3r } = await hre.getNamedAccounts();
@@ -11,7 +11,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     deployer,
     dataFeedStrategy.address,
     dataFeed.address,
-    ZERO_ADDRESS, // defaultBridgeSenderAdapter
+    PLACEHOLDER_ADDRESS, // defaultBridgeSenderAdapter
   ];
 
   await hre.deployments.deploy('StrategyJob', {

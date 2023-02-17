@@ -1,4 +1,19 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
+/*
+
+Coded for The Keep3r Network with ♥ by
+
+██████╗░███████╗███████╗██╗░░░██╗░░░░░░░██╗░█████╗░███╗░░██╗██████╗░███████╗██████╗░██╗░░░░░░█████╗░███╗░░██╗██████╗░
+██╔══██╗██╔════╝██╔════╝██║░░░██║░░██╗░░██║██╔══██╗████╗░██║██╔══██╗██╔════╝██╔══██╗██║░░░░░██╔══██╗████╗░██║██╔══██╗
+██║░░██║█████╗░░█████╗░░██║░░░╚██╗████╗██╔╝██║░░██║██╔██╗██║██║░░██║█████╗░░██████╔╝██║░░░░░███████║██╔██╗██║██║░░██║
+██║░░██║██╔══╝░░██╔══╝░░██║░░░░████╔═████║░██║░░██║██║╚████║██║░░██║██╔══╝░░██╔══██╗██║░░░░░██╔══██║██║╚████║██║░░██║
+██████╔╝███████╗██║░░░░░██║░░░░╚██╔╝░╚██╔╝░╚█████╔╝██║░╚███║██████╔╝███████╗██║░░██║███████╗██║░░██║██║░╚███║██████╔╝
+╚═════╝░╚══════╝╚═╝░░░░░╚═╝░░░░░╚═╝░░░╚═╝░░░╚════╝░╚═╝░░╚══╝╚═════╝░╚══════╝╚═╝░░╚═╝╚══════╝╚═╝░░╚═╝╚═╝░░╚══╝╚═════╝░
+
+https://defi.sucks
+
+*/
+
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleSidechain, IOracleFactory} from '../interfaces/IOracleSidechain.sol';
@@ -116,7 +131,7 @@ contract OracleSidechain is IOracleSidechain {
 
   function increaseObservationCardinalityNext(uint16 _observationCardinalityNext) external onlyFactory {
     uint16 _observationCardinalityNextOld = slot0.observationCardinalityNext;
-    if (_observationCardinalityNext <= _observationCardinalityNextOld) return;
+    if (_observationCardinalityNext <= _observationCardinalityNextOld) revert AI();
     slot0.observationCardinalityNext = _observationCardinalityNext;
     emit IncreaseObservationCardinalityNext(_observationCardinalityNextOld, _observationCardinalityNext);
   }

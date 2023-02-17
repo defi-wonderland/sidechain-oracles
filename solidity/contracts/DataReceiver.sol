@@ -1,7 +1,7 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './peripherals/Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
@@ -17,10 +17,8 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
-  /// @inheritdoc IDataReceiver
-  bytes32 public constant ORACLE_INIT_CODE_HASH = 0x81a14d5bbd761f94f91b3251dcb81827627068b092edb305c98f3799dcf10da2;
-
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
+    if (address(_oracleFactory) == address(0)) revert ZeroAddress();
     oracleFactory = _oracleFactory;
   }
 

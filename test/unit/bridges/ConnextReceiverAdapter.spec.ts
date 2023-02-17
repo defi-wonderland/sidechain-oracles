@@ -9,8 +9,7 @@ import {
 } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet, bn } from '@utils';
-import { VALID_POOL_SALT, ZERO_ADDRESS, ZERO_BYTES_32 } from '@utils/constants';
-import { readArgFromEvent } from '@utils/event-utils';
+import { ZERO_ADDRESS, ZERO_BYTES_32, VALID_POOL_SALT } from '@utils/constants';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -38,9 +37,9 @@ describe('ConnextReceiverAdapter.sol', () => {
     connextReceiverAdapterFactory = await smock.mock('ConnextReceiverAdapter');
     connextReceiverAdapter = await connextReceiverAdapterFactory.deploy(
       dataReceiver.address,
+      connextHandler.address,
       connextSenderAdapter.address,
-      rinkebyOriginId,
-      connextHandler.address
+      rinkebyOriginId
     );
 
     await wallet.setBalance(connextHandler.address, bn.toUnit(1));
@@ -53,16 +52,34 @@ describe('ConnextReceiverAdapter.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should initialize data receiver to the address passed to the constructor', async () => {
+    it('should revert if dataReceiver is set to the zero address', async () => {
+      await expect(
+        connextReceiverAdapterFactory.deploy(ZERO_ADDRESS, connextHandler.address, connextSenderAdapter.address, rinkebyOriginId)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should revert if connext is set to the zero address', async () => {
+      await expect(
+        connextReceiverAdapterFactory.deploy(dataReceiver.address, ZERO_ADDRESS, connextSenderAdapter.address, rinkebyOriginId)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should revert if the origin contract is set to the zero address', async () => {
+      await expect(
+        connextReceiverAdapterFactory.deploy(dataReceiver.address, connextHandler.address, ZERO_ADDRESS, rinkebyOriginId)
+      ).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should initialize dataReceiver interface', async () => {
       expect(await connextReceiverAdapter.dataReceiver()).to.eq(dataReceiver.address);
     });
-    it('should initialize executor to the address passed to the constructor', async () => {
+    it('should initialize connext interface', async () => {
       expect(await connextReceiverAdapter.connext()).to.eq(connextHandler.address);
     });
-    it('should initialize origin contract to the address passed to the constructor', async () => {
+    it('should set the origin contract', async () => {
       expect(await connextReceiverAdapter.source()).to.eq(connextSenderAdapter.address);
     });
-    it('should initialize origin domain id to the id passed to the constructor', async () => {
+    it('should set the origin domain id', async () => {
       expect(await connextReceiverAdapter.originDomain()).to.eq(rinkebyOriginId);
     });
   });

@@ -18,8 +18,8 @@ describe('@skip-on-coverage Fixture', () => {
   let dataReceiver: Type.DataReceiver;
   let oracleFactory: Type.OracleFactory;
   let oracleSidechain: Type.OracleSidechain;
-  let uniV3Pool: Type.IUniswapV3Pool;
-  let uniV3Factory: Type.IUniswapV3Factory;
+  let uniswapV3Factory: Type.IUniswapV3Factory;
+  let uniswapV3Pool: Type.IUniswapV3Pool;
   let tokenA: Type.IERC20;
   let tokenB: Type.IERC20;
 
@@ -31,6 +31,7 @@ describe('@skip-on-coverage Fixture', () => {
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
+  const OLD_TRIGGER = 3;
 
   beforeEach(async () => {
     ({ deployer } = await getNamedAccounts());
@@ -72,9 +73,9 @@ describe('@skip-on-coverage Fixture', () => {
       beforeEach(async () => {
         await deployments.fixture(['save-tokens', 'pool-whitelisting'], { keepExistingDeployments: true });
 
-        tokenA = (await getContractFromFixture('TokenA', 'ERC20ForTest')) as Type.IERC20;
-        tokenB = (await getContractFromFixture('TokenB', 'ERC20ForTest')) as Type.IERC20;
-        uniV3Pool = (await getContractFromFixture('UniV3Pool', 'IUniswapV3Pool')) as Type.IUniswapV3Pool;
+        tokenA = (await getContractFromFixture('TokenA', 'IERC20')) as Type.IERC20;
+        tokenB = (await getContractFromFixture('TokenB', 'IERC20')) as Type.IERC20;
+        uniswapV3Pool = (await getContractFromFixture('UniswapV3Pool', 'IUniswapV3Pool')) as Type.IUniswapV3Pool;
         poolSalt = calculateSalt(tokenA.address, tokenB.address, TEST_FEE);
         await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
       });
@@ -94,10 +95,6 @@ describe('@skip-on-coverage Fixture', () => {
 
         it('should work with fetch-observation', async () => {
           await deployments.fixture(['fetch-observation'], { keepExistingDeployments: true });
-        });
-
-        it('should work with force-fetch-observation', async () => {
-          await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
         });
 
         describe('when an observation was fetched', () => {
@@ -133,9 +130,13 @@ describe('@skip-on-coverage Fixture', () => {
             });
 
             it('should be able to fetch and send observations', async () => {
-              const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
-              const txReceipt = await tx.wait();
-              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+              await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
+
+              const lastPoolNonce = (await dataFeed.lastPoolStateObserved(poolSalt)).poolNonce;
+              const evtFilter = dataFeed.filters.PoolObserved(poolSalt, lastPoolNonce);
+              const queryResults = await dataFeed.queryFilter(evtFilter);
+
+              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
               const RANDOM_CHAIN_ID = 5;
 
@@ -143,7 +144,7 @@ describe('@skip-on-coverage Fixture', () => {
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
                   RANDOM_CHAIN_ID,
                   poolSalt,
-                  fetchData._poolNonce,
+                  lastPoolNonce,
                   fetchData._observationsData
                 )
               ).not.to.be.reverted;
@@ -165,19 +166,17 @@ describe('@skip-on-coverage Fixture', () => {
             });
 
             it('should be able to fetch and send observations', async () => {
-              const tx = await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
-              const txReceipt = await tx.wait();
-              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', txReceipt.logs![1].data);
+              await strategyJob['work(bytes32,uint8)'](poolSalt, TIME_TRIGGER);
+              const lastPoolNonce = (await dataFeed.lastPoolStateObserved(poolSalt)).poolNonce;
+              const evtFilter = dataFeed.filters.PoolObserved(poolSalt, lastPoolNonce);
+              const queryResults = await dataFeed.queryFilter(evtFilter);
+
+              const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
               const REAL_CHAIN_ID = 420;
 
               await expect(
-                strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
-                  REAL_CHAIN_ID,
-                  poolSalt,
-                  fetchData._poolNonce,
-                  fetchData._observationsData
-                )
+                strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](REAL_CHAIN_ID, poolSalt, lastPoolNonce, fetchData._observationsData)
               ).not.to.be.reverted;
             });
 
@@ -210,10 +209,6 @@ describe('@skip-on-coverage Fixture', () => {
       await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
     });
 
-    it('should work with force-fetch-observation', async () => {
-      await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
-    });
-
     describe('strategy job setup', () => {
       beforeEach(async () => {
         await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
@@ -234,7 +229,7 @@ describe('@skip-on-coverage Fixture', () => {
 
     describe('after observation was fetched', () => {
       beforeEach(async () => {
-        await deployments.fixture(['force-fetch-observation'], { keepExistingDeployments: true });
+        await deployments.fixture(['fetch-observation'], { keepExistingDeployments: true });
       });
 
       it('should work with bridge-observation', async () => {

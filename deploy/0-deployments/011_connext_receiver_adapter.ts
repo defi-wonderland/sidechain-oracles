@@ -11,7 +11,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const ORIGIN_DOMAIN_ID = domainId[Number(await hre.getChainId())];
 
-  const CONSTRUCTOR_ARGS = [dataReceiver.address, dataSender.address, ORIGIN_DOMAIN_ID, connextHandler];
+  const CONSTRUCTOR_ARGS = [dataReceiver.address, connextHandler, dataSender.address, ORIGIN_DOMAIN_ID];
 
   await hre.companionNetworks['receiver'].deployments.deploy('ConnextReceiverAdapter', {
     contract: 'solidity/contracts/bridges/ConnextReceiverAdapter.sol:ConnextReceiverAdapter',

@@ -1,15 +1,18 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {PipelineManagement, Governable} from './peripherals/PipelineManagement.sol';
 import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
-import {Create2Address} from '../libraries/Create2Address.sol';
+import {Create2Address} from '@defi-wonderland/solidity-utils/solidity/libraries/Create2Address.sol';
 
-/// @title The DataFeed interface
+/// @title The DataFeed contract
 /// @notice Queries UniV3Pools, stores history proofs on chain, handles data broadcast
 contract DataFeed is IDataFeed, PipelineManagement {
   /// @inheritdoc IDataFeed
   IDataFeedStrategy public strategy;
+
+  /// @inheritdoc IDataFeed
+  uint32 public minLastOracleDelta;
 
   /// @inheritdoc IDataFeed
   mapping(bytes32 => PoolState) public lastPoolStateObserved;
@@ -19,8 +22,13 @@ contract DataFeed is IDataFeed, PipelineManagement {
   address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
-  constructor(address _governor, IDataFeedStrategy _strategy) Governable(_governor) {
+  constructor(
+    address _governor,
+    IDataFeedStrategy _strategy,
+    uint32 _minLastOracleDelta
+  ) Governable(_governor) {
     _setStrategy(_strategy);
+    _setMinLastOracleDelta(_minLastOracleDelta);
   }
 
   /// @inheritdoc IDataFeed
@@ -30,7 +38,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
-  ) external validatePipeline(_chainId, _poolSalt, _poolNonce) {
+  ) external payable validatePipeline(_chainId, _poolSalt, _poolNonce) {
     (uint32 _destinationDomainId, address _dataReceiver) = validateSenderAdapter(_bridgeSenderAdapter, _chainId);
 
     {
@@ -38,7 +46,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
       if (!_observedKeccak[_resultingKeccak]) revert UnknownHash();
     }
 
-    _bridgeSenderAdapter.bridgeObservations(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
+    _bridgeSenderAdapter.bridgeObservations{value: msg.value}(_dataReceiver, _destinationDomainId, _observationsData, _poolSalt, _poolNonce);
     emit DataBroadcast(_poolSalt, _poolNonce, _chainId, _dataReceiver, _bridgeSenderAdapter);
   }
 
@@ -105,6 +113,8 @@ contract DataFeed is IDataFeed, PipelineManagement {
         }
       }
 
+      if (_delta < minLastOracleDelta) revert InsufficientDelta();
+
       _lastPoolStateObserved = PoolState({
         poolNonce: _lastPoolStateObserved.poolNonce + 1,
         blockTimestamp: _secondsNow - _secondsAgo,
@@ -129,9 +139,29 @@ contract DataFeed is IDataFeed, PipelineManagement {
     _setStrategy(_strategy);
   }
 
+  /// @inheritdoc IDataFeed
+  function setMinLastOracleDelta(uint32 _minLastOracleDelta) external onlyGovernor {
+    _setMinLastOracleDelta(_minLastOracleDelta);
+  }
+
+  /// @inheritdoc IDataFeed
+  function getPoolNonce(bytes32 _poolSalt) public view override(IDataFeed, PipelineManagement) returns (uint24 _poolNonce) {
+    PoolState memory _lastPoolStateObserved = lastPoolStateObserved[_poolSalt];
+    return _lastPoolStateObserved.poolNonce;
+  }
+
   function _setStrategy(IDataFeedStrategy _strategy) private {
+    if (address(_strategy) == address(0)) revert ZeroAddress();
+
     strategy = _strategy;
     emit StrategySet(_strategy);
+  }
+
+  function _setMinLastOracleDelta(uint32 _minLastOracleDelta) private {
+    if (_minLastOracleDelta == 0) revert ZeroAmount();
+
+    minLastOracleDelta = _minLastOracleDelta;
+    emit MinLastOracleDeltaSet(_minLastOracleDelta);
   }
 
   modifier onlyStrategy() {

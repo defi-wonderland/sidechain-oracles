@@ -15,5 +15,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
+deployFunction.dependencies = ['data-feed', 'pool-whitelisting'];
 deployFunction.tags = ['setup-manual-strategy', 'test'];
 export default deployFunction;

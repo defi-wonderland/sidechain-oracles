@@ -7,7 +7,6 @@ contract ConnextHandlerForTest {
   uint32 public origin;
 
   constructor() {
-    // TODO: set in constructor
     origin = 1111;
   }
 

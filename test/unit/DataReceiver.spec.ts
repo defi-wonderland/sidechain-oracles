@@ -4,10 +4,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataReceiver, DataReceiver__factory, IOracleFactory, IOracleSidechain } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm } from '@utils';
-import { ZERO_ADDRESS, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { ZERO_ADDRESS } from '@utils/constants';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor, onlyWhitelistedAdapter } from '@utils/behaviours';
-import { getInitCodeHash, getRandomBytes32 } from '@utils/misc';
+import { getRandomBytes32 } from '@utils/misc';
 import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
@@ -42,13 +42,11 @@ describe('DataReceiver.sol', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
-  });
-
   describe('constructor(...)', () => {
+    it('should revert if oracleFactory is set to the zero address', async () => {
+      await expect(dataReceiverFactory.deploy(governor.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
+
     it('should set the governor', async () => {
       expect(await dataReceiver.governor()).to.eq(governor.address);
     });

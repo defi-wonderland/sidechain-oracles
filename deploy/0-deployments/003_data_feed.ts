@@ -1,14 +1,20 @@
 import { DeployFunction } from 'hardhat-deploy/types';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
+import { dataFeedSettings } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
+
+  const chainId = Number(await hre.getChainId());
+  const minLastOracleDelta = dataFeedSettings[chainId];
+
+  const CONSTRUCTOR_ARGS = [deployer, deployer, minLastOracleDelta];
 
   await hre.deployments.deploy('DataFeed', {
     contract: 'solidity/contracts/DataFeed.sol:DataFeed',
     from: deployer,
     log: true,
-    args: [deployer, deployer],
+    args: CONSTRUCTOR_ARGS,
   });
 };
 

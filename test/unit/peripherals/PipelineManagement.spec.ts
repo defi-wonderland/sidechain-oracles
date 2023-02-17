@@ -21,6 +21,8 @@ describe('PipelineManagement.sol', () => {
   let tx: ContractTransaction;
   let snapshotId: string;
 
+  const initialMinLastOracleDelta = 1800;
+
   const randomDataReceiverAddress = wallet.generateRandomAddress();
   const randomDataReceiverAddress2 = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
@@ -37,7 +39,7 @@ describe('PipelineManagement.sol', () => {
     fakeAdapter = await smock.fake('IConnextSenderAdapter');
 
     dataFeedFactory = await smock.mock('DataFeed');
-    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address, initialMinLastOracleDelta);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -59,6 +61,11 @@ describe('PipelineManagement.sol', () => {
       () => governor,
       () => [randomChainId, randomSalt]
     );
+
+    it('should revert if the pipeline has already been whitelisted', async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      await expect(dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt)).to.be.revertedWith('AlreadyAllowedPipeline()');
+    });
 
     it('should whitelist the next pool nonce to be observed', async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
@@ -110,6 +117,11 @@ describe('PipelineManagement.sol', () => {
 
       await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs)).to.be.revertedWith('LengthMismatch()');
       await expect(dataFeed.connect(governor).whitelistPipelines(...mismatchedArgs2)).to.be.revertedWith('LengthMismatch()');
+    });
+
+    it('should revert if the pipelines have already been whitelisted', async () => {
+      await dataFeed.connect(governor).whitelistPipelines(...validArgs);
+      await expect(dataFeed.connect(governor).whitelistPipelines(...validArgs)).to.be.revertedWith('AlreadyAllowedPipeline()');
     });
 
     it('should whitelist the next pool nonces to be observed', async () => {
@@ -390,6 +402,20 @@ describe('PipelineManagement.sol', () => {
     it('should return the whitelisted pools', async () => {
       let expectedWhitelistedPools = [randomSalt, randomSalt2];
       expect(await dataFeed.whitelistedPools()).to.eql(expectedWhitelistedPools);
+    });
+  });
+
+  describe('whitelistedChains()', () => {
+    beforeEach(async () => {
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt2);
+      await dataFeed.connect(governor).whitelistPipeline(randomChainId2, randomSalt);
+    });
+
+    it('should return the whitelisted chains', async () => {
+      let whitelistedChains = await dataFeed.whitelistedChains();
+      expect(whitelistedChains[0]).to.eq(randomChainId);
+      expect(whitelistedChains[1]).to.eq(randomChainId2);
     });
   });
 

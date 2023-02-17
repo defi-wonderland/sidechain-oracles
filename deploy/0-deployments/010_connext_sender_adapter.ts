@@ -6,7 +6,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const dataFeed = await hre.deployments.get('DataFeed');
 
-  const CONSTRUCTOR_ARGS = [connextHandler, dataFeed.address];
+  const CONSTRUCTOR_ARGS = [dataFeed.address, connextHandler];
 
   await hre.deployments.deploy('ConnextSenderAdapter', {
     contract: 'solidity/contracts/bridges/ConnextSenderAdapter.sol:ConnextSenderAdapter',

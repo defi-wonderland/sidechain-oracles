@@ -13,17 +13,26 @@ import {
   OracleFactory,
   OracleSidechain,
   IOracleSidechain,
-  ERC20,
+  IERC20,
 } from '@typechained';
 import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { evm, wallet } from '@utils';
-import { RANDOM_CHAIN_ID, ORACLE_SIDECHAIN_CREATION_CODE } from '@utils/constants';
+import { RANDOM_CHAIN_ID } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
-import { calculateSalt, getInitCodeHash } from '@utils/misc';
+import { calculateSalt } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
-import { setupContracts, getEnvironment, getOracle, getSecondsAgos, observePool, calculateOracleObservations, uniswapV3Swap } from './common';
+import {
+  setupContracts,
+  getEnvironment,
+  getOLDEnvironment,
+  getOracle,
+  getSecondsAgos,
+  observePool,
+  calculateOracleObservations,
+  uniswapV3Swap,
+} from './common';
 import { expect } from 'chai';
 
 describe('@skip-on-coverage Data Bridging Flow', () => {
@@ -31,16 +40,16 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let governor: SignerWithAddress;
   let keeper: JsonRpcSigner;
   let kp3rProxyGovernor: JsonRpcSigner;
+  let keep3rV2: Keep3rV2;
+  let uniswapV3Factory: UniswapV3Factory;
+  let uniswapV3Pool: UniswapV3Pool;
+  let tokenA: IERC20;
+  let tokenB: IERC20;
+  let fee: number;
+  let salt: string;
   let dataFeed: DataFeed;
   let dataFeedStrategy: DataFeedStrategy;
   let strategyJob: StrategyJob;
-  let uniswapV3Factory: UniswapV3Factory;
-  let uniV3Pool: UniswapV3Pool;
-  let tokenA: ERC20;
-  let tokenB: ERC20;
-  let fee: number;
-  let keep3rV2: Keep3rV2;
-  let salt: string;
   let connextSenderAdapter: ConnextSenderAdapter;
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let dataReceiver: DataReceiver;
@@ -52,10 +61,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
   const destinationDomain = 420;
   const nonce = 1;
+  const connextFee = toUnit(0.1);
 
   const NONE_TRIGGER = 0;
   const TIME_TRIGGER = 1;
   const TWAP_TRIGGER = 2;
+  const OLD_TRIGGER = 3;
 
   before(async () => {
     await evm.reset({
@@ -63,7 +74,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       blockNumber: forkBlockNumber.oracleSidechain,
     });
 
-    ({ uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee, keep3rV2, keeper, kp3rProxyGovernor } = await getEnvironment());
+    ({ uniswapV3Factory, uniswapV3Pool, tokenA, tokenB, fee, keep3rV2, keeper, kp3rProxyGovernor } = await getEnvironment());
 
     salt = calculateSalt(tokenA.address, tokenB.address, fee);
 
@@ -79,15 +90,9 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     await evm.snapshot.revert(snapshotId);
   });
 
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
-  });
-
   describe('observation bridging flow', () => {
     let dataFeedStrategySigner: JsonRpcSigner;
-    let secondsAgos = [30, 10, 0];
+    let secondsAgos;
     let blockTimestamps: number[];
     let tickCumulatives: BigNumber[];
     let arithmeticMeanTicks: BigNumber[];
@@ -115,14 +120,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has no data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
 
           /// @notice: swap happens at now - 1.5 hours                         / here
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
+          ({ arithmeticMeanTicks } = await observePool(uniswapV3Pool, blockTimestamps, 0, toBN(0)));
 
           ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
@@ -174,7 +179,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
-          let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+          let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
           let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
           let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -196,14 +201,14 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
           now = (await ethers.provider.getBlock('latest')).timestamp;
 
           /// @notice: swap happens at now - 1.5 hours                         / here
           blockTimestamps = [now - 4 * hours, now - 3 * hours, now - 2 * hours, now - hours, now];
 
-          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, 0, toBN(0)));
+          ({ tickCumulatives, arithmeticMeanTicks } = await observePool(uniswapV3Pool, blockTimestamps, 0, toBN(0)));
 
           lastBlockTimestampObserved = blockTimestamps[blockTimestamps.length - 1];
           lastTickCumulativeObserved = tickCumulatives[tickCumulatives.length - 1];
@@ -249,7 +254,12 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
           beforeEach(async () => {
             blockTimestamps = [now + hours, now + 2 * hours, now + 4 * hours];
 
-            ({ arithmeticMeanTicks } = await observePool(uniV3Pool, blockTimestamps, lastBlockTimestampObserved, lastTickCumulativeObserved));
+            ({ arithmeticMeanTicks } = await observePool(
+              uniswapV3Pool,
+              blockTimestamps,
+              lastBlockTimestampObserved,
+              lastTickCumulativeObserved
+            ));
 
             ({ secondsAgos } = await getSecondsAgos(blockTimestamps));
 
@@ -312,7 +322,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
             ({ secondsAgos } = await getSecondsAgos(sampleTimestamps));
 
-            let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+            let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
             let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
             let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -326,7 +336,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
     });
   });
 
-  describe('twap triggering', () => {
+  describe('TWAP triggering', () => {
     let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
     let swapAmount = toUnit(100);
     const hours = 10_000;
@@ -343,7 +353,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
           fetchTx = await dataFeedStrategy.strategicFetchObservations(salt, TIME_TRIGGER);
@@ -384,6 +394,84 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
           it('should trigger a strategic fetch', async () => {
             await expect(dataFeedStrategy.strategicFetchObservations(salt, TWAP_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
+          });
+        });
+      });
+    });
+  });
+
+  describe('OLD triggering', () => {
+    let uniswapV3Pool: UniswapV3Pool;
+    let tokenA: IERC20;
+    let tokenB: IERC20;
+    let fee: number;
+    let salt: string;
+    let observationsFetched: IOracleSidechain.ObservationDataStructOutput[];
+    let observationCardinalityNext: number;
+    let swapAmount = toBN(100_000_000000);
+    const hours = 10_000;
+
+    before(async () => {
+      ({ uniswapV3Pool, tokenA, tokenB, fee } = await getOLDEnvironment());
+
+      salt = calculateSalt(tokenA.address, tokenB.address, fee);
+    });
+
+    context('when the pool, pipeline, adapter, destination domain and receiver are set and whitelisted', () => {
+      beforeEach(async () => {
+        await dataFeed.connect(governor).whitelistPipeline(RANDOM_CHAIN_ID, salt);
+        await dataFeed.connect(governor).whitelistAdapter(connextSenderAdapter.address, true);
+        await dataFeed.connect(governor).setDestinationDomainId(connextSenderAdapter.address, RANDOM_CHAIN_ID, destinationDomain);
+        await dataFeed.connect(governor).setReceiver(connextSenderAdapter.address, destinationDomain, connextReceiverAdapter.address);
+        await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
+      });
+
+      context('when the oracle has no data', () => {
+        beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+        });
+
+        it('should trigger a strategic fetch', async () => {
+          await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
+        });
+      });
+
+      context('when the oracle has data', () => {
+        beforeEach(async () => {
+          /// @notice: creates a random swap to avoid cache
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
+          await evm.advanceTimeAndBlock(1.5 * hours);
+
+          fetchTx = await dataFeedStrategy.strategicFetchObservations(salt, TIME_TRIGGER);
+
+          const eventPoolObserved = (await fetchTx.wait()).events![0];
+          observationsFetched = dataFeed.interface.decodeEventLog('PoolObserved', eventPoolObserved.data)
+            ._observationsData as IOracleSidechain.ObservationDataStructOutput[];
+
+          broadcastTx = await dataFeed.sendObservations(connextSenderAdapter.address, RANDOM_CHAIN_ID, salt, nonce, observationsFetched);
+
+          await evm.advanceTimeAndBlock(4 * hours);
+        });
+
+        context('when the last pool state observed is not older than the oldest observation', () => {
+          it('should revert', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.be.revertedWith('NotStrategic()');
+          });
+        });
+
+        context('when the last pool state observed is older than the oldest observation', () => {
+          beforeEach(async () => {
+            [, , , , observationCardinalityNext, ,] = await uniswapV3Pool.slot0();
+            for (let i = 0; i < Math.round(observationCardinalityNext / 2); ++i) {
+              await uniswapV3Swap(tokenB.address, swapAmount, tokenA.address, fee);
+              await uniswapV3Swap(tokenA.address, toUnit(100), tokenB.address, fee);
+            }
+          });
+
+          it('should trigger a strategic fetch', async () => {
+            await expect(dataFeedStrategy.strategicFetchObservations(salt, OLD_TRIGGER)).to.emit(dataFeedStrategy, 'StrategicFetch');
           });
         });
       });
@@ -491,7 +579,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has no data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
         });
 
@@ -529,7 +617,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
               const secondsAgos = [sampleDelta, 0];
 
-              let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+              let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
               let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
               let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);
@@ -545,7 +633,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
       context('when the oracle has data', () => {
         beforeEach(async () => {
           /// @notice: creates a random swap to avoid cache
-          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor(Math.random() * 10e9)), tokenA.address, fee);
+          await uniswapV3Swap(tokenB.address, swapAmount.add(Math.floor((Math.random() + 1) * 10e9)), tokenA.address, fee);
           await evm.advanceTimeAndBlock(1.5 * hours);
 
           fetchTx = await strategyJob.connect(keeper)['work(bytes32,uint8)'](salt, TIME_TRIGGER);
@@ -594,7 +682,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
 
               const secondsAgos = [sampleDelta, 0];
 
-              let [poolTickCumulatives] = await uniV3Pool.callStatic.observe(secondsAgos);
+              let [poolTickCumulatives] = await uniswapV3Pool.callStatic.observe(secondsAgos);
               let [oracleTickCumulatives] = await oracleSidechain.callStatic.observe(secondsAgos);
 
               let poolTickCumulativesDelta = poolTickCumulatives[1].sub(poolTickCumulatives[0]);

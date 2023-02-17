@@ -4,8 +4,7 @@ import { ConnextSenderAdapter, ConnextSenderAdapter__factory, ConnextHandlerForT
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
 import { ZERO_ADDRESS, VALID_POOL_SALT } from '@utils/constants';
-import { toBN } from '@utils/bn';
-import { readArgFromEvent } from '@utils/event-utils';
+import { toBN, toUnit } from '@utils/bn';
 import { onlyDataFeed } from '@utils/behaviours';
 import chai, { expect } from 'chai';
 
@@ -20,17 +19,17 @@ describe('ConnextSenderAdapter.sol', () => {
 
   const randomReceiverAdapterAddress = wallet.generateRandomAddress();
   const randomDestinationDomainId = 3;
-  const rinkebyOriginId = 1111;
 
   const randomSalt = VALID_POOL_SALT;
   const randomNonce = 420;
 
   before(async () => {
     [, randomFeed] = await ethers.getSigners();
+
     connextHandler = await smock.fake('ConnextHandlerForTest');
 
     connextSenderAdapterFactory = await smock.mock('ConnextSenderAdapter');
-    connextSenderAdapter = await connextSenderAdapterFactory.deploy(connextHandler.address, randomFeed.address);
+    connextSenderAdapter = await connextSenderAdapterFactory.deploy(randomFeed.address, connextHandler.address);
 
     snapshotId = await evm.snapshot.take();
   });
@@ -40,11 +39,20 @@ describe('ConnextSenderAdapter.sol', () => {
   });
 
   describe('constructor(...)', () => {
-    it('should initialize connext receiver to the address passed to the constructor', async () => {
-      expect(await connextSenderAdapter.connext()).to.eq(connextHandler.address);
+    it('should revert if dataFeed is set to the zero address', async () => {
+      await expect(connextSenderAdapterFactory.deploy(ZERO_ADDRESS, connextHandler.address)).to.be.revertedWith('ZeroAddress()');
     });
-    it('should initialize data feed to the address passed to the constructor', async () => {
+
+    it('should revert if connext is set to the zero address', async () => {
+      await expect(connextSenderAdapterFactory.deploy(randomFeed.address, ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
+
+    it('should initialize dataFeed interface', async () => {
       expect(await connextSenderAdapter.dataFeed()).to.eq(randomFeed.address);
+    });
+
+    it('should initialize connext interface', async () => {
+      expect(await connextSenderAdapter.connext()).to.eq(connextHandler.address);
     });
   });
 
@@ -56,10 +64,18 @@ describe('ConnextSenderAdapter.sol', () => {
     let arithmeticMeanTick2 = 300;
     let observationData2 = [blockTimestamp2, arithmeticMeanTick2];
     let observationsData = [observationData1, observationData2];
+    const fee = toUnit(0.1);
 
     beforeEach(async () => {
       connextHandler.xcall.reset();
     });
+
+    onlyDataFeed(
+      () => connextSenderAdapter,
+      'bridgeObservations',
+      () => randomFeed,
+      () => [randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce, { value: fee }]
+    );
 
     it('should call xCall with the correct arguments', async () => {
       const xcallArgs = await prepareData(observationsData);
@@ -70,12 +86,13 @@ describe('ConnextSenderAdapter.sol', () => {
       expect(connextHandler.xcall).to.have.been.calledOnceWith(...xcallArgs);
     });
 
-    onlyDataFeed(
-      () => connextSenderAdapter,
-      'bridgeObservations',
-      () => randomFeed,
-      () => [randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce]
-    );
+    it('should call xCall with the provided msg.value', async () => {
+      await connextSenderAdapter
+        .connect(randomFeed)
+        .bridgeObservations(randomReceiverAdapterAddress, randomDestinationDomainId, observationsData, randomSalt, randomNonce, { value: fee });
+
+      expect(connextHandler.xcall).to.have.been.calledWithValue(fee);
+    });
   });
 
   const prepareData = async (observationsData: number[][]) => {

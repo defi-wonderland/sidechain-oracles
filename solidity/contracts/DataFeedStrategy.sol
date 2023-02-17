@@ -1,9 +1,10 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './peripherals/Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {IDataFeedStrategy, IUniswapV3Pool, IDataFeed, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeedStrategy.sol';
-import {Create2Address} from '../libraries/Create2Address.sol';
+import {OracleLibrary} from '@uniswap/v3-periphery/contracts/libraries/OracleLibrary.sol';
+import {Create2Address} from '@defi-wonderland/solidity-utils/solidity/libraries/Create2Address.sol';
 
 /// @title The DataFeed Strategy contract
 /// @notice Handles when and how a history of a pool should be updated
@@ -18,7 +19,9 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   uint32 public strategyCooldown;
 
   /// @inheritdoc IDataFeedStrategy
-  uint24 public twapThreshold;
+  uint24 public defaultTwapThreshold;
+
+  mapping(bytes32 => uint24) internal _twapThreshold;
 
   /// @inheritdoc IDataFeedStrategy
   uint32 public twapLength;
@@ -31,29 +34,35 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     IDataFeed _dataFeed,
     StrategySettings memory _params
   ) Governable(_governor) {
+    if (address(_dataFeed) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
-    _setStrategyCooldown(_params.cooldown);
+    _setStrategyCooldown(_params.strategyCooldown);
+    _setDefaultTwapThreshold(_params.defaultTwapThreshold);
     _setTwapLength(_params.twapLength);
-    _setTwapThreshold(_params.twapThreshold);
     _setPeriodDuration(_params.periodDuration);
   }
 
   /// @inheritdoc IDataFeedStrategy
   function strategicFetchObservations(bytes32 _poolSalt, TriggerReason _reason) external {
+    uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
+    uint32 _fromSecondsAgo;
     IDataFeed.PoolState memory _lastPoolStateObserved;
     (, _lastPoolStateObserved.blockTimestamp, _lastPoolStateObserved.tickCumulative, _lastPoolStateObserved.arithmeticMeanTick) = dataFeed
       .lastPoolStateObserved(_poolSalt);
-    if (!_isStrategic(_poolSalt, _lastPoolStateObserved, _reason)) revert NotStrategic();
-    uint32[] memory _secondsAgos = calculateSecondsAgos(_lastPoolStateObserved.blockTimestamp);
+
+    if (_reason == TriggerReason.OLD) {
+      uint32 _timeSinceLastObservation = _secondsNow - _lastPoolStateObserved.blockTimestamp;
+      uint32 _poolOldestSecondsAgo = _getPoolOldestSecondsAgo(_poolSalt);
+      if (!(_timeSinceLastObservation > _poolOldestSecondsAgo)) revert NotStrategic();
+      _fromSecondsAgo = _poolOldestSecondsAgo;
+    } else {
+      if (!_isStrategic(_poolSalt, _lastPoolStateObserved, _reason)) revert NotStrategic();
+      _fromSecondsAgo = _secondsNow - _lastPoolStateObserved.blockTimestamp;
+    }
+
+    uint32[] memory _secondsAgos = calculateSecondsAgos(_fromSecondsAgo);
     dataFeed.fetchObservations(_poolSalt, _secondsAgos);
     emit StrategicFetch(_poolSalt, _reason);
-  }
-
-  /// @inheritdoc IDataFeedStrategy
-  /// @dev Allows governor to choose a timestamp from which to send data (overcome !OLD error)
-  function forceFetchObservations(bytes32 _poolSalt, uint32 _fromTimestamp) external onlyGovernor {
-    uint32[] memory _secondsAgos = calculateSecondsAgos(_fromTimestamp);
-    dataFeed.fetchObservations(_poolSalt, _secondsAgos);
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -62,13 +71,18 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function setTwapLength(uint32 _twapLength) external onlyGovernor {
-    _setTwapLength(_twapLength);
+  function setDefaultTwapThreshold(uint24 _defaultTwapThreshold) external onlyGovernor {
+    _setDefaultTwapThreshold(_defaultTwapThreshold);
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function setTwapThreshold(uint24 _twapThreshold) external onlyGovernor {
-    _setTwapThreshold(_twapThreshold);
+  function setTwapThreshold(bytes32 _poolSalt, uint24 _poolTwapThreshold) external onlyGovernor {
+    _setTwapThreshold(_poolSalt, _poolTwapThreshold);
+  }
+
+  /// @inheritdoc IDataFeedStrategy
+  function setTwapLength(uint32 _twapLength) external onlyGovernor {
+    _setTwapLength(_twapLength);
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -77,9 +91,16 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
+  function twapThreshold(bytes32 _poolSalt) external view returns (uint24 _poolTwapThreshold) {
+    _poolTwapThreshold = _twapThreshold[_poolSalt];
+    if (_poolTwapThreshold == 0) return defaultTwapThreshold;
+  }
+
+  /// @inheritdoc IDataFeedStrategy
   function isStrategic(bytes32 _poolSalt) external view returns (TriggerReason _reason) {
     if (isStrategic(_poolSalt, TriggerReason.TIME)) return TriggerReason.TIME;
     if (isStrategic(_poolSalt, TriggerReason.TWAP)) return TriggerReason.TWAP;
+    if (isStrategic(_poolSalt, TriggerReason.OLD)) return TriggerReason.OLD;
   }
 
   /// @inheritdoc IDataFeedStrategy
@@ -91,26 +112,32 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   }
 
   /// @inheritdoc IDataFeedStrategy
-  function calculateSecondsAgos(uint32 _fromTimestamp) public view returns (uint32[] memory _secondsAgos) {
-    if (_fromTimestamp == 0) return _initializeSecondsAgos();
+  function calculateSecondsAgos(uint32 _fromSecondsAgo) public view returns (uint32[] memory _secondsAgos) {
     uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
-    uint32 _timeSinceLastObservation = _secondsNow - _fromTimestamp;
+    if (_fromSecondsAgo == _secondsNow) return _initializeSecondsAgos();
+
     uint32 _periodDuration = periodDuration;
-    uint32 _periods = _timeSinceLastObservation / _periodDuration;
-    uint32 _remainder = _timeSinceLastObservation % _periodDuration;
+    uint32 _maxPeriods = strategyCooldown / _periodDuration;
+    uint32 _periods = _fromSecondsAgo / _periodDuration;
+    uint32 _remainder = _fromSecondsAgo % _periodDuration;
     uint32 _i;
+
+    if (_periods > _maxPeriods) {
+      _remainder += (_periods - _maxPeriods) * _periodDuration;
+      _periods = _maxPeriods;
+    }
 
     if (_remainder != 0) {
       _secondsAgos = new uint32[](++_periods);
-      _timeSinceLastObservation -= _remainder;
-      _secondsAgos[_i++] = _timeSinceLastObservation;
+      _fromSecondsAgo -= _remainder;
+      _secondsAgos[_i++] = _fromSecondsAgo;
     } else {
       _secondsAgos = new uint32[](_periods);
     }
 
-    while (_timeSinceLastObservation > 0) {
-      _timeSinceLastObservation -= _periodDuration;
-      _secondsAgos[_i++] = _timeSinceLastObservation;
+    while (_fromSecondsAgo > 0) {
+      _fromSecondsAgo -= _periodDuration;
+      _secondsAgos[_i++] = _fromSecondsAgo;
     }
   }
 
@@ -119,19 +146,25 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     IDataFeed.PoolState memory _lastPoolStateObserved,
     TriggerReason _reason
   ) internal view returns (bool _strategic) {
-    uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     if (_reason == TriggerReason.TIME) {
+      uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
       return _secondsNow >= _lastPoolStateObserved.blockTimestamp + strategyCooldown;
     } else if (_reason == TriggerReason.TWAP) {
-      return _twapIsOutOfThresholds(_poolSalt, _lastPoolStateObserved, _secondsNow);
+      return _twapIsOutOfThresholds(_poolSalt, _lastPoolStateObserved);
+    } else if (_reason == TriggerReason.OLD) {
+      uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
+      uint32 _timeSinceLastObservation = _secondsNow - _lastPoolStateObserved.blockTimestamp;
+      uint32 _poolOldestSecondsAgo = _getPoolOldestSecondsAgo(_poolSalt);
+      return _timeSinceLastObservation > _poolOldestSecondsAgo;
     }
   }
 
-  function _twapIsOutOfThresholds(
-    bytes32 _poolSalt,
-    IDataFeed.PoolState memory _lastPoolStateObserved,
-    uint32 _secondsNow
-  ) internal view returns (bool _isOutOfThresholds) {
+  function _twapIsOutOfThresholds(bytes32 _poolSalt, IDataFeed.PoolState memory _lastPoolStateObserved)
+    internal
+    view
+    returns (bool _isOutOfThresholds)
+  {
+    uint32 _secondsNow = uint32(block.timestamp); // truncation is desired
     uint32 _twapLength = twapLength;
 
     uint32[] memory _secondsAgos = new uint32[](2);
@@ -148,9 +181,12 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
 
     int24 _oracleArithmeticMeanTick = _computeTwap(_poolTickCumulatives[0], _oracleTickCumulative, _twapLength);
 
+    uint24 _poolTwapThreshold = _twapThreshold[_poolSalt];
+    if (_poolTwapThreshold == 0) _poolTwapThreshold = defaultTwapThreshold;
+
     return
-      _poolArithmeticMeanTick > _oracleArithmeticMeanTick + int24(twapThreshold) ||
-      _poolArithmeticMeanTick < _oracleArithmeticMeanTick - int24(twapThreshold);
+      _poolArithmeticMeanTick > _oracleArithmeticMeanTick + int24(_poolTwapThreshold) ||
+      _poolArithmeticMeanTick < _oracleArithmeticMeanTick - int24(_poolTwapThreshold);
   }
 
   function _computeTwap(
@@ -164,11 +200,15 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     if (_tickCumulativesDelta < 0 && (_tickCumulativesDelta % int32(_delta) != 0)) --_arithmeticMeanTick;
   }
 
+  function _getPoolOldestSecondsAgo(bytes32 _poolSalt) internal view returns (uint32 _poolOldestSecondsAgo) {
+    IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
+    _poolOldestSecondsAgo = OracleLibrary.getOldestObservationSecondsAgo(address(_pool));
+  }
+
   function _initializeSecondsAgos() internal view returns (uint32[] memory _secondsAgos) {
-    // TODO: define initialization of _secondsAgos
     _secondsAgos = new uint32[](2);
     _secondsAgos[0] = periodDuration;
-    _secondsAgos[1] = 0; // as if _fromTimestamp = _secondsNow - (periodDuration + 1)
+    _secondsAgos[1] = 0;
   }
 
   function _setStrategyCooldown(uint32 _strategyCooldown) private {
@@ -178,6 +218,18 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     emit StrategyCooldownSet(_strategyCooldown);
   }
 
+  function _setDefaultTwapThreshold(uint24 _defaultTwapThreshold) private {
+    if (_defaultTwapThreshold == 0) revert ZeroAmount();
+
+    defaultTwapThreshold = _defaultTwapThreshold;
+    emit DefaultTwapThresholdSet(_defaultTwapThreshold);
+  }
+
+  function _setTwapThreshold(bytes32 _poolSalt, uint24 _poolTwapThreshold) private {
+    _twapThreshold[_poolSalt] = _poolTwapThreshold;
+    emit TwapThresholdSet(_poolSalt, _poolTwapThreshold);
+  }
+
   function _setTwapLength(uint32 _twapLength) private {
     if ((_twapLength > strategyCooldown) || (_twapLength < periodDuration)) revert WrongSetting();
 
@@ -185,13 +237,8 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
     emit TwapLengthSet(_twapLength);
   }
 
-  function _setTwapThreshold(uint24 _twapThreshold) private {
-    twapThreshold = _twapThreshold;
-    emit TwapThresholdSet(_twapThreshold);
-  }
-
   function _setPeriodDuration(uint32 _periodDuration) private {
-    if (_periodDuration > twapLength) revert WrongSetting();
+    if (_periodDuration > twapLength || _periodDuration == 0) revert WrongSetting();
 
     periodDuration = _periodDuration;
     emit PeriodDurationSet(_periodDuration);

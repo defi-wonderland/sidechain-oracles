@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IOracleFactory} from './IOracleFactory.sol';
@@ -12,8 +12,6 @@ interface IOracleSidechain {
   }
 
   // STATE VARIABLES
-
-  // TODO: complete natspec
 
   /// @return _oracleFactory The address of the OracleFactory
   function factory() external view returns (IOracleFactory _oracleFactory);
@@ -93,9 +91,16 @@ interface IOracleSidechain {
 
   // ERRORS
 
+  /// @notice Thrown if the pool info is already initialized or if the observationCardinalityNext is already increased
   error AI();
+
+  /// @notice Thrown if the pool info does not correspond to the pool salt
   error InvalidPool();
+
+  /// @notice Thrown if the DataReceiver contract is not the one calling for writing observations
   error OnlyDataReceiver();
+
+  /// @notice Thrown if the OracleFactory contract is not the one calling for increasing observationCardinalityNext
   error OnlyFactory();
 
   // FUNCTIONS

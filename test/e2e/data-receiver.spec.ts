@@ -1,12 +1,12 @@
 import { ContractTransaction } from 'ethers';
 import { JsonRpcSigner } from '@ethersproject/providers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, ERC20 } from '@typechained';
+import { DataReceiver, ConnextReceiverAdapter, OracleSidechain, OracleFactory, IOracleSidechain, IERC20 } from '@typechained';
 import { evm, wallet } from '@utils';
 import { readArgFromEvent } from '@utils/event-utils';
-import { ORACLE_SIDECHAIN_CREATION_CODE, ZERO_ADDRESS } from '@utils/constants';
+import { ZERO_ADDRESS } from '@utils/constants';
 import { toUnit } from '@utils/bn';
-import { calculateSalt, getInitCodeHash } from '@utils/misc';
+import { calculateSalt } from '@utils/misc';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { setupContracts, getEnvironment, getOracle } from './common';
@@ -19,8 +19,8 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   let connextReceiverAdapter: ConnextReceiverAdapter;
   let oracleFactory: OracleFactory;
   let oracleSidechain: OracleSidechain;
-  let tokenA: ERC20;
-  let tokenB: ERC20;
+  let tokenA: IERC20;
+  let tokenB: IERC20;
   let fee: number;
   let salt: string;
   let tx: ContractTransaction;
@@ -46,12 +46,6 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
     await dataReceiver.connect(governor).whitelistAdapter(connextReceiverAdapter.address, true);
-  });
-
-  describe('salt code hash', () => {
-    it('should be correctly set', async () => {
-      expect(await dataReceiver.ORACLE_INIT_CODE_HASH()).to.eq(getInitCodeHash(ORACLE_SIDECHAIN_CREATION_CODE));
-    });
   });
 
   describe('adding observations', () => {

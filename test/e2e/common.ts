@@ -12,31 +12,36 @@ import {
   ConnextHandlerForTest,
   ConnextSenderAdapter,
   ConnextReceiverAdapter,
-  ERC20,
+  IERC20,
 } from '@typechained';
 import { getMainnetSdk } from '@dethcrypto/eth-sdk-client';
 import { UniswapV3Factory, UniswapV3Pool, Keep3rV2 } from '@eth-sdk-types';
 import { wallet, evm } from '@utils';
 import { getCreate2Address } from '@utils/misc';
 import {
+  KP3R_WHALE_ADDRESS,
+  USDC_WHALE_ADDRESS,
+  WETH_WHALE_ADDRESS,
+  KP3R_V1_PROXY_GOVERNANCE_ADDRESS,
   UNISWAP_V3_K3PR_ADDRESS,
+  UNISWAP_V3_USDC_ADDRESS,
   KP3R,
+  USDC,
   WETH,
   FEE,
-  KP3R_WHALE_ADDRESS,
-  WETH_WHALE_ADDRESS,
   ORACLE_SIDECHAIN_CREATION_CODE,
-  KP3R_V1_PROXY_GOVERNANCE_ADDRESS,
 } from '@utils/constants';
 import { toBN, toUnit } from '@utils/bn';
 import { calculateSalt, getInitCodeHash } from '@utils/misc';
 
 const destinationDomain = 1111;
 
-const cooldown = 3600;
-const twapLength = 2400;
-const twapThreshold = 500;
+const minLastOracleDelta = 900;
+
 const periodDuration = 1200;
+const strategyCooldown = 3600;
+const defaultTwapThreshold = 500;
+const twapLength = 2400;
 
 export async function setupContracts(): Promise<{
   stranger: SignerWithAddress;
@@ -72,13 +77,15 @@ export async function setupContracts(): Promise<{
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);
   const precalculatedDataFeedStrategyAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
-  const dataFeed = (await dataFeedFactory.connect(deployer).deploy(governor.address, precalculatedDataFeedStrategyAddress)) as DataFeed;
+  const dataFeed = (await dataFeedFactory
+    .connect(deployer)
+    .deploy(governor.address, precalculatedDataFeedStrategyAddress, minLastOracleDelta)) as DataFeed;
 
   const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, {
     periodDuration,
-    cooldown,
+    strategyCooldown,
+    defaultTwapThreshold,
     twapLength,
-    twapThreshold,
   })) as DataFeedStrategy;
 
   currentNonce = await ethers.provider.getTransactionCount(deployer.address);
@@ -91,15 +98,15 @@ export async function setupContracts(): Promise<{
 
   const connextSenderAdapter = (await connextSenderAdapterFactory
     .connect(deployer)
-    .deploy(connextHandler.address, dataFeed.address)) as ConnextSenderAdapter;
+    .deploy(dataFeed.address, connextHandler.address)) as ConnextSenderAdapter;
 
   const connextReceiverAdapter = (await connextReceiverAdapterFactory
     .connect(deployer)
     .deploy(
       dataReceiver.address,
+      connextHandler.address,
       precalculatedConnextSenderAdapterAddress,
-      destinationDomain,
-      connextHandler.address
+      destinationDomain
     )) as ConnextReceiverAdapter;
 
   return {
@@ -119,9 +126,9 @@ export async function setupContracts(): Promise<{
 
 export async function getEnvironment(): Promise<{
   uniswapV3Factory: UniswapV3Factory;
-  uniV3Pool: UniswapV3Pool;
-  tokenA: ERC20;
-  tokenB: ERC20;
+  uniswapV3Pool: UniswapV3Pool;
+  tokenA: IERC20;
+  tokenB: IERC20;
   fee: number;
   keep3rV2: Keep3rV2;
   keeper: JsonRpcSigner;
@@ -129,16 +136,32 @@ export async function getEnvironment(): Promise<{
 }> {
   const [signer] = await ethers.getSigners();
   const uniswapV3Factory = getMainnetSdk(signer).uniswapV3Factory;
-  const uniV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
-  const tokenA = (await ethers.getContractAt('ERC20', WETH)) as ERC20;
-  const tokenB = (await ethers.getContractAt('ERC20', KP3R)) as ERC20;
+  const uniswapV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_K3PR_ADDRESS);
+  const tokenA = (await ethers.getContractAt('IERC20', WETH)) as IERC20;
+  const tokenB = (await ethers.getContractAt('IERC20', KP3R)) as IERC20;
   const keep3rV2 = getMainnetSdk(signer).keep3rV2;
   const keeper = await wallet.impersonate(KP3R_WHALE_ADDRESS);
   const kp3rProxyGovernor = await wallet.impersonate(KP3R_V1_PROXY_GOVERNANCE_ADDRESS);
   await wallet.setBalance(KP3R_WHALE_ADDRESS, toUnit(10));
   await wallet.setBalance(kp3rProxyGovernor._address, toUnit(10));
 
-  return { uniswapV3Factory, uniV3Pool, tokenA, tokenB, fee: FEE, keep3rV2, keeper, kp3rProxyGovernor };
+  return { uniswapV3Factory, uniswapV3Pool, tokenA, tokenB, fee: FEE, keep3rV2, keeper, kp3rProxyGovernor };
+}
+
+export async function getOLDEnvironment(): Promise<{
+  uniswapV3Factory: UniswapV3Factory;
+  uniswapV3Pool: UniswapV3Pool;
+  tokenA: IERC20;
+  tokenB: IERC20;
+  fee: number;
+}> {
+  const [signer] = await ethers.getSigners();
+  const uniswapV3Factory = getMainnetSdk(signer).uniswapV3Factory;
+  const uniswapV3Pool = getMainnetSdk(signer).uniswapV3Pool.attach(UNISWAP_V3_USDC_ADDRESS);
+  const tokenA = (await ethers.getContractAt('IERC20', WETH)) as IERC20;
+  const tokenB = (await ethers.getContractAt('IERC20', USDC)) as IERC20;
+
+  return { uniswapV3Factory, uniswapV3Pool, tokenA, tokenB, fee: FEE };
 }
 
 export async function getOracle(
@@ -316,18 +339,21 @@ export async function uniswapV3Swap(tokenIn: string, amountIn: BigNumber, tokenO
     whale = await wallet.impersonate(KP3R_WHALE_ADDRESS);
     let kp3r = getMainnetSdk(stranger).kp3r;
     await kp3r.connect(whale).approve(uniswapV3SwapRouter.address, amountIn);
+  } else if (tokenIn == USDC) {
+    whale = await wallet.impersonate(USDC_WHALE_ADDRESS);
+    let usdc = getMainnetSdk(stranger).usdc;
+    await usdc.connect(whale).approve(uniswapV3SwapRouter.address, amountIn);
   } else {
     whale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     let weth = getMainnetSdk(stranger).weth;
     await weth.connect(whale).approve(uniswapV3SwapRouter.address, amountIn);
   }
-  let secondsNow = (await ethers.provider.getBlock('latest')).timestamp + 3;
   await uniswapV3SwapRouter.connect(whale).exactInputSingle({
     tokenIn: tokenIn,
     tokenOut: tokenOut,
     fee: fee,
     recipient: whale._address,
-    deadline: secondsNow,
+    deadline: ethers.constants.MaxUint256,
     amountIn: amountIn,
     amountOutMinimum: 1,
     sqrtPriceLimitX96: 0,

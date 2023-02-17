@@ -1,29 +1,32 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {BridgeReceiverAdapter} from './BridgeReceiverAdapter.sol';
-import {IConnext, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
-import {IXReceiver} from '@connext/nxtp-contracts/contracts/core/connext/interfaces/IXReceiver.sol';
+import {IConnext, IXReceiver, IConnextReceiverAdapter, IDataReceiver, IOracleSidechain} from '../../interfaces/bridges/IConnextReceiverAdapter.sol';
 
-contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextReceiverAdapter {
-  // The connectHandler contract on this domain
+contract ConnextReceiverAdapter is IConnextReceiverAdapter, BridgeReceiverAdapter {
+  /// @inheritdoc IConnextReceiverAdapter
   IConnext public immutable connext;
-  // The origin domain ID
-  uint32 public immutable originDomain;
-  // The DAO that's expected as the xcaller
+
+  /// @inheritdoc IConnextReceiverAdapter
   address public immutable source;
+
+  /// @inheritdoc IConnextReceiverAdapter
+  uint32 public immutable originDomain;
 
   constructor(
     IDataReceiver _dataReceiver,
+    IConnext _connext,
     address _source,
-    uint32 _originDomain,
-    IConnext _connext
+    uint32 _originDomain
   ) BridgeReceiverAdapter(_dataReceiver) {
+    if (address(_connext) == address(0) || _source == address(0)) revert ZeroAddress();
+    connext = _connext;
     source = _source;
     originDomain = _originDomain;
-    connext = _connext;
   }
 
+  /// @inheritdoc IXReceiver
   function xReceive(
     bytes32, // _transferId
     uint256, // _amount
@@ -38,7 +41,6 @@ contract ConnextReceiverAdapter is BridgeReceiverAdapter, IXReceiver, IConnextRe
     );
 
     _addObservations(_observationsData, _poolSalt, _poolNonce);
-    return bytes(abi.encode(''));
   }
 
   modifier onlyExecutor(address _originSender, uint32 _originDomain) {

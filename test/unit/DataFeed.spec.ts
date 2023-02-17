@@ -3,7 +3,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { DataFeed, DataFeed__factory, IUniswapV3Pool, IConnextSenderAdapter } from '@typechained';
 import { smock, MockContract, MockContractFactory, FakeContract } from '@defi-wonderland/smock';
 import { evm, wallet } from '@utils';
-import { UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
+import { ZERO_ADDRESS, UNI_FACTORY, POOL_INIT_CODE_HASH, VALID_POOL_SALT } from '@utils/constants';
+import { toUnit } from '@utils/bn';
 import { readArgFromEvent } from '@utils/event-utils';
 import { onlyGovernor, onlyStrategy } from '@utils/behaviours';
 import { getCreate2Address, getObservedHash } from '@utils/misc';
@@ -19,6 +20,8 @@ describe('DataFeed.sol', () => {
   let connextSenderAdapter: FakeContract<IConnextSenderAdapter>;
   let uniswapV3Pool: FakeContract<IUniswapV3Pool>;
   let snapshotId: string;
+
+  const initialMinLastOracleDelta = 1800;
 
   const randomAddress = wallet.generateRandomAddress();
   const randomDataReceiverAddress = wallet.generateRandomAddress();
@@ -45,7 +48,7 @@ describe('DataFeed.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    dataFeed = await dataFeedFactory.deploy(governor.address, strategy.address);
+    dataFeed = await dataFeedFactory.deploy(governor.address, strategy.address, initialMinLastOracleDelta);
   });
 
   describe('constructor(...)', () => {
@@ -56,6 +59,10 @@ describe('DataFeed.sol', () => {
     it('should set the strategy', async () => {
       expect(await dataFeed.strategy()).to.eq(strategy.address);
     });
+
+    it('should set the minLastOracleDelta', async () => {
+      expect(await dataFeed.minLastOracleDelta()).to.eq(initialMinLastOracleDelta);
+    });
   });
 
   describe('sendObservations(...)', () => {
@@ -63,6 +70,7 @@ describe('DataFeed.sol', () => {
     let observationData1 = [1000000, 100];
     let observationData2 = [3000000, 300];
     let observationsData = [observationData0, observationData1, observationData2];
+    const fee = toUnit(0.1);
 
     beforeEach(async () => {
       await dataFeed.connect(governor).whitelistPipeline(randomChainId, randomSalt);
@@ -108,6 +116,11 @@ describe('DataFeed.sol', () => {
         );
       });
 
+      it('should route msg.value to the bridge sender adapter', async () => {
+        await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, nonce, observationsData, { value: fee });
+        expect(connextSenderAdapter.bridgeObservations).to.have.been.calledWithValue(fee);
+      });
+
       it('should emit DataBroadcast', async () => {
         const tx = await dataFeed.sendObservations(connextSenderAdapter.address, randomChainId, randomSalt, nonce, observationsData);
         let eventPoolSalt = await readArgFromEvent(tx, 'DataBroadcast', '_poolSalt');
@@ -127,9 +140,9 @@ describe('DataFeed.sol', () => {
 
   describe('fetchObservations(...)', () => {
     let secondsNow: number;
-    let secondsAgo = 30;
-    let delta1 = 20;
-    let delta2 = 10;
+    let secondsAgo = 3000;
+    let delta1 = 1200;
+    let delta2 = initialMinLastOracleDelta;
     let secondsAgos = [secondsAgo, secondsAgo - delta1, secondsAgo - (delta1 + delta2)];
     let blockTimestamp1: number;
     let blockTimestamp2: number;
@@ -160,18 +173,20 @@ describe('DataFeed.sol', () => {
       });
 
       it('should revert if secondsAgos is unsorted', async () => {
-        let secondsAgos = [secondsAgo - (delta1 + delta2), secondsAgo - delta1, secondsAgo];
-        let tickCumulatives = [0, 0, 0];
+        const secondsAgos = [secondsAgo - (delta1 + delta2), secondsAgo - delta1, secondsAgo];
+        tickCumulatives = [0, 0, 0];
         uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+
         await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
           'VM Exception while processing transaction: reverted with panic code 0x11 (Arithmetic operation underflowed or overflowed outside of an unchecked block)'
         );
       });
 
       it('should revert if secondsAgos has a repeated input', async () => {
-        let secondsAgos = [secondsAgo, secondsAgo];
-        let tickCumulatives = [0, 0];
+        const secondsAgos = [secondsAgo, secondsAgo, 0];
+        tickCumulatives = [0, 0, 0];
         uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+
         await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith(
           'VM Exception while processing transaction: reverted with panic code 0x12 (Division or modulo division by zero)'
         );
@@ -187,10 +202,19 @@ describe('DataFeed.sol', () => {
         });
 
         it('should revert if secondsAgos provides insufficient datapoints', async () => {
-          let secondsAgos = [secondsAgo];
-          let tickCumulatives = [0];
+          const secondsAgos = [secondsAgo];
+          tickCumulatives = [0];
           uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+
           await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InvalidSecondsAgos()');
+        });
+
+        it('should revert if the last oracle delta is insufficient', async () => {
+          const secondsAgos = [initialMinLastOracleDelta - 1, 0];
+          tickCumulatives = [0, 0];
+          uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+
+          await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InsufficientDelta()');
         });
 
         // arithmeticMeanTick = tickCumulativesDelta / delta
@@ -334,7 +358,7 @@ describe('DataFeed.sol', () => {
 
         context('when the data to be fetched is old compared with that of the oracle', () => {
           before(async () => {
-            delta0 = -40;
+            delta0 = -400;
             tickCumulativesDelta0 = 8000;
             tickCumulatives = [0, 0, 0];
             uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
@@ -363,138 +387,163 @@ describe('DataFeed.sol', () => {
         });
 
         context('when the data to be fetched is discontinuous with that of the oracle', () => {
-          before(async () => {
-            delta0 = 40;
-            tickCumulativesDelta0 = 0;
-          });
-
-          it('should be able to fetch 1 datapoint', async () => {
-            let secondsAgos = [secondsAgo];
-            let tickCumulatives = [tickCumulative];
-            uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
-
-            const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
-            observationsData = (await readArgFromEvent(tx, 'PoolObserved', '_observationsData'))!;
-            expect(observationsData.length).to.eq(1);
-          });
-
-          // arithmeticMeanTick = tickCumulativesDelta / delta
-          context('when the arithmetic mean tick is truncated', () => {
+          context('when the last oracle delta is insufficient', () => {
             before(async () => {
-              tickCumulativesDelta0 = 4000;
-              tickCumulativesDelta1 = 2000;
-              tickCumulativesDelta2 = 1000;
-              tickCumulatives = [
-                tickCumulative,
-                tickCumulative + tickCumulativesDelta1,
-                tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
-              ];
-              arithmeticMeanTick0 = Math.trunc(tickCumulativesDelta0 / delta0);
-              arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
-              arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+              delta0 = initialMinLastOracleDelta - 1;
+              tickCumulativesDelta0 = 0;
+            });
+
+            it('should revert with 1 datapoint', async () => {
+              const secondsAgos = [secondsAgo];
+              tickCumulatives = [0];
               uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+
+              await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InsufficientDelta()');
             });
 
-            it('should update lastPoolStateObserved', async () => {
-              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
+            it('should revert with more than 1 datapoint', async () => {
+              const secondsAgos = [delta0, 0];
+              tickCumulatives = [0, 0];
+              uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
-              lastBlockTimestampObserved = secondsNow - secondsAgos[2];
-              let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
+              await expect(dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos)).to.be.revertedWith('InsufficientDelta()');
+            });
+          });
 
-              expect(lastPoolStateObserved.poolNonce).to.eq(lastPoolNonceObserved + 1);
-              expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
-              expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
-              expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
+          context('when the last oracle delta is sufficient', () => {
+            before(async () => {
+              delta0 = initialMinLastOracleDelta;
+              tickCumulativesDelta0 = 0;
             });
 
-            it('should update _observedKeccak', async () => {
-              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
-
-              observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
-              observationData1 = [blockTimestamp1, arithmeticMeanTick1];
-              observationData2 = [blockTimestamp2, arithmeticMeanTick2];
-              observationsData = [observationData0, observationData1, observationData2];
-
-              const hash = getObservedHash(randomSalt, lastPoolNonceObserved + 1, observationsData);
-
-              let observedKeccak = await dataFeed.getVariable('_observedKeccak', [hash]);
-              expect(observedKeccak).to.eq(true);
-            });
-
-            it('should emit PoolObserved', async () => {
-              observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
-              observationData1 = [blockTimestamp1, arithmeticMeanTick1];
-              observationData2 = [blockTimestamp2, arithmeticMeanTick2];
-              observationsData = [observationData0, observationData1, observationData2];
+            it('should be able to fetch 1 datapoint', async () => {
+              const secondsAgos = [secondsAgo];
+              tickCumulatives = [tickCumulative];
+              uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
 
               const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
-              let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
-              let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
-              let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
-
-              expect(eventPoolSalt).to.eq(randomSalt);
-              expect(eventPoolNonce).to.eq(lastPoolNonceObserved + 1);
-              expect(eventObservationsData).to.eql(observationsData);
-            });
-          });
-
-          // arithmeticMeanTick = tickCumulativesDelta / delta
-          context('when the arithmetic mean tick is rounded to negative infinity', () => {
-            before(async () => {
-              tickCumulativesDelta0 = -4001;
-              tickCumulativesDelta1 = -2001;
-              tickCumulativesDelta2 = -1002;
-              tickCumulatives = [
-                tickCumulative,
-                tickCumulative + tickCumulativesDelta1,
-                tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
-              ];
-              arithmeticMeanTick0 = Math.floor(tickCumulativesDelta0 / delta0);
-              arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
-              arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
-              uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+              observationsData = (await readArgFromEvent(tx, 'PoolObserved', '_observationsData'))!;
+              expect(observationsData.length).to.eq(1);
             });
 
-            it('should update lastPoolStateObserved', async () => {
-              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
+            // arithmeticMeanTick = tickCumulativesDelta / delta
+            context('when the arithmetic mean tick is truncated', () => {
+              before(async () => {
+                tickCumulativesDelta0 = 4000;
+                tickCumulativesDelta1 = 2000;
+                tickCumulativesDelta2 = 1000;
+                tickCumulatives = [
+                  tickCumulative,
+                  tickCumulative + tickCumulativesDelta1,
+                  tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+                ];
+                arithmeticMeanTick0 = Math.trunc(tickCumulativesDelta0 / delta0);
+                arithmeticMeanTick1 = Math.trunc(tickCumulativesDelta1 / delta1);
+                arithmeticMeanTick2 = Math.trunc(tickCumulativesDelta2 / delta2);
+                uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+              });
 
-              lastBlockTimestampObserved = secondsNow - secondsAgos[2];
-              let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
+              it('should update lastPoolStateObserved', async () => {
+                await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
-              expect(lastPoolStateObserved.poolNonce).to.eq(lastPoolNonceObserved + 1);
-              expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
-              expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
-              expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
+                lastBlockTimestampObserved = secondsNow - secondsAgos[2];
+                let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
+
+                expect(lastPoolStateObserved.poolNonce).to.eq(lastPoolNonceObserved + 1);
+                expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
+                expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
+                expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
+              });
+
+              it('should update _observedKeccak', async () => {
+                await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
+
+                observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
+                observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+                observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+                observationsData = [observationData0, observationData1, observationData2];
+
+                const hash = getObservedHash(randomSalt, lastPoolNonceObserved + 1, observationsData);
+
+                let observedKeccak = await dataFeed.getVariable('_observedKeccak', [hash]);
+                expect(observedKeccak).to.eq(true);
+              });
+
+              it('should emit PoolObserved', async () => {
+                observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
+                observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+                observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+                observationsData = [observationData0, observationData1, observationData2];
+
+                const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
+                let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
+                let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
+                let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
+
+                expect(eventPoolSalt).to.eq(randomSalt);
+                expect(eventPoolNonce).to.eq(lastPoolNonceObserved + 1);
+                expect(eventObservationsData).to.eql(observationsData);
+              });
             });
 
-            it('should update _observedKeccak', async () => {
-              await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
+            // arithmeticMeanTick = tickCumulativesDelta / delta
+            context('when the arithmetic mean tick is rounded to negative infinity', () => {
+              before(async () => {
+                tickCumulativesDelta0 = -4001;
+                tickCumulativesDelta1 = -2001;
+                tickCumulativesDelta2 = -1002;
+                tickCumulatives = [
+                  tickCumulative,
+                  tickCumulative + tickCumulativesDelta1,
+                  tickCumulative + (tickCumulativesDelta1 + tickCumulativesDelta2),
+                ];
+                arithmeticMeanTick0 = Math.floor(tickCumulativesDelta0 / delta0);
+                arithmeticMeanTick1 = Math.floor(tickCumulativesDelta1 / delta1);
+                arithmeticMeanTick2 = Math.floor(tickCumulativesDelta2 / delta2);
+                uniswapV3Pool.observe.whenCalledWith(secondsAgos).returns([tickCumulatives, []]);
+              });
 
-              observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
-              observationData1 = [blockTimestamp1, arithmeticMeanTick1];
-              observationData2 = [blockTimestamp2, arithmeticMeanTick2];
-              observationsData = [observationData0, observationData1, observationData2];
+              it('should update lastPoolStateObserved', async () => {
+                await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
-              const hash = getObservedHash(randomSalt, lastPoolNonceObserved + 1, observationsData);
+                lastBlockTimestampObserved = secondsNow - secondsAgos[2];
+                let lastPoolStateObserved = await dataFeed.lastPoolStateObserved(randomSalt);
 
-              let observedKeccak = await dataFeed.getVariable('_observedKeccak', [hash]);
-              expect(observedKeccak).to.eq(true);
-            });
+                expect(lastPoolStateObserved.poolNonce).to.eq(lastPoolNonceObserved + 1);
+                expect(lastPoolStateObserved.blockTimestamp).to.eq(lastBlockTimestampObserved);
+                expect(lastPoolStateObserved.tickCumulative).to.eq(tickCumulatives[2]);
+                expect(lastPoolStateObserved.arithmeticMeanTick).to.eq(arithmeticMeanTick2);
+              });
 
-            it('should emit PoolObserved', async () => {
-              observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
-              observationData1 = [blockTimestamp1, arithmeticMeanTick1];
-              observationData2 = [blockTimestamp2, arithmeticMeanTick2];
-              observationsData = [observationData0, observationData1, observationData2];
+              it('should update _observedKeccak', async () => {
+                await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
 
-              const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
-              let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
-              let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
-              let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
+                observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
+                observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+                observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+                observationsData = [observationData0, observationData1, observationData2];
 
-              expect(eventPoolSalt).to.eq(randomSalt);
-              expect(eventPoolNonce).to.eq(lastPoolNonceObserved + 1);
-              expect(eventObservationsData).to.eql(observationsData);
+                const hash = getObservedHash(randomSalt, lastPoolNonceObserved + 1, observationsData);
+
+                let observedKeccak = await dataFeed.getVariable('_observedKeccak', [hash]);
+                expect(observedKeccak).to.eq(true);
+              });
+
+              it('should emit PoolObserved', async () => {
+                observationData0 = [lastBlockTimestampObserved, arithmeticMeanTick0];
+                observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+                observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+                observationsData = [observationData0, observationData1, observationData2];
+
+                const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
+                let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
+                let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
+                let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
+
+                expect(eventPoolSalt).to.eq(randomSalt);
+                expect(eventPoolNonce).to.eq(lastPoolNonceObserved + 1);
+                expect(eventObservationsData).to.eql(observationsData);
+              });
             });
           });
         });
@@ -510,6 +559,10 @@ describe('DataFeed.sol', () => {
       () => [randomAddress]
     );
 
+    it('should revert if set to the zero address', async () => {
+      await expect(dataFeed.connect(governor).setStrategy(ZERO_ADDRESS)).to.be.revertedWith('ZeroAddress()');
+    });
+
     it('should update the strategy', async () => {
       await dataFeed.connect(governor).setStrategy(randomAddress);
       expect(await dataFeed.strategy()).to.eq(randomAddress);
@@ -517,6 +570,32 @@ describe('DataFeed.sol', () => {
 
     it('should emit StrategySet', async () => {
       await expect(dataFeed.connect(governor).setStrategy(randomAddress)).to.emit(dataFeed, 'StrategySet').withArgs(randomAddress);
+    });
+  });
+
+  describe('setMinLastOracleDelta(...)', () => {
+    let newMinLastOracleDelta = initialMinLastOracleDelta + 1000;
+
+    onlyGovernor(
+      () => dataFeed,
+      'setMinLastOracleDelta',
+      () => governor,
+      () => [newMinLastOracleDelta]
+    );
+
+    it('should revert if set to zero', async () => {
+      await expect(dataFeed.connect(governor).setMinLastOracleDelta(0)).to.be.revertedWith('ZeroAmount()');
+    });
+
+    it('should update the minLastOracleDelta', async () => {
+      await dataFeed.connect(governor).setMinLastOracleDelta(newMinLastOracleDelta);
+      expect(await dataFeed.minLastOracleDelta()).to.eq(newMinLastOracleDelta);
+    });
+
+    it('should emit MinLastOracleDeltaSet', async () => {
+      await expect(dataFeed.connect(governor).setMinLastOracleDelta(newMinLastOracleDelta))
+        .to.emit(dataFeed, 'MinLastOracleDeltaSet')
+        .withArgs(newMinLastOracleDelta);
     });
   });
 });

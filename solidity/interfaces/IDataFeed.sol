@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
@@ -21,8 +21,11 @@ interface IDataFeed is IPipelineManagement {
   // STATE VARIABLES
 
   /// @return _strategy Address of the contract allowed to trigger an oracle update
-  /// @dev The strategy should define when and with which timestamps the pool should be read
+  /// @dev The Strategy should define when and with which timestamps the pool should be read
   function strategy() external view returns (IDataFeedStrategy _strategy);
+
+  /// @return _minLastOracleDelta Minimum timestamp delta between latest oracle observations
+  function minLastOracleDelta() external view returns (uint32 _minLastOracleDelta);
 
   /// @notice Tracks the last observed pool state by salt
   /// @param _poolSalt The id of both the oracle and the pool
@@ -44,8 +47,8 @@ interface IDataFeed is IPipelineManagement {
 
   /// @notice Emitted when a data batch is broadcast
   /// @param _bridgeSenderAdapter Address of the bridge sender adapter
-  /// @param _dataReceiver Address of the targetted contract receiving the data
-  /// @param _chainId Identifier number of the targetted chain
+  /// @param _dataReceiver Address of the targeted contract receiving the data
+  /// @param _chainId Identifier number of the targeted chain
   /// @param _poolSalt Identifier of the pool to which the data corresponds
   /// @param _poolNonce Identifier number of time period to which the data corresponds
   event DataBroadcast(
@@ -60,21 +63,28 @@ interface IDataFeed is IPipelineManagement {
   /// @param _poolSalt Identifier of the pool to which the data corresponds
   /// @param _poolNonce Identifier number of time period to which the data corresponds
   /// @param _observationsData Timestamp and tick data of the broadcast nonce
-  event PoolObserved(bytes32 indexed _poolSalt, uint24 _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
+  event PoolObserved(bytes32 indexed _poolSalt, uint24 indexed _poolNonce, IOracleSidechain.ObservationData[] _observationsData);
 
   /// @notice Emitted when the Strategy contract is set
-  /// @param _strategy Address of the new strategy
+  /// @param _strategy Address of the new Strategy
   event StrategySet(IDataFeedStrategy _strategy);
+
+  /// @notice Emitted when minLastOracleDelta is set
+  /// @param _minLastOracleDelta New value of minLastOracleDelta
+  event MinLastOracleDeltaSet(uint32 _minLastOracleDelta);
 
   // ERRORS
 
-  /// @notice Throws if set of secondsAgos is invalid to update the oracle
+  /// @notice Thrown if set of secondsAgos is invalid to update the oracle
   error InvalidSecondsAgos();
 
-  /// @notice Throws if an unknown dataset is being broadcast
+  /// @notice Thrown if the last oracle delta is less than minLastOracleDelta
+  error InsufficientDelta();
+
+  /// @notice Thrown if an unknown dataset is being broadcast
   error UnknownHash();
 
-  /// @notice Throws if a contract other than Strategy calls an update
+  /// @notice Thrown if a contract other than Strategy calls an update
   error OnlyStrategy();
 
   // FUNCTIONS
@@ -92,7 +102,7 @@ interface IDataFeed is IPipelineManagement {
     bytes32 _poolSalt,
     uint24 _poolNonce,
     IOracleSidechain.ObservationData[] memory _observationsData
-  ) external;
+  ) external payable;
 
   /// @notice Triggers an update of the oracle state
   /// @dev Permisioned, callable only by Strategy
@@ -100,8 +110,16 @@ interface IDataFeed is IPipelineManagement {
   /// @param _secondsAgos Set of time periods to consult the pool with
   function fetchObservations(bytes32 _poolSalt, uint32[] calldata _secondsAgos) external;
 
-  /// @notice Updates the Strategy address
-  /// @dev Permisioned, callable only by Governor
+  /// @notice Sets the Strategy address
+  /// @dev Permissioned, callable only by governor
   /// @param _strategy Address of the new Strategy
   function setStrategy(IDataFeedStrategy _strategy) external;
+
+  /// @notice Sets the minLastOracleDelta value
+  /// @dev Permissioned, callable only by governor
+  /// @param _minLastOracleDelta New value of minLastOracleDelta
+  function setMinLastOracleDelta(uint32 _minLastOracleDelta) external;
+
+  /// @return _poolNonce The last observed nonce of the given pool
+  function getPoolNonce(bytes32 _poolSalt) external view returns (uint24 _poolNonce);
 }

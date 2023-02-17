@@ -1,15 +1,17 @@
-//SPDX-License-Identifier: Unlicense
+//SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {Governable} from './Governable.sol';
+import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Governable.sol';
 import {IPipelineManagement, IBridgeSenderAdapter} from '../../interfaces/peripherals/IPipelineManagement.sol';
-import {IDataFeed} from '../../interfaces/IDataFeed.sol';
 import {EnumerableSet} from '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 abstract contract PipelineManagement is IPipelineManagement, Governable {
   using EnumerableSet for EnumerableSet.Bytes32Set;
+  using EnumerableSet for EnumerableSet.UintSet;
 
   EnumerableSet.Bytes32Set private _whitelistedPools;
+
+  EnumerableSet.UintSet private _whitelistedChains;
 
   /// @inheritdoc IPipelineManagement
   mapping(uint32 => mapping(bytes32 => uint24)) public whitelistedNonces;
@@ -112,6 +114,11 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   }
 
   /// @inheritdoc IPipelineManagement
+  function whitelistedChains() external view returns (uint256[] memory) {
+    return _whitelistedChains.values();
+  }
+
+  /// @inheritdoc IPipelineManagement
   function isWhitelistedPool(bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
     return _whitelistedPools.contains(_poolSalt);
   }
@@ -120,6 +127,8 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   function isWhitelistedPipeline(uint32 _chainId, bytes32 _poolSalt) external view returns (bool _isWhitelisted) {
     return whitelistedNonces[_chainId][_poolSalt] != 0;
   }
+
+  function getPoolNonce(bytes32 _poolSalt) public view virtual returns (uint24 _poolNonce);
 
   /// @inheritdoc IPipelineManagement
   function validateSenderAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, uint32 _chainId)
@@ -137,10 +146,13 @@ abstract contract PipelineManagement is IPipelineManagement, Governable {
   }
 
   function _whitelistPipeline(uint32 _chainId, bytes32 _poolSalt) internal {
-    (uint24 _lastPoolNonceObserved, , , ) = IDataFeed(address(this)).lastPoolStateObserved(_poolSalt);
-    whitelistedNonces[_chainId][_poolSalt] = _lastPoolNonceObserved + 1;
+    if (whitelistedNonces[_chainId][_poolSalt] != 0) revert AlreadyAllowedPipeline();
+
+    uint24 _whitelistedNonce = getPoolNonce(_poolSalt) + 1;
+    whitelistedNonces[_chainId][_poolSalt] = _whitelistedNonce;
     _whitelistedPools.add(_poolSalt);
-    emit PipelineWhitelisted(_chainId, _poolSalt, _lastPoolNonceObserved + 1);
+    _whitelistedChains.add(_chainId);
+    emit PipelineWhitelisted(_chainId, _poolSalt, _whitelistedNonce);
   }
 
   function _whitelistAdapter(IBridgeSenderAdapter _bridgeSenderAdapter, bool _isWhitelisted) internal {

@@ -5,13 +5,11 @@ import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Gov
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
-import {console} from 'hardhat/console.sol';
-
 /** TODO:
  * - [x] cache observations
  * - [x] remove ObservationsData from event
- * - [ ] add ObservationsCached event
- * - [ ] remove console logs
+ * - [x] add ObservationsCached event
+ * - [x] remove console logs
  */
 
 /// @title The DataReceiver contract
@@ -56,12 +54,9 @@ contract DataReceiver is IDataReceiver, Governable {
       deployedOracles[_poolSalt] = _oracle;
     }
     // Try to write observations data into oracle
-    console.log('writing', _poolNonce);
     if (_oracle.write(_observationsData, _poolNonce)) {
-      console.log('writed', _poolNonce);
       emit ObservationsAdded(_poolSalt, _poolNonce, msg.sender);
     } else {
-      console.log('caching', _poolNonce);
       // Query pool's current nonce
       uint24 _currentNonce = _oracle.poolNonce();
       // Discard old observations (already written in the oracle)
@@ -73,13 +68,13 @@ contract DataReceiver is IDataReceiver, Governable {
       for (uint256 _i; _i < _observationsData.length; ++_i) {
         cachedObservations[_poolSalt][_poolNonce].push(_observationsData[_i]);
       }
+      emit ObservationsCached(_poolSalt, _poolNonce, msg.sender);
       while (_currentNonce <= _poolNonce) {
         // Try backfilling pending observations (from current to {sent|first empty} nonce)
         IOracleSidechain.ObservationData[] memory _cachedObservations = cachedObservations[_poolSalt][_currentNonce];
         // If the struct is not empty, write it into the oracle
         if (_cachedObservations.length > 0) {
           // Since observation nonce == oracle nonce, we can safely write the observations
-          console.log('writing', _currentNonce);
           _oracle.write(_cachedObservations, _currentNonce);
           emit ObservationsAdded(_poolSalt, _currentNonce, msg.sender);
           // Clear out the written observations

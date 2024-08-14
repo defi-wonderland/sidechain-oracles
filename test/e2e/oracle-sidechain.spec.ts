@@ -104,7 +104,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
 
       // NOTE: chai is failing to compare the emitted struct[], so we are not checking the arguments
       await expect(tx1).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 1, deployer.address);
-      // TODO: await expect(tx2).to.emit(allowedDataReceiver, 'ObservationsCached');
+      await expect(tx2).to.emit(allowedDataReceiver, 'ObservationsCached').withArgs(salt, 3, deployer.address);
       await expect(tx2).not.to.emit(allowedDataReceiver, 'ObservationsAdded');
       await expect(tx3).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 2, deployer.address);
       await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 3, deployer.address);

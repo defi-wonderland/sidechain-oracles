@@ -103,12 +103,12 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
       const tx4 = await allowedDataReceiver.internalAddObservations(obs4, salt, 4); // should include 3
 
       // NOTE: chai is failing to compare the emitted struct[], so we are not checking the arguments
-      await expect(tx1).to.emit(allowedDataReceiver, 'ObservationsAdded'); //.withArgs(salt, 1, obs1, deployer);
+      await expect(tx1).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 1, deployer.address);
       // TODO: await expect(tx2).to.emit(allowedDataReceiver, 'ObservationsCached');
       await expect(tx2).not.to.emit(allowedDataReceiver, 'ObservationsAdded');
-      await expect(tx3).to.emit(allowedDataReceiver, 'ObservationsAdded'); //.withArgs(salt, 2, obs2, deployer);
-      await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded'); //.withArgs(salt, 3, obs3, deployer);
-      // await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 4, obs4, deployer);
+      await expect(tx3).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 2, deployer.address);
+      await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 3, deployer.address);
+      await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 4, deployer.address);
     });
   });
 });

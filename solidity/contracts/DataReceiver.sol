@@ -8,8 +8,8 @@ import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter}
 import {console} from 'hardhat/console.sol';
 
 /** TODO:
- * - [ ] cache observations
- * - [ ] remove ObservationsData from event
+ * - [x] cache observations
+ * - [x] remove ObservationsData from event
  * - [ ] add ObservationsCached event
  * - [ ] remove console logs
  */
@@ -59,7 +59,7 @@ contract DataReceiver is IDataReceiver, Governable {
     console.log('writing', _poolNonce);
     if (_oracle.write(_observationsData, _poolNonce)) {
       console.log('writed', _poolNonce);
-      emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
+      emit ObservationsAdded(_poolSalt, _poolNonce, msg.sender);
     } else {
       console.log('caching', _poolNonce);
       // Query pool's current nonce
@@ -81,7 +81,7 @@ contract DataReceiver is IDataReceiver, Governable {
           // Since observation nonce == oracle nonce, we can safely write the observations
           console.log('writing', _currentNonce);
           _oracle.write(_cachedObservations, _currentNonce);
-          emit ObservationsAdded(_poolSalt, _currentNonce, _cachedObservations, msg.sender);
+          emit ObservationsAdded(_poolSalt, _currentNonce, msg.sender);
           // Clear out the written observations
           delete cachedObservations[_poolSalt][_currentNonce];
           _currentNonce++;

@@ -5,6 +5,15 @@ import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Gov
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
+import {console} from 'hardhat/console.sol';
+
+/** TODO:
+ * - [ ] cache observations
+ * - [ ] remove ObservationsData from event
+ * - [ ] add ObservationsCached event
+ * - [ ] remove console logs
+ */
+
 /// @title The DataReceiver contract
 /// @notice Handles reception of broadcast data and delivers it to correspondant oracle
 contract DataReceiver is IDataReceiver, Governable {
@@ -16,6 +25,8 @@ contract DataReceiver is IDataReceiver, Governable {
 
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
+
+  mapping(bytes32 => mapping(uint24 => IOracleSidechain.ObservationData[])) public cachedObservations;
 
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
     if (address(_oracleFactory) == address(0)) revert ZeroAddress();
@@ -45,10 +56,40 @@ contract DataReceiver is IDataReceiver, Governable {
       deployedOracles[_poolSalt] = _oracle;
     }
     // Try to write observations data into oracle
+    console.log('writing', _poolNonce);
     if (_oracle.write(_observationsData, _poolNonce)) {
+      console.log('writed', _poolNonce);
       emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
     } else {
-      revert ObservationsNotWritable();
+      console.log('caching', _poolNonce);
+      // Query pool's current nonce
+      uint24 _currentNonce = _oracle.poolNonce();
+      // Discard old observations (already written in the oracle)
+      // NOTE: if _currentNonce == _poolNonce it shouldn't reach this else block
+      if (_currentNonce > _poolNonce) revert ObservationsNotWritable();
+      // Store not-added observations to cachedObservations mapping
+      // NOTE: memory to storage is not supported
+      // cachedObservations[_poolSalt][_poolNonce] = _observationsData;
+      for (uint256 _i; _i < _observationsData.length; ++_i) {
+        cachedObservations[_poolSalt][_poolNonce].push(_observationsData[_i]);
+      }
+      while (_currentNonce <= _poolNonce) {
+        // Try backfilling pending observations (from current to {sent|first empty} nonce)
+        IOracleSidechain.ObservationData[] memory _cachedObservations = cachedObservations[_poolSalt][_currentNonce];
+        // If the struct is not empty, write it into the oracle
+        if (_cachedObservations.length > 0) {
+          // Since observation nonce == oracle nonce, we can safely write the observations
+          console.log('writing', _currentNonce);
+          _oracle.write(_cachedObservations, _currentNonce);
+          emit ObservationsAdded(_poolSalt, _currentNonce, _cachedObservations, msg.sender);
+          // Clear out the written observations
+          delete cachedObservations[_poolSalt][_currentNonce];
+          _currentNonce++;
+        } else {
+          // When an empty nonce is found, break the loop
+          break;
+        }
+      }
     }
   }
 

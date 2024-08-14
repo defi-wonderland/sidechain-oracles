@@ -90,5 +90,25 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
       let observation = await oracleSidechain.observations(0);
       expect(observation[3]); // initialized
     });
+
+    it.only('should remember observations that arrived disordered', async () => {
+      const obs1 = [[1, 100]] as IOracleSidechain.ObservationDataStructOutput[];
+      const obs2 = [[2, 100]] as IOracleSidechain.ObservationDataStructOutput[];
+      const obs3 = [[3, 100]] as IOracleSidechain.ObservationDataStructOutput[];
+      const obs4 = [[4, 100]] as IOracleSidechain.ObservationDataStructOutput[];
+
+      const tx1 = await allowedDataReceiver.internalAddObservations(obs1, salt, 1); // initial
+      const tx2 = await allowedDataReceiver.internalAddObservations(obs3, salt, 3); // disordered (before 2)
+      const tx3 = await allowedDataReceiver.internalAddObservations(obs2, salt, 2); // ordered (after 1)
+      const tx4 = await allowedDataReceiver.internalAddObservations(obs4, salt, 4); // should include 3
+
+      // NOTE: chai is failing to compare the emitted struct[], so we are not checking the arguments
+      await expect(tx1).to.emit(allowedDataReceiver, 'ObservationsAdded'); //.withArgs(salt, 1, obs1, deployer);
+      // TODO: await expect(tx2).to.emit(allowedDataReceiver, 'ObservationsCached');
+      await expect(tx2).not.to.emit(allowedDataReceiver, 'ObservationsAdded');
+      await expect(tx3).to.emit(allowedDataReceiver, 'ObservationsAdded'); //.withArgs(salt, 2, obs2, deployer);
+      await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded'); //.withArgs(salt, 3, obs3, deployer);
+      // await expect(tx4).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 4, obs4, deployer);
+    });
   });
 });

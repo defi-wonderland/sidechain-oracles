@@ -91,7 +91,7 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
       expect(observation[3]); // initialized
     });
 
-    it.only('should remember observations that arrived disordered', async () => {
+    it('should remember observations that arrived disordered', async () => {
       const obs1 = [[1, 100]] as IOracleSidechain.ObservationDataStructOutput[];
       const obs2 = [[2, 100]] as IOracleSidechain.ObservationDataStructOutput[];
       const obs3 = [[3, 100]] as IOracleSidechain.ObservationDataStructOutput[];

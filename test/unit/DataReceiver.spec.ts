@@ -12,7 +12,7 @@ import chai, { expect } from 'chai';
 
 chai.use(smock.matchers);
 
-describe.only('DataReceiver.sol', () => {
+describe('DataReceiver.sol', () => {
   let governor: SignerWithAddress;
   let fakeAdapter: SignerWithAddress;
   let randomAdapter: SignerWithAddress;
@@ -100,10 +100,12 @@ describe.only('DataReceiver.sol', () => {
         let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
         let eventSalt = await readArgFromEvent(tx, 'ObservationsAdded', '_poolSalt');
         let eventNonce = await readArgFromEvent(tx, 'ObservationsAdded', '_poolNonce');
+        let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
         expect(eventAdapter).to.eq(fakeAdapter.address);
         expect(eventSalt).to.eq(randomSalt);
         expect(eventNonce).to.eq(randomNonce);
+        expect(eventObservationsData).to.eql(observationsData);
       });
     });
 
@@ -132,10 +134,12 @@ describe.only('DataReceiver.sol', () => {
           let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
           let eventSalt = await readArgFromEvent(tx, 'ObservationsAdded', '_poolSalt');
           let eventNonce = await readArgFromEvent(tx, 'ObservationsAdded', '_poolNonce');
+          let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
           expect(eventAdapter).to.eq(fakeAdapter.address);
           expect(eventSalt).to.eq(randomSalt);
           expect(eventNonce).to.eq(randomNonce);
+          expect(eventObservationsData).to.eql(observationsData);
         });
       });
 
@@ -163,10 +167,12 @@ describe.only('DataReceiver.sol', () => {
           let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
           let eventSalt = await readArgFromEvent(tx, 'ObservationsAdded', '_poolSalt');
           let eventNonce = await readArgFromEvent(tx, 'ObservationsAdded', '_poolNonce');
+          let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
           expect(eventAdapter).to.eq(fakeAdapter.address);
           expect(eventSalt).to.eq(randomSalt);
           expect(eventNonce).to.eq(randomNonce);
+          expect(eventObservationsData).to.eql(observationsData);
         });
       });
     });

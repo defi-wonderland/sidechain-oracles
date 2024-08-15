@@ -5,13 +5,6 @@ import {Governable} from '@defi-wonderland/solidity-utils/solidity/contracts/Gov
 import {OracleSidechain} from './OracleSidechain.sol';
 import {IDataReceiver, IOracleFactory, IOracleSidechain, IBridgeReceiverAdapter} from '../interfaces/IDataReceiver.sol';
 
-/** TODO:
- * - [x] cache observations
- * - [x] remove ObservationsData from event
- * - [x] add ObservationsCached event
- * - [x] remove console logs
- */
-
 /// @title The DataReceiver contract
 /// @notice Handles reception of broadcast data and delivers it to correspondant oracle
 contract DataReceiver is IDataReceiver, Governable {
@@ -55,7 +48,7 @@ contract DataReceiver is IDataReceiver, Governable {
     }
     // Try to write observations data into oracle
     if (_oracle.write(_observationsData, _poolNonce)) {
-      emit ObservationsAdded(_poolSalt, _poolNonce, msg.sender);
+      emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
     } else {
       // Query pool's current nonce
       uint24 _currentNonce = _oracle.poolNonce();
@@ -76,7 +69,7 @@ contract DataReceiver is IDataReceiver, Governable {
         if (_cachedObservations.length > 0) {
           // Since observation nonce == oracle nonce, we can safely write the observations
           _oracle.write(_cachedObservations, _currentNonce);
-          emit ObservationsAdded(_poolSalt, _currentNonce, msg.sender);
+          emit ObservationsAdded(_poolSalt, _currentNonce, _cachedObservations, msg.sender);
           // Clear out the written observations
           delete cachedObservations[_poolSalt][_currentNonce];
           _currentNonce++;

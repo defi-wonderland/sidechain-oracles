@@ -8,7 +8,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const chainId = Number(await hre.getChainId());
   const minLastOracleDelta = dataFeedSettings[chainId];
 
-  const CONSTRUCTOR_ARGS = [deployer, deployer, minLastOracleDelta, uniV3Factory];
+  const CONSTRUCTOR_ARGS = [deployer, deployer, uniV3Factory, minLastOracleDelta];
 
   await hre.deployments.deploy('DataFeed', {
     contract: 'solidity/contracts/DataFeed.sol:DataFeed',

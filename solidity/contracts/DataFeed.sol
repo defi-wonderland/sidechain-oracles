@@ -25,8 +25,8 @@ contract DataFeed is IDataFeed, PipelineManagement {
   constructor(
     address _governor,
     IDataFeedStrategy _strategy,
-    uint32 _minLastOracleDelta,
-    address _uniswapFactory
+    address _uniswapFactory,
+    uint32 _minLastOracleDelta
   ) Governable(_governor) {
     _setStrategy(_strategy);
     _setMinLastOracleDelta(_minLastOracleDelta);

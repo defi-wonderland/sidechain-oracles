@@ -12,21 +12,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   };
 
-  // NOTE: wrong ABI, need to update
-  IKeep3r.abi.push({
-    inputs: [],
-    name: 'governor',
-    outputs: [
-      {
-        internalType: 'address',
-        name: '_governor',
-        type: 'address',
-      },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  });
-
   await hre.deployments.save('Keep3r', {
     address: keep3r,
     abi: IKeep3r.abi,

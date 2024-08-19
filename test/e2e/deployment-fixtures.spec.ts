@@ -3,14 +3,14 @@ import { Contract } from 'ethers';
 import * as Type from '@typechained';
 import { evm, wallet } from '@utils';
 import { toUnit } from '@utils/bn';
-import { getContractFromFixture } from '@utils/contracts';
+import { getContractFromFixture, getFixtureChainId } from '@utils/contracts';
 import { calculateSalt } from '@utils/misc';
 import { TEST_FEE } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { expect } from 'chai';
 
-describe.only('@skip-on-coverage Fixture', () => {
+describe('@skip-on-coverage Fixture', () => {
   let deployer: string;
   let dataFeed: Type.DataFeed;
   let dataFeedStrategy: Type.DataFeedStrategy;
@@ -69,7 +69,7 @@ describe.only('@skip-on-coverage Fixture', () => {
       expect(await dataReceiver.whitelistedAdapters(receiverAdapter.address)).to.be.true;
     });
 
-    describe.only('when pool is deployed', () => {
+    describe('when pool is deployed', () => {
       beforeEach(async () => {
         await deployments.fixture(['save-tokens', 'pool-whitelisting'], { keepExistingDeployments: true });
 
@@ -88,7 +88,7 @@ describe.only('@skip-on-coverage Fixture', () => {
         await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
       });
 
-      describe.skip('when the strategy is setup', () => {
+      describe('when the strategy is setup', () => {
         beforeEach(async () => {
           await deployments.fixture(['setup-strategy'], { keepExistingDeployments: true });
         });
@@ -199,10 +199,11 @@ describe.only('@skip-on-coverage Fixture', () => {
     });
   });
 
-  describe.skip('production setup', () => {
+  describe('production setup', () => {
     beforeEach(async () => {
       await deployments.fixture(['base-contracts']);
       await deployments.fixture(['connext-setup', 'pool-whitelisting'], { keepExistingDeployments: true });
+      await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
     });
 
     it('should work with manual-send-test-observation', async () => {
@@ -214,7 +215,6 @@ describe.only('@skip-on-coverage Fixture', () => {
         await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
         strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
 
-        await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
         await addCreditsToJob(strategyJob.address);
       });
 
@@ -243,7 +243,20 @@ describe.only('@skip-on-coverage Fixture', () => {
 
 const addCreditsToJob = async (jobAddress: string) => {
   const keep3rContract = await getContractFromFixture('Keep3r', 'IKeep3r');
-  const governor = await wallet.impersonate(await keep3rContract.governor());
+  let governorAddress: string;
+  if ((await getFixtureChainId()) != 1) {
+    // NOTE: Mainnet uses `governance` while Testnet `governor'
+    governorAddress = await keep3rContract.provider.call({
+      to: keep3rContract.address,
+      data: '0x0c340a24',
+    });
+    governorAddress = ethers.utils.hexStripZeros(governorAddress);
+  } else {
+    governorAddress = await keep3rContract.governance();
+  }
+
+  const governor = await wallet.impersonate(governorAddress);
+
   await wallet.setBalance(governor._address, toUnit(10));
   await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(100));
 };

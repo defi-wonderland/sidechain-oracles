@@ -81,5 +81,5 @@ export const getReceiverChainId = async (hre: HardhatRuntimeEnvironment): Promis
 
   if (senderChainId != receiverChainId) return receiverChainId;
   // returns 11155111 for same chain test
-  return '11155111';
+  return '11155420';
 };

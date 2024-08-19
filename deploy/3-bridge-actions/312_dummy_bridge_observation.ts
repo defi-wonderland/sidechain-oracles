@@ -47,6 +47,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
-deployFunction.dependencies = ['dummy-test-setup', 'manual-fetch-observation'];
+deployFunction.dependencies = ['dummy-test-setup'];
 deployFunction.tags = ['dummy-bridge-observation'];
 export default deployFunction;

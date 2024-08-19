@@ -88,11 +88,26 @@ describe('DataReceiver.sol', () => {
         expect(oracleFactory.deployOracle).to.not.be.called;
       });
 
-      it('should revert if the observations are not writable', async () => {
+      it('should revert if the observations are already written', async () => {
         oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+        oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce + 1);
         await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
           'ObservationsNotWritable()'
         );
+      });
+
+      it('should cache the observations that should not be written yet', async () => {
+        oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+        oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce - 1);
+        const tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+
+        let eventAdapter = await readArgFromEvent(tx, 'ObservationsCached', '_receiverAdapter');
+        let eventSalt = await readArgFromEvent(tx, 'ObservationsCached', '_poolSalt');
+        let eventNonce = await readArgFromEvent(tx, 'ObservationsCached', '_poolNonce');
+
+        expect(eventAdapter).to.eq(fakeAdapter.address);
+        expect(eventSalt).to.eq(randomSalt);
+        expect(eventNonce).to.eq(randomNonce);
       });
 
       it('should emit ObservationsAdded', async () => {
@@ -153,13 +168,6 @@ describe('DataReceiver.sol', () => {
           await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
           let deployedOracle = await dataReceiver.deployedOracles(randomSalt);
           expect(deployedOracle).to.eq(oracleSidechain.address);
-        });
-
-        it('should revert if the observations are not writable', async () => {
-          oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
-          await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
-            'ObservationsNotWritable()'
-          );
         });
 
         it('should emit ObservationsAdded', async () => {

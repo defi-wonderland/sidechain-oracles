@@ -4,11 +4,11 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { calculateSalt } from '../../test/utils/misc';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
-import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
+import { TEST_FEE } from '../../utils/constants';
 import { getReceiverChainId } from '../../utils/deploy';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
+  const { deployer, tokenA, tokenB, uniV3Factory } = await hre.getNamedAccounts();
   const DESTINATION_CHAIN_ID = await getReceiverChainId(hre);
 
   const txSettings = {
@@ -18,18 +18,18 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await hre.deployments.save('UniswapV3Factory', {
     abi: IUniswapV3Factory.abi,
-    address: UNI_V3_FACTORY,
+    address: uniV3Factory,
   });
 
-  const POOL_ADDRESS = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA, tokenB, TEST_FEE);
-  if (ZERO_ADDRESS == POOL_ADDRESS) {
+  let poolAddress = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA, tokenB, TEST_FEE);
+  if (ZERO_ADDRESS == poolAddress) {
     console.log('Pool does not exist', tokenA, tokenB, TEST_FEE);
     return;
   }
 
   await hre.deployments.save('UniswapV3Pool', {
     abi: IUniswapV3Pool.abi,
-    address: POOL_ADDRESS,
+    address: poolAddress,
   });
 
   const salt = calculateSalt(tokenA, tokenB, TEST_FEE);

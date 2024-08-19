@@ -37,8 +37,8 @@ describe('@skip-on-coverage Fixture', () => {
     ({ deployer } = await getNamedAccounts());
 
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('goerli'),
-      blockNumber: forkBlockNumber.goerli,
+      jsonRpcUrl: getNodeUrl('sepolia'),
+      blockNumber: forkBlockNumber.sepolia,
     });
   });
 
@@ -71,7 +71,7 @@ describe('@skip-on-coverage Fixture', () => {
 
     describe('when pool is deployed', () => {
       beforeEach(async () => {
-        await deployments.fixture(['save-tokens', 'pool-whitelisting'], { keepExistingDeployments: true });
+        await deployments.fixture(['save-tokens', 'create-pool', 'pool-whitelisting'], { keepExistingDeployments: true });
 
         tokenA = (await getContractFromFixture('TokenA', 'IERC20')) as Type.IERC20;
         tokenB = (await getContractFromFixture('TokenB', 'IERC20')) as Type.IERC20;
@@ -173,7 +173,7 @@ describe('@skip-on-coverage Fixture', () => {
 
               const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
-              const REAL_CHAIN_ID = 420;
+              const REAL_CHAIN_ID = 11155111;
 
               await expect(
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](REAL_CHAIN_ID, poolSalt, lastPoolNonce, fetchData._observationsData)

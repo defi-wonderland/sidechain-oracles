@@ -78,6 +78,6 @@ export const getReceiverChainId = async (hre: HardhatRuntimeEnvironment): Promis
   const receiverChainId = await hre.companionNetworks['receiver'].getChainId();
 
   if (senderChainId != receiverChainId) return receiverChainId;
-  // returns 420 for same chain test
-  return '420';
+  // returns 11155111 for same chain test
+  return '11155111';
 };

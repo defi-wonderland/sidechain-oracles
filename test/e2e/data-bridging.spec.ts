@@ -59,7 +59,7 @@ describe('@skip-on-coverage Data Bridging Flow', () => {
   let broadcastTx: ContractTransaction;
   let snapshotId: string;
 
-  const destinationDomain = 420;
+  const destinationDomain = 11155111;
   const nonce = 1;
   const connextFee = toUnit(0.1);
 

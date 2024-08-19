@@ -20,9 +20,9 @@ const networks: NetworksUserConfig =
         hardhat: {
           forking: {
             enabled: process.env.FORK ? true : false,
-            url: env.getNodeUrl('goerli'),
+            url: env.getNodeUrl('sepolia'),
           },
-          chainId: 5,
+          chainId: 11155111,
           companionNetworks: {
             receiver: 'hardhat',
           },
@@ -48,29 +48,20 @@ const networks: NetworksUserConfig =
           chainId: 137,
           companionNetworks: { sender: 'ethereum' },
         },
-        goerli: {
-          url: env.getNodeUrl('goerli'),
+        sepolia: {
+          url: env.getNodeUrl('sepolia'),
           accounts: env.getAccounts('test'),
-          chainId: 5,
+          chainId: 11155111,
           companionNetworks: {
-            receiver: 'optimisticGoerli',
-            sender: 'polygonMumbai',
+            receiver: 'optimisticSepolia',
           },
         },
-        polygonMumbai: {
-          url: env.getNodeUrl('mumbai'),
+        optimisticSepolia: {
+          url: env.getNodeUrl('optimisticSepolia'),
           accounts: env.getAccounts('test'),
-          chainId: 80001,
+          chainId: 11155420,
           companionNetworks: {
-            receiver: 'goerli',
-          },
-        },
-        optimisticGoerli: {
-          url: env.getNodeUrl('optimisticGoerli'),
-          accounts: env.getAccounts('test'),
-          chainId: 420,
-          companionNetworks: {
-            sender: 'goerli',
+            sender: 'sepolia',
           },
         },
       };
@@ -116,7 +107,7 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'goerli', 'optimisticGoerli', 'polygonMumbai']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'sepolia', 'optimisticSepolia']),
   },
   typechain: {
     outDir: 'typechained',

@@ -13,9 +13,9 @@
 - [Setup](#setup)
 - [Address Registry](#address-registry)
   - [Testnet](#testnet)
-    - [Goerli (sender and _receiver_)](#goerli-sender-and-receiver)
-    - [OP Goerli (_receiver_)](#op-goerli-receiver)
-    - [Mumbai (manual sender)](#mumbai-manual-sender)
+    - [Sepolia (sender and _receiver_)](#sepolia-sender-and-receiver)
+    - [OP Sepolia (_receiver_)](#op-sepolia-receiver)
+    - [Sepolia (manual sender)](#sepolia-manual-sender)
     - [Whitelisted pipelines](#whitelisted-pipelines)
 
 ## Scope
@@ -169,7 +169,7 @@ NOTE: A more gas-efficient array-filling strategy can be built by making more ex
 
 ## Setup
 
-Clone the repo in your preferred way, and fill the `.env` file using the `.env.example` as a reference. The environment is yet set to work with testnets, using Goerli to OP Goerli bridge as default.
+Clone the repo in your preferred way, and fill the `.env` file using the `.env.example` as a reference. The environment is yet set to work with testnets, using Sepolia to OP Sepolia bridge as default.
 
 For a dummy setup (without bridging) run:
 
@@ -195,15 +195,15 @@ yarn deploy:work
 ```
 
 For 1 tag manual-deployment and bridging
-`yarn deploy --network mumbai --tags manual-send-test-observation`
+`yarn deploy --network sepolia --tags manual-send-test-observation`
 
-In `/utils/constants.ts`, one can find the configuration of the strategies chosen by chain. The default for Goerli is set to refresh each 1/2 day, using periods of 1hr, and comparing a 2hr twap with 500 ticks (+-5%) threshold.
+In `/utils/constants.ts`, one can find the configuration of the strategies chosen by chain. The default for Sepolia is set to refresh each 1/2 day, using periods of 1hr, and comparing a 2hr twap with 500 ticks (+-5%) threshold.
 
 ## Address Registry
 
 #### Testnet
 
-##### Goerli (sender and _receiver_)
+##### Sepolia (sender and _receiver_)
 
 | Contract                  | Address                                      |
 | ------------------------- | -------------------------------------------- |
@@ -215,7 +215,7 @@ In `/utils/constants.ts`, one can find the configuration of the strategies chose
 | _DataReceiver_            | `0xa09683377E5cE0bB7eEa90D2b64e3644f7eA1B8a` |
 | _OracleFactory_           | `0x0594Dc74043b93Bdb371f01187704C98D45bd4E6` |
 
-##### OP Goerli (_receiver_)
+##### OP Sepolia (_receiver_)
 
 | Contract                  | Address                                      |
 | ------------------------- | -------------------------------------------- |
@@ -223,17 +223,9 @@ In `/utils/constants.ts`, one can find the configuration of the strategies chose
 | _DataReceiver_            | `0x768c227320165A71A4001fE23A0C38CD6B5585c0` |
 | _OracleFactory_           | `0xB8aD440Ad7A3298C73258b1Fc202A081Db9107cb` |
 
-##### Mumbai (manual sender)
-
-| Contract              | Address                                      |
-| --------------------- | -------------------------------------------- |
-| DataFeed              | `0x1c9Bc091f070A10E23B2a90eA543AD38AA3De1EE` |
-| Connext SenderAdapter | `0x4C8589e7D1d91e454F5f30C3e1bb3e197B5Bf368` |
-
 ##### Whitelisted pipelines:
 
-| Chain - Pool                                          | Chain - OracleSidechain                                  |
-| ----------------------------------------------------- | -------------------------------------------------------- |
-| Goerli - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | OP Goerli - `0x4ECFF2c532d47D7be3D957E4a332AB134cad1fd9` |
-| Mumbai - `0xd69f1635dc28a11E05841AE25Fd1572FD0EF1eF4` | Goerli - `0x050BBA5E4abde750Ea5610D8412cD46171C665e7`    |
-| Goerli - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | Goerli - `0xED7f635EE962537b4DB13a1e1c3922EC65366fE2`    |
+| Chain - Pool                                           | Chain - OracleSidechain                                   |
+| ------------------------------------------------------ | --------------------------------------------------------- |
+| Sepolia - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | OP Sepolia - `0x4ECFF2c532d47D7be3D957E4a332AB134cad1fd9` |
+| Sepolia - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | Sepolia - `0xED7f635EE962537b4DB13a1e1c3922EC65366fE2`    |

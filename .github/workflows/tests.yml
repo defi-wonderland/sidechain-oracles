@@ -72,4 +72,4 @@ jobs:
         run: yarn test:e2e
         env:
           NODE_URI_ETHEREUM: ${{ secrets.NODE_URI_MAINNET }}
-          NODE_URI_SEPOLIA: https://eth-sepolia.alchemyapi.io/v2/${{ secrets.ALCHEMYKEY }}
+          NODE_URI_SEPOLIA: https://eth-sepolia.g.alchemy.com/v2/${{ secrets.ALCHEMYKEY }}

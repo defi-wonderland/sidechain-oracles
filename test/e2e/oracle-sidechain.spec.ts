@@ -98,12 +98,24 @@ describe('@skip-on-coverage OracleSidechain.sol', () => {
     const obs3 = [[3, 100]] as IOracleSidechain.ObservationDataStructOutput[];
     const obs4 = [[4, 100]] as IOracleSidechain.ObservationDataStructOutput[];
 
+    /*
+    - Creates a setup in which an observation arrives (3) before the previous nonce (2) has been processed.
+    - In this case, the observation should be cached and processed later (as long as the previous nonce is already processed).
+    - In this setup, observations arrive in the order (1), (3), (2), (4) and expected to be processed in numerical order.
+    - This will happen in the following way:
+      - (1) is processed immediately.
+      - then (3) is cached (current is 1).
+      - (2) is processed immediately.
+      - (4) is cached (current is 2).
+        - (3) is processed.
+        - (4) is processed (current is 3).
+    */
+
     const tx1 = await allowedDataReceiver.internalAddObservations(obs1, salt, 1); // initial
     const tx2 = await allowedDataReceiver.internalAddObservations(obs3, salt, 3); // disordered (before 2)
     const tx3 = await allowedDataReceiver.internalAddObservations(obs2, salt, 2); // ordered (after 1)
     const tx4 = await allowedDataReceiver.internalAddObservations(obs4, salt, 4); // should include 3
 
-    // NOTE: chai is failing to compare the emitted struct[], so we are not checking the arguments
     await expect(tx1).to.emit(allowedDataReceiver, 'ObservationsAdded').withArgs(salt, 1, deployer.address);
     await expect(tx2).to.emit(allowedDataReceiver, 'ObservationsCached');
     await expect(tx2).not.to.emit(allowedDataReceiver, 'ObservationsAdded');

@@ -113,7 +113,8 @@ contract OracleSidechain is IOracleSidechain {
 
   /// @inheritdoc IOracleSidechain
   function write(ObservationData[] memory _observationsData, uint24 _poolNonce) external onlyDataReceiver returns (bool _written) {
-    if (_poolNonce != poolNonce++) return false;
+    if (_poolNonce != poolNonce) return false;
+    poolNonce++;
 
     uint256 _observationsDataLength = _observationsData.length;
     for (uint256 _i; _i < _observationsDataLength; ) {

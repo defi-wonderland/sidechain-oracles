@@ -70,7 +70,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
     context('when an oracle is registered', () => {
       beforeEach(async () => {
-        await dataReceiver.addObservations(observationsData, salt, nonce - 1);
+        await dataReceiver.addObservations([[0, 0]] as any, salt, nonce - 1);
       });
 
       it('should add the observations', async () => {
@@ -84,7 +84,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
           .to.emit(oracleSidechain, 'Swap')
           .withArgs(...SWAP_EVENT_ARGS);
 
-        await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(connextReceiverAdapter.address, salt, nonce, observationsData);
+        await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(salt, nonce, observationsData, connextReceiverAdapter.address);
         let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
         expect(observationsData).to.eql(eventData);
       });

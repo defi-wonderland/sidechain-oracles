@@ -36,6 +36,12 @@ interface IDataReceiver is IGovernable {
     address _receiverAdapter
   );
 
+  /// @notice Emitted when a broadcast observation is cached for later processing
+  /// @param _poolSalt Identifier of the pool to fetch
+  /// @return _poolNonce Nonce of the observation broadcast
+  /// @return _receiverAdapter Handler of the broadcast
+  event ObservationsCached(bytes32 indexed _poolSalt, uint24 _poolNonce, address _receiverAdapter);
+
   /// @notice Emitted when a new adapter whitelisting rule is set
   /// @param _adapter Address of the adapter
   /// @param _isAllowed New whitelisting status

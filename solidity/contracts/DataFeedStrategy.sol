@@ -26,16 +26,18 @@ contract DataFeedStrategy is IDataFeedStrategy, Governable {
   /// @inheritdoc IDataFeedStrategy
   uint32 public twapLength;
 
-  address internal constant _UNISWAP_FACTORY = 0x1F98431c8aD98523631AE4a59f267346ea31F984;
+  address internal immutable _UNISWAP_FACTORY;
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
   constructor(
     address _governor,
     IDataFeed _dataFeed,
+    address _uniswapFactory,
     StrategySettings memory _params
   ) Governable(_governor) {
     if (address(_dataFeed) == address(0)) revert ZeroAddress();
     dataFeed = _dataFeed;
+    _UNISWAP_FACTORY = _uniswapFactory;
     _setStrategyCooldown(_params.strategyCooldown);
     _setDefaultTwapThreshold(_params.defaultTwapThreshold);
     _setTwapLength(_params.twapLength);

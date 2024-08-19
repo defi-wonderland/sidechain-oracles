@@ -39,5 +39,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
+deployFunction.dependencies = ['create-pool'];
 deployFunction.tags = ['test-pool-whitelisting'];
 export default deployFunction;

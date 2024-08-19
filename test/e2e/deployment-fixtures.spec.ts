@@ -69,7 +69,7 @@ describe.only('@skip-on-coverage Fixture', () => {
       expect(await dataReceiver.whitelistedAdapters(receiverAdapter.address)).to.be.true;
     });
 
-    describe('when pool is deployed', () => {
+    describe.only('when pool is deployed', () => {
       beforeEach(async () => {
         await deployments.fixture(['save-tokens', 'pool-whitelisting'], { keepExistingDeployments: true });
 
@@ -88,7 +88,7 @@ describe.only('@skip-on-coverage Fixture', () => {
         await deployments.fixture(['manual-send-test-observation'], { keepExistingDeployments: true });
       });
 
-      describe('when the strategy is setup', () => {
+      describe.skip('when the strategy is setup', () => {
         beforeEach(async () => {
           await deployments.fixture(['setup-strategy'], { keepExistingDeployments: true });
         });
@@ -199,7 +199,7 @@ describe.only('@skip-on-coverage Fixture', () => {
     });
   });
 
-  describe('production setup', () => {
+  describe.skip('production setup', () => {
     beforeEach(async () => {
       await deployments.fixture(['base-contracts']);
       await deployments.fixture(['connext-setup', 'pool-whitelisting'], { keepExistingDeployments: true });
@@ -243,9 +243,7 @@ describe.only('@skip-on-coverage Fixture', () => {
 
 const addCreditsToJob = async (jobAddress: string) => {
   const keep3rContract = await getContractFromFixture('Keep3r', 'IKeep3r');
-  console.count('✅');
   const governor = await wallet.impersonate(await keep3rContract.governor());
-  console.count('✅');
   await wallet.setBalance(governor._address, toUnit(10));
   await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(100));
 };

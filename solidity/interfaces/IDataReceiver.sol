@@ -27,14 +27,8 @@ interface IDataReceiver is IGovernable {
   /// @notice Emitted when a broadcast observation is succesfully processed
   /// @param _poolSalt Identifier of the pool to fetch
   /// @return _poolNonce Nonce of the observation broadcast
-  /// @return _observationsData Array of tuples containing the dataset
   /// @return _receiverAdapter Handler of the broadcast
-  event ObservationsAdded(
-    bytes32 indexed _poolSalt,
-    uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] _observationsData,
-    address _receiverAdapter
-  );
+  event ObservationsAdded(bytes32 indexed _poolSalt, uint24 _poolNonce, address _receiverAdapter);
 
   /// @notice Emitted when a broadcast observation is cached for later processing
   /// @param _poolSalt Identifier of the pool to fetch

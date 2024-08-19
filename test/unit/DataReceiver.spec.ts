@@ -101,12 +101,10 @@ describe('DataReceiver.sol', () => {
         let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
         let eventSalt = await readArgFromEvent(tx, 'ObservationsAdded', '_poolSalt');
         let eventNonce = await readArgFromEvent(tx, 'ObservationsAdded', '_poolNonce');
-        let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
 
         expect(eventAdapter).to.eq(fakeAdapter.address);
         expect(eventSalt).to.eq(randomSalt);
         expect(eventNonce).to.eq(randomNonce);
-        expect(eventObservationsData).to.eql(observationsData);
       });
     });
 
@@ -133,11 +131,7 @@ describe('DataReceiver.sol', () => {
 
         it('should emit ObservationsAdded', async () => {
           tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
-          let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
-          let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
-
-          expect(eventAdapter).to.eq(fakeAdapter.address);
-          expect(eventObservationsData).to.eql(observationsData);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, fakeAdapter.address);
         });
       });
 
@@ -163,11 +157,121 @@ describe('DataReceiver.sol', () => {
 
         it('should emit ObservationsAdded', async () => {
           tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
-          let eventAdapter = await readArgFromEvent(tx, 'ObservationsAdded', '_receiverAdapter');
-          let eventObservationsData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+        });
+      });
+    });
 
-          expect(eventAdapter).to.eq(fakeAdapter.address);
-          expect(eventObservationsData).to.eql(observationsData);
+    context('when observations arrive', () => {
+      beforeEach(async () => {
+        // normal case scenario (irrelevant to the test)
+        await dataReceiver.setVariable('deployedOracles', { [randomSalt]: oracleSidechain.address });
+      });
+
+      context('when an observation arrives with a past nonce', () => {
+        beforeEach(async () => {
+          await dataReceiver.setVariable('deployedOracles', { [randomSalt]: oracleSidechain.address });
+          oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+          oracleSidechain.poolNonce.returns(randomNonce + 1);
+        });
+
+        it('should revert', async () => {
+          await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
+            'ObservationsNotWritable()'
+          );
+        });
+      });
+
+      context('when an observation arrives with the correct nonce', () => {
+        beforeEach(async () => {
+          await dataReceiver.setVariable('deployedOracles', { [randomSalt]: oracleSidechain.address });
+          oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(true);
+        });
+
+        it('should write observations', async () => {
+          expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce);
+
+          tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+        });
+      });
+
+      context('when an observation arrives with a future nonce', () => {
+        beforeEach(async () => {
+          oracleSidechain.write.reset();
+          await dataReceiver.setVariable('deployedOracles', { [randomSalt]: oracleSidechain.address });
+          oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+          oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce - 2);
+        });
+
+        it('should cache the received observation', async () => {
+          tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsCached').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+          await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
+        });
+
+        context('when the cache is populated', () => {
+          beforeEach(async () => {
+            // Cache observations
+            // NOTE: smock doesn't support setting internal mapping(bytes32 => mapping(uint => Struct)) (yet)
+            oracleSidechain.poolNonce.whenCalledWith().returns(0);
+            await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce + 2);
+            await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce + 1);
+            await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce - 1);
+            await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce - 2);
+            oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce - 2);
+
+            oracleSidechain.write.reset();
+          });
+
+          it('should add the cached observations', async () => {
+            tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+
+            await expect(tx).to.emit(dataReceiver, 'ObservationsCached').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsAdded')
+              .withArgs(randomSalt, randomNonce - 2, fakeAdapter.address);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsAdded')
+              .withArgs(randomSalt, randomNonce - 1, fakeAdapter.address);
+            await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+          });
+
+          it('should add the cached observations up until the inputted observation nonce', async () => {
+            tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+
+            expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce - 2);
+            expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce - 1);
+            expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce);
+            expect(oracleSidechain.write).not.to.have.been.calledWith(observationsData, randomNonce + 1);
+            expect(oracleSidechain.write).not.to.have.been.calledWith(observationsData, randomNonce + 2);
+
+            await expect(tx).to.emit(dataReceiver, 'ObservationsCached').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsAdded')
+              .withArgs(randomSalt, randomNonce - 2, fakeAdapter.address);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsAdded')
+              .withArgs(randomSalt, randomNonce - 1, fakeAdapter.address);
+            await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+          });
+
+          it('should add the cached observations up until the first empty nonce', async () => {
+            const tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce + 1);
+
+            expect(oracleSidechain.write).not.to.have.been.calledWith(observationsData, randomNonce);
+            expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce - 2);
+            expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce - 1);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsCached')
+              .withArgs(randomSalt, randomNonce + 1, fakeAdapter.address);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsAdded')
+              .withArgs(randomSalt, randomNonce - 2, fakeAdapter.address);
+            await expect(tx)
+              .to.emit(dataReceiver, 'ObservationsAdded')
+              .withArgs(randomSalt, randomNonce - 1, fakeAdapter.address);
+          });
         });
       });
     });

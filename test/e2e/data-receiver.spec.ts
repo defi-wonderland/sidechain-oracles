@@ -84,9 +84,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
           .to.emit(oracleSidechain, 'Swap')
           .withArgs(...SWAP_EVENT_ARGS);
 
-        await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(salt, nonce, observationsData, connextReceiverAdapter.address);
-        let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
-        expect(observationsData).to.eql(eventData);
+        await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(salt, nonce, connextReceiverAdapter.address);
       });
     });
 
@@ -101,10 +99,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
           ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-          // TODO: fix event params with withNamedArgs (ethereum-waffle ^4.0.0)
-          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(salt, nonce, observationsData, connextReceiverAdapter.address);
-          let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
-          expect(observationsData).to.eql(eventData);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(salt, nonce, connextReceiverAdapter.address);
         });
       });
 
@@ -122,9 +117,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
           ({ oracleSidechain } = await getOracle(oracleFactory.address, tokenA.address, tokenB.address, fee));
 
-          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded'); //.withArgs(salt, nonce, observationsData, connextReceiverAdapter.address);
-          let eventData = await readArgFromEvent(tx, 'ObservationsAdded', '_observationsData');
-          expect(observationsData).to.eql(eventData);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(salt, nonce, connextReceiverAdapter.address);
         });
       });
     });

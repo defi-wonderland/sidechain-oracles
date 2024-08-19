@@ -48,7 +48,7 @@ contract DataReceiver is IDataReceiver, Governable {
     }
     // Try to write observations data into oracle
     if (_oracle.write(_observationsData, _poolNonce)) {
-      emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
+      emit ObservationsAdded(_poolSalt, _poolNonce, msg.sender);
     } else {
       // Query pool's current nonce
       uint24 _currentNonce = _oracle.poolNonce();
@@ -69,7 +69,7 @@ contract DataReceiver is IDataReceiver, Governable {
         if (_observationsData.length > 0) {
           // Since observation nonce == oracle nonce, we can safely write the observations
           _oracle.write(_observationsData, _currentNonce);
-          emit ObservationsAdded(_poolSalt, _currentNonce, _observationsData, msg.sender);
+          emit ObservationsAdded(_poolSalt, _currentNonce, msg.sender);
           // Clear out the written observations
           delete _cachedObservations[_poolSalt][_currentNonce];
           _currentNonce++;

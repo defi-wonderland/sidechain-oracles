@@ -47,15 +47,7 @@ const networks: NetworksUserConfig =
           chainId: 11155111,
           companionNetworks: {
             receiver: 'optimisticSepolia',
-            sender: 'polygonMumbai',
-          },
-        },
-        polygonMumbai: {
-          url: env.getNodeUrl('mumbai'),
-          accounts: env.getAccounts('test'),
-          chainId: 80001,
-          companionNetworks: {
-            receiver: 'sepolia',
+            sender: 'sepolia', // for dummy-setup
           },
         },
         optimisticSepolia: {
@@ -109,7 +101,7 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'sepolia', 'optimisticSepolia', 'polygonMumbai']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'sepolia', 'optimisticSepolia']),
   },
   typechain: {
     outDir: 'typechained',

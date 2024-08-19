@@ -15,7 +15,7 @@
   - [Testnet](#testnet)
     - [Sepolia (sender and _receiver_)](#sepolia-sender-and-receiver)
     - [OP Sepolia (_receiver_)](#op-sepolia-receiver)
-    - [Mumbai (manual sender)](#mumbai-manual-sender)
+    - [Mumbai (manual sender)](#sepolia-manual-sender)
     - [Whitelisted pipelines](#whitelisted-pipelines)
 
 ## Scope
@@ -195,7 +195,7 @@ yarn deploy:work
 ```
 
 For 1 tag manual-deployment and bridging
-`yarn deploy --network mumbai --tags manual-send-test-observation`
+`yarn deploy --network sepolia --tags manual-send-test-observation`
 
 In `/utils/constants.ts`, one can find the configuration of the strategies chosen by chain. The default for Sepolia is set to refresh each 1/2 day, using periods of 1hr, and comparing a 2hr twap with 500 ticks (+-5%) threshold.
 

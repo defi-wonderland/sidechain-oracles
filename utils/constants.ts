@@ -19,45 +19,37 @@ export const addressRegistry = {
   // UNISWAP DEPLOYMENTS
   uniV3Factory: {
     1: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
-    80001: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
     11155111: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
   },
   // CONNEXT DEPLOYMENTS
   connextHandler: {
     1: '0x8898B472C54c31894e3B9bb83cEA802a5d0e63C6',
     10: '0x8f7492DE823025b4CfaAB1D34c58963F2af5DEDA',
-    137: '0x11984dc4465481512eb5b777E44061C158CF2259',
     11155111: '0x445fbf9cCbaf7d557fd771d56937E94397f43965',
     11155420: '0x8247ed6d0a344eeae4edBC7e44572F1B70ECA82A',
-    80001: '0x2334937846Ab2A3FCE747b32587e1A1A2f6EEC5a',
   },
   // TOKENS
   tokenA: {
     1: '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44',
     11155111: '0x80B4327021946fF962d570c808B6aaC47224AeF1',
-    80001: '0xFBBb8272BdCb2Dd042D064aaCbb63Ad808B34544',
   },
   tokenB: {
     1: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
     11155111: '0x7b79995e5f793a07bc00c21412e50ecae098e7f9',
-    80001: '0x3DD5A052de61858708eE2F0467C3C5765caB6362',
   },
 };
 
 export const domainId: IDomainIDRecord = {
   1: 6648936,
   10: 1869640809,
-  137: 1886350457,
   11155111: 1936027759,
   11155420: 1869640549,
-  80001: 9991,
   42069: 42069,
 };
 
 export const dataFeedSettings: IDataFeedSettingsRecord = {
   1: 1800, // 30min
   11155111: 180, // 3min
-  80001: 180,
 };
 
 export const strategySettings: IStrategySettingsRecord = {
@@ -72,11 +64,5 @@ export const strategySettings: IStrategySettingsRecord = {
     strategyCooldown: 43200, // half-day
     defaultTwapThreshold: 500, // ~5%
     twapLength: 7200, // 2hs
-  },
-  80001: {
-    periodDuration: 300, // 5min
-    strategyCooldown: 3600, // 1hr
-    defaultTwapThreshold: 500, // ~5%
-    twapLength: 300, // 5min
   },
 };

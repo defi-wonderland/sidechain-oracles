@@ -44,7 +44,7 @@
     "deploy:fetch": "yarn deploy --network sepolia --tags fetch-observation",
     "deploy:force-fetch": "yarn deploy --network sepolia --tags force-fetch-observation",
     "deploy:setup": "yarn deploy --network sepolia --tags setup-connext-default",
-    "deploy:setup-dummy": "yarn deploy --network mumbai --tags data-receiver",
+    "deploy:setup-dummy": "yarn deploy --network sepolia --tags data-receiver",
     "deploy:work": "yarn deploy --network sepolia --tags work-job",
     "fork:node": "cross-env FORK=true hardhat node",
     "fork:script": "cross-env FORK=true hardhat run",

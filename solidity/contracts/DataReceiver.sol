@@ -64,12 +64,12 @@ contract DataReceiver is IDataReceiver, Governable {
       emit ObservationsCached(_poolSalt, _poolNonce, msg.sender);
       while (_currentNonce <= _poolNonce) {
         // Try backfilling pending observations (from current to {sent|first empty} nonce)
-        IOracleSidechain.ObservationData[] memory _cache = _cachedObservations[_poolSalt][_currentNonce];
+        _observationsData = _cachedObservations[_poolSalt][_currentNonce];
         // If the struct is not empty, write it into the oracle
-        if (_cache.length > 0) {
+        if (_observationsData.length > 0) {
           // Since observation nonce == oracle nonce, we can safely write the observations
-          _oracle.write(_cache, _currentNonce);
-          emit ObservationsAdded(_poolSalt, _currentNonce, _cache, msg.sender);
+          _oracle.write(_observationsData, _currentNonce);
+          emit ObservationsAdded(_poolSalt, _currentNonce, _observationsData, msg.sender);
           // Clear out the written observations
           delete _cachedObservations[_poolSalt][_currentNonce];
           _currentNonce++;

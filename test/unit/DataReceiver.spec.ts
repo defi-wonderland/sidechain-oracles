@@ -90,6 +90,7 @@ describe('DataReceiver.sol', () => {
 
       it('should revert if the observations are not writable', async () => {
         oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+        oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce + 1);
         await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
           'ObservationsNotWritable()'
         );
@@ -124,6 +125,7 @@ describe('DataReceiver.sol', () => {
 
         it('should revert if the observations are not writable', async () => {
           oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+          oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce + 1);
           await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
             'ObservationsNotWritable()'
           );
@@ -153,6 +155,7 @@ describe('DataReceiver.sol', () => {
 
         it('should revert if the observations are not writable', async () => {
           oracleSidechain.write.whenCalledWith(observationsData, randomNonce).returns(false);
+          oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce + 1);
           await expect(dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce)).to.be.revertedWith(
             'ObservationsNotWritable()'
           );

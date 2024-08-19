@@ -47,7 +47,14 @@ const networks: NetworksUserConfig =
           chainId: 11155111,
           companionNetworks: {
             receiver: 'optimisticSepolia',
-            sender: 'sepolia', // for dummy-setup
+          },
+        },
+        sepoliaDummy: {
+          url: env.getNodeUrl('sepolia'),
+          accounts: env.getAccounts('test'),
+          chainId: 11155111,
+          companionNetworks: {
+            receiver: 'sepoliaDummy',
           },
         },
         optimisticSepolia: {

@@ -15,6 +15,9 @@ artifacts
 typechained
 deployments/hardhat
 deployments/localhost
+deployments/sepoliaDummy
+deployments/sepolia
+deployments/optimisticSepolia
 
 # Config files
 .env

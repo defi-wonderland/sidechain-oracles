@@ -80,6 +80,6 @@ export const getReceiverChainId = async (hre: HardhatRuntimeEnvironment): Promis
   const receiverChainId = await hre.companionNetworks['receiver'].getChainId();
 
   if (senderChainId != receiverChainId) return receiverChainId;
-  // returns 11155111 for same chain test
+  // avoids `BridgeFacet__mustHaveRemote_destinationNotSupported` in local testing (chain id 11155111)
   return '11155420';
 };

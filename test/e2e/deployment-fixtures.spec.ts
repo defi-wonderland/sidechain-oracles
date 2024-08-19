@@ -10,7 +10,7 @@ import { getNodeUrl } from 'utils/env';
 import forkBlockNumber from './fork-block-numbers';
 import { expect } from 'chai';
 
-describe('@skip-on-coverage Fixture', () => {
+describe.only('@skip-on-coverage Fixture', () => {
   let deployer: string;
   let dataFeed: Type.DataFeed;
   let dataFeedStrategy: Type.DataFeedStrategy;
@@ -37,8 +37,8 @@ describe('@skip-on-coverage Fixture', () => {
     ({ deployer } = await getNamedAccounts());
 
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('goerli'),
-      blockNumber: forkBlockNumber.goerli,
+      jsonRpcUrl: getNodeUrl('sepolia'),
+      blockNumber: forkBlockNumber.sepolia,
     });
   });
 
@@ -138,7 +138,7 @@ describe('@skip-on-coverage Fixture', () => {
 
               const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
-              const RANDOM_CHAIN_ID = 5;
+              const RANDOM_CHAIN_ID = 11155111;
 
               await expect(
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
@@ -173,7 +173,7 @@ describe('@skip-on-coverage Fixture', () => {
 
               const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
-              const REAL_CHAIN_ID = 420;
+              const REAL_CHAIN_ID = 11155420;
 
               await expect(
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](REAL_CHAIN_ID, poolSalt, lastPoolNonce, fetchData._observationsData)
@@ -243,7 +243,9 @@ describe('@skip-on-coverage Fixture', () => {
 
 const addCreditsToJob = async (jobAddress: string) => {
   const keep3rContract = await getContractFromFixture('Keep3r', 'IKeep3r');
-  const governor = await wallet.impersonate(await keep3rContract.governance());
+  console.count('✅');
+  const governor = await wallet.impersonate(await keep3rContract.governor());
+  console.count('✅');
   await wallet.setBalance(governor._address, toUnit(10));
   await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(100));
 };

@@ -2,10 +2,10 @@ import IUniswapV3Factory from '../../artifacts/@uniswap/v3-core/contracts/interf
 import IUniswapV3Pool from '../../artifacts/@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol/IUniswapV3Pool.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
+import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
+  const { deployer, uniV3Factory } = await hre.getNamedAccounts();
   const addressZero = '0x0000000000000000000000000000000000000000';
 
   const txSettings = {
@@ -15,7 +15,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await hre.deployments.save('UniswapV3Factory', {
     abi: IUniswapV3Factory.abi,
-    address: UNI_V3_FACTORY,
+    address: uniV3Factory,
   });
 
   /* DEPLOY POOL */

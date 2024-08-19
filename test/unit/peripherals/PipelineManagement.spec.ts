@@ -40,7 +40,7 @@ describe('PipelineManagement.sol', () => {
     fakeAdapter = await smock.fake('IConnextSenderAdapter');
 
     dataFeedFactory = await smock.mock('DataFeed');
-    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address, initialMinLastOracleDelta, randomUniswapAddress);
+    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address, randomUniswapAddress, initialMinLastOracleDelta);
 
     snapshotId = await evm.snapshot.take();
   });

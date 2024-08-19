@@ -48,7 +48,7 @@ describe('DataFeed.sol', () => {
 
   beforeEach(async () => {
     await evm.snapshot.revert(snapshotId);
-    dataFeed = await dataFeedFactory.deploy(governor.address, strategy.address, initialMinLastOracleDelta, UNI_FACTORY);
+    dataFeed = await dataFeedFactory.deploy(governor.address, strategy.address, UNI_FACTORY, initialMinLastOracleDelta);
   });
 
   describe('constructor(...)', () => {

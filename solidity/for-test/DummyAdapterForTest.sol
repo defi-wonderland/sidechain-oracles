@@ -10,6 +10,7 @@ contract DummyAdapterForTest is IBridgeSenderAdapter {
   event Create2Hash(bytes32);
 
   bool public ignoreTxs;
+  address public dataFeed; // needed to comply with interface
 
   constructor() {
     /// @dev Emitted to validate correct calculation of ORACLE_INIT_CODE_HASH

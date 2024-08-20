@@ -12,16 +12,11 @@ interface IConnextReceiverAdapter is IXReceiver, IBridgeReceiverAdapter {
   /// @return _connext Address of the ConnextHandler contract
   function connext() external view returns (IConnext _connext);
 
-  /// @notice Gets the DAO that is expected as the xcaller
+  /// @notice Gets the contract address that is expected as the xcaller
   /// @return _originContract Address of the xcaller contract
   function source() external view returns (address _originContract);
 
   /// @notice Gets the origin domain id
   /// @return _originDomain The origin domain id
   function originDomain() external view returns (uint32 _originDomain);
-
-  // ERRORS
-
-  /// @notice Thrown if a caller is not authorized
-  error UnauthorizedCaller();
 }

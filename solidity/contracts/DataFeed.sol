@@ -2,7 +2,7 @@
 pragma solidity >=0.8.8 <0.9.0;
 
 import {PipelineManagement, Governable} from './peripherals/PipelineManagement.sol';
-import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IConnextSenderAdapter, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
+import {IDataFeed, IDataFeedStrategy, IUniswapV3Pool, IBridgeSenderAdapter, IOracleSidechain} from '../interfaces/IDataFeed.sol';
 import {Create2Address} from '@defi-wonderland/solidity-utils/solidity/libraries/Create2Address.sol';
 
 /// @title The DataFeed contract

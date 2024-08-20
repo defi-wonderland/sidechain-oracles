@@ -31,7 +31,7 @@ describe('PipelineManagement.sol', () => {
   const randomChainId2 = 22;
   const randomSalt = VALID_POOL_SALT;
   const randomSalt2 = getRandomBytes32();
-  const randomUniswapAddress = wallet.generateRandomAddress();
+  const randomAddress = wallet.generateRandomAddress();
 
   before(async () => {
     [, governor, keeper] = await ethers.getSigners();
@@ -40,7 +40,7 @@ describe('PipelineManagement.sol', () => {
     fakeAdapter = await smock.fake('IConnextSenderAdapter');
 
     dataFeedFactory = await smock.mock('DataFeed');
-    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address, randomUniswapAddress, initialMinLastOracleDelta);
+    dataFeed = await dataFeedFactory.deploy(governor.address, keeper.address, randomAddress, initialMinLastOracleDelta);
 
     snapshotId = await evm.snapshot.take();
   });

@@ -19,7 +19,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
 
   mapping(bytes32 => bool) internal _observedKeccak;
 
-  address internal immutable _UNISWAP_FACTORY;
+  address internal immutable _UNISWAP_V3_FACTORY;
   bytes32 internal constant _POOL_INIT_CODE_HASH = 0xe34f199b19b2b4f47f68442619d555527d244f78a3297ea89325f843f87b8b54;
 
   constructor(
@@ -30,7 +30,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
   ) Governable(_governor) {
     _setStrategy(_strategy);
     _setMinLastOracleDelta(_minLastOracleDelta);
-    _UNISWAP_FACTORY = _uniswapFactory;
+    _UNISWAP_V3_FACTORY = _uniswapFactory;
   }
 
   /// @inheritdoc IDataFeed
@@ -58,7 +58,7 @@ contract DataFeed is IDataFeed, PipelineManagement {
     PoolState memory _lastPoolStateObserved = lastPoolStateObserved[_poolSalt];
 
     {
-      IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
+      IUniswapV3Pool _pool = IUniswapV3Pool(Create2Address.computeAddress(_UNISWAP_V3_FACTORY, _poolSalt, _POOL_INIT_CODE_HASH));
       (int56[] memory _tickCumulatives, ) = _pool.observe(_secondsAgos);
 
       uint32 _secondsNow = uint32(block.timestamp); // truncation is desired

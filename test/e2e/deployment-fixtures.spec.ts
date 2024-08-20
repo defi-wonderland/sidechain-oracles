@@ -248,7 +248,7 @@ const addCreditsToJob = async (jobAddress: string) => {
     // NOTE: Mainnet uses `governance` while Testnet `governor'
     governorAddress = await keep3rContract.provider.call({
       to: keep3rContract.address,
-      data: '0x0c340a24',
+      data: ethers.utils.id('governor()'),
     });
     governorAddress = ethers.utils.hexStripZeros(governorAddress);
   } else {

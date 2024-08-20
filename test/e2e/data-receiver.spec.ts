@@ -70,7 +70,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
 
     context('when an oracle is registered', () => {
       beforeEach(async () => {
-        await dataReceiver.addObservations([[0, 0]] as any, salt, nonce - 1);
+        await dataReceiver.addObservations([[0, 0]] as unknown as IOracleSidechain.ObservationDataStruct[], salt, nonce - 1);
       });
 
       it('should add the observations', async () => {

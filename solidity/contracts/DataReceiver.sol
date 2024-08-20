@@ -55,13 +55,16 @@ contract DataReceiver is IDataReceiver, Governable {
       // Discard old observations (already written in the oracle)
       // NOTE: if _currentNonce == _poolNonce it shouldn't reach this else block
       if (_currentNonce > _poolNonce) revert ObservationsNotWritable();
+
+      IOracleSidechain.ObservationData[] storage _cachedObservationsData = _cachedObservations[_poolSalt][_poolNonce];
       // Store not-added observations to cachedObservations mapping
-      // NOTE: memory to storage is not supported
-      // cachedObservations[_poolSalt][_poolNonce] = _observationsData;
-      for (uint256 _i; _i < _observationsData.length; ++_i) {
-        _cachedObservations[_poolSalt][_poolNonce].push(_observationsData[_i]);
+      if (_cachedObservationsData.length == 0) {
+        // NOTE: memory to storage is not supported
+        for (uint256 _i; _i < _observationsData.length; ++_i) {
+          _cachedObservationsData.push(_observationsData[_i]);
+        }
+        emit ObservationsCached(_poolSalt, _poolNonce, msg.sender);
       }
-      emit ObservationsCached(_poolSalt, _poolNonce, msg.sender);
       while (_currentNonce <= _poolNonce) {
         // Try backfilling pending observations (from current to {sent|first empty} nonce)
         _observationsData = _cachedObservations[_poolSalt][_currentNonce];

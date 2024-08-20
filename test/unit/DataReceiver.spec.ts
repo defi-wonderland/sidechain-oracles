@@ -210,6 +210,16 @@ describe('DataReceiver.sol', () => {
           await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
         });
 
+        it('should cache the first received observation and ignore the following', async () => {
+          tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+          await expect(tx).to.emit(dataReceiver, 'ObservationsCached').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+          await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
+
+          tx = await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce);
+          await expect(tx).not.to.emit(dataReceiver, 'ObservationsCached').withArgs(randomSalt, randomNonce, fakeAdapter.address);
+          await expect(tx).not.to.emit(dataReceiver, 'ObservationsAdded');
+        });
+
         context('when the cache is populated', () => {
           beforeEach(async () => {
             // Cache observations
@@ -262,9 +272,7 @@ describe('DataReceiver.sol', () => {
             expect(oracleSidechain.write).not.to.have.been.calledWith(observationsData, randomNonce);
             expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce - 2);
             expect(oracleSidechain.write).to.have.been.calledWith(observationsData, randomNonce - 1);
-            await expect(tx)
-              .to.emit(dataReceiver, 'ObservationsCached')
-              .withArgs(randomSalt, randomNonce + 1, fakeAdapter.address);
+            await expect(tx).not.to.emit(dataReceiver, 'ObservationsCached'); // `randomNonce + 1` is cached in beforeEach
             await expect(tx)
               .to.emit(dataReceiver, 'ObservationsAdded')
               .withArgs(randomSalt, randomNonce - 2, fakeAdapter.address);

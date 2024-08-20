@@ -28,6 +28,14 @@ export const addressRegistry = {
     11155111: '0x445fbf9cCbaf7d557fd771d56937E94397f43965',
     11155420: '0x8247ed6d0a344eeae4edBC7e44572F1B70ECA82A',
   },
+  // OPTIMISM DEPLOYMENTS
+  // from https://docs.optimism.io/chain/addresses
+  opAmbHandler: {
+    1: '0xd3494713a5cfad3f5359379dfa074e2ac8c6fd65', // L1CrossDomainMessengerProxy
+    10: '0x4200000000000000000000000000000000000007', // L2CrossDomainMessenger
+    11155111: '0x58Cc85b8D04EA49cC6DBd3CbFFd00B4B8D6cb3ef', // L1CrossDomainMessengerProxy
+    11155420: '0x4200000000000000000000000000000000000007', // L2CrossDomainMessenger
+  },
   // TOKENS
   tokenA: {
     1: '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44',

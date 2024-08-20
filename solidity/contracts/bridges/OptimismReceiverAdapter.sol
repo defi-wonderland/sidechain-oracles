@@ -7,12 +7,17 @@ import {ICrossDomainMessenger} from '../../interfaces/bridges/ICrossDomainMessen
 import {IOracleSidechain} from '../../interfaces/IOracleSidechain.sol';
 
 contract OptimismReceiverAdapter is BridgeReceiverAdapter {
+  ICrossDomainMessenger public immutable messenger;
+  address public immutable source;
+
   constructor(
     IDataReceiver _dataReceiver,
-    address _source,
-    uint32 _originDomain
+    address _messenger,
+    address _source
   ) BridgeReceiverAdapter(_dataReceiver) {
-    if (false) revert ZeroAddress();
+    if (_messenger == address(0) || _source == address(0)) revert ZeroAddress();
+    messenger = ICrossDomainMessenger(_messenger);
+    source = _source;
   }
 
   function addObservations(
@@ -24,7 +29,7 @@ contract OptimismReceiverAdapter is BridgeReceiverAdapter {
   }
 
   modifier onlyExecutor() {
-    // if (msg.sender != address(connext) || _originSender != source || _originDomain != originDomain) revert UnauthorizedCaller();
+    if (msg.sender != address(messenger) || messenger.xDomainMessageSender() != source) revert UnauthorizedCaller();
     _;
   }
 }

@@ -13,4 +13,9 @@ interface IBridgeReceiverAdapter is IBaseErrors {
   function dataReceiver() external view returns (IDataReceiver _dataReceiver);
 
   /* NOTE: callback methods should be here declared */
+
+  // ERRORS
+
+  /// @notice Thrown if a caller is not authorized
+  error UnauthorizedCaller();
 }

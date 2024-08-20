@@ -1,30 +1,28 @@
 //SPDX-License-Identifier: MIT
 pragma solidity >=0.8.8 <0.9.0;
 
-import {IConnext, IConnextSenderAdapter, IBridgeSenderAdapter, IDataFeed, IOracleSidechain} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
+import {IConnext, IConnextSenderAdapter} from '../../interfaces/bridges/IConnextSenderAdapter.sol';
+import {IBridgeSenderAdapter, IOracleSidechain} from '../../interfaces/bridges/IBridgeSenderAdapter.sol';
+import {IDataFeed} from '../../interfaces/IDataFeed.sol';
+import {BridgeSenderAdapter} from './BridgeSenderAdapter.sol';
 import {LibConnextStorage, TransferInfo} from '@connext/nxtp-contracts/contracts/core/connext/libraries/LibConnextStorage.sol';
 
-contract ConnextSenderAdapter is IConnextSenderAdapter {
-  /// @inheritdoc IConnextSenderAdapter
-  IDataFeed public immutable dataFeed;
-
+contract ConnextSenderAdapter is IConnextSenderAdapter, BridgeSenderAdapter {
   /// @inheritdoc IConnextSenderAdapter
   IConnext public immutable connext;
 
-  constructor(IDataFeed _dataFeed, IConnext _connext) {
-    if (address(_dataFeed) == address(0) || address(_connext) == address(0)) revert ZeroAddress();
-    dataFeed = _dataFeed;
+  constructor(address _dataFeed, IConnext _connext) BridgeSenderAdapter(_dataFeed) {
+    if (address(_connext) == address(0)) revert ZeroAddress();
     connext = _connext;
   }
 
-  /// @inheritdoc IBridgeSenderAdapter
-  function bridgeObservations(
+  function _bridgeObservations(
     address _to,
     uint32 _destinationDomainId,
     IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
     uint24 _poolNonce
-  ) external payable onlyDataFeed {
+  ) internal override {
     bytes memory _callData = abi.encode(_observationsData, _poolSalt, _poolNonce);
 
     connext.xcall{value: msg.value}({
@@ -36,10 +34,5 @@ contract ConnextSenderAdapter is IConnextSenderAdapter {
       _slippage: 0, // slippage in bps
       _callData: _callData // to be executed on _to on the destination domain
     });
-  }
-
-  modifier onlyDataFeed() {
-    if (msg.sender != address(dataFeed)) revert OnlyDataFeed();
-    _;
   }
 }

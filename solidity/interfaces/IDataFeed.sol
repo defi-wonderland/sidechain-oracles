@@ -4,7 +4,6 @@ pragma solidity >=0.8.8 <0.9.0;
 import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
 import {IPipelineManagement} from './peripherals/IPipelineManagement.sol';
 import {IDataFeedStrategy} from './IDataFeedStrategy.sol';
-import {IConnextSenderAdapter} from './bridges/IConnextSenderAdapter.sol';
 import {IBridgeSenderAdapter} from './bridges/IBridgeSenderAdapter.sol';
 import {IOracleSidechain} from './IOracleSidechain.sol';
 

@@ -24,6 +24,7 @@ contract DataReceiver is IDataReceiver, Governable {
     oracleFactory = _oracleFactory;
   }
 
+  /// @inheritdoc IDataReceiver
   function addObservations(
     IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
@@ -84,6 +85,7 @@ contract DataReceiver is IDataReceiver, Governable {
     }
   }
 
+  /// @inheritdoc IDataReceiver
   function syncObservations(bytes32 _poolSalt, uint256 _maxObservations) external {
     IOracleSidechain _oracle = deployedOracles[_poolSalt];
     if (address(_oracle) == address(0)) revert ZeroAddress();
@@ -105,6 +107,7 @@ contract DataReceiver is IDataReceiver, Governable {
     if (_i == 0) revert ObservationsNotWritable();
   }
 
+  /// @inheritdoc IDataReceiver
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {
     _whitelistAdapter(_receiverAdapter, _isWhitelisted);
   }

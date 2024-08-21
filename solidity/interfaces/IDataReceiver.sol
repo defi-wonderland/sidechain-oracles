@@ -61,6 +61,12 @@ interface IDataReceiver is IGovernable {
     uint24 _poolNonce
   ) external;
 
+  /// @notice Allows any address to attemt to insert cached observations
+  /// @param _poolSalt Identifier of the pool to fetch
+  /// @param _maxObservations Maximum number of observations to process
+  /// @dev Use _maxObservations = 0 to process all possible cached observations
+  function syncObservations(bytes32 _poolSalt, uint256 _maxObservations) external;
+
   /// @notice Allows governance to set an adapter whitelisted state
   /// @param _receiverAdapter Address of the adapter
   /// @param _isWhitelisted New whitelisting status

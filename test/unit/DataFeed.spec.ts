@@ -258,12 +258,18 @@ describe('DataFeed.sol', () => {
           });
 
           it('should emit PoolObserved', async () => {
+            observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            observationsData = [observationData1, observationData2];
+
             const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
             let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
             let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
+            let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
 
             expect(eventPoolSalt).to.eq(randomSalt);
             expect(eventPoolNonce).to.eq(nonce);
+            expect(eventObservationsData).to.eql(observationsData);
           });
         });
 
@@ -308,12 +314,18 @@ describe('DataFeed.sol', () => {
           });
 
           it('should emit PoolObserved', async () => {
+            observationData1 = [blockTimestamp1, arithmeticMeanTick1];
+            observationData2 = [blockTimestamp2, arithmeticMeanTick2];
+            observationsData = [observationData1, observationData2];
+
             const tx = await dataFeed.connect(strategy).fetchObservations(randomSalt, secondsAgos);
             let eventPoolSalt = await readArgFromEvent(tx, 'PoolObserved', '_poolSalt');
             let eventPoolNonce = await readArgFromEvent(tx, 'PoolObserved', '_poolNonce');
+            let eventObservationsData = await readArgFromEvent(tx, 'PoolObserved', '_observationsData');
 
             expect(eventPoolSalt).to.eq(randomSalt);
             expect(eventPoolNonce).to.eq(nonce);
+            expect(eventObservationsData).to.eql(observationsData);
           });
         });
       });

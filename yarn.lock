@@ -278,10 +278,10 @@
   dependencies:
     "@openzeppelin/contracts" "4.3.0"
 
-"@defi-wonderland/smock@2.3.5":
-  version "2.3.5"
-  resolved "https://registry.yarnpkg.com/@defi-wonderland/smock/-/smock-2.3.5.tgz#2f4daa10b4f4c69627200128778f61c51f4b32cc"
-  integrity sha512-klANj1hUpc3cd2ShXdVH/bEGwxJd+LxOngkF5gLcIbg6b37RCgMPMmR/94/hgL62F8bfWtuNKsQD7K+c6M5fWQ==
+"@defi-wonderland/smock@2.3.3":
+  version "2.3.3"
+  resolved "https://registry.yarnpkg.com/@defi-wonderland/smock/-/smock-2.3.3.tgz#de0a7a399e8e33d776f89f5813ac1ba88ef30c31"
+  integrity sha512-tDAdr02pEhEFRs1cRvmXr/Fnj3tvHkjVI9r+oPHDKQb3tyDyJ4zYZHchWY2VZvA+Ep5yrbXImlSOA6BL53H5Zg==
   dependencies:
     "@nomicfoundation/ethereumjs-evm" "^1.0.0-rc.3"
     "@nomicfoundation/ethereumjs-util" "^8.0.0-rc.3"

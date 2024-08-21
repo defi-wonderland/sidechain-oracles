@@ -325,7 +325,7 @@ describe('DataReceiver.sol', () => {
           await expect(dataReceiver.syncObservations(randomSalt, 0)).to.be.revertedWith('ObservationsNotWritable()');
         });
 
-        it('should all observations limited by max argument', async () => {
+        it('should add cached observations limited by max argument', async () => {
           tx = await dataReceiver.syncObservations(randomSalt, 2);
 
           expect(oracleSidechain.write).to.have.been.calledWith(observationsDataA, randomNonce);
@@ -338,7 +338,7 @@ describe('DataReceiver.sol', () => {
             .withArgs(randomSalt, randomNonce + 1, caller);
         });
 
-        it('should all the observations when called without max', async () => {
+        it('should add all cached observations when called without max', async () => {
           tx = await dataReceiver.syncObservations(randomSalt, 0);
 
           expect(oracleSidechain.write).to.have.been.calledWith(observationsDataA, randomNonce);

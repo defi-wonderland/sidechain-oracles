@@ -211,7 +211,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
           // NOTE: dataReceiver should be at poolNonce == nonce by now (with nonce, nonce+1 & nonce+2 in cache)
         });
 
-        it('should all the observations when called without max', async () => {
+        it('should add all cached observations when called without max', async () => {
           tx = await dataReceiver.syncObservations(salt, 0);
 
           await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(salt, nonce, caller);
@@ -223,7 +223,7 @@ describe('@skip-on-coverage DataReceiver.sol', () => {
             .withArgs(salt, nonce + 2, caller);
         });
 
-        it('should all observations limited by max argument', async () => {
+        it('should add cached observations limited by max argument', async () => {
           tx = await dataReceiver.syncObservations(salt, 2);
 
           await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(salt, nonce, caller);

@@ -61,7 +61,7 @@ interface IDataReceiver is IGovernable {
     uint24 _poolNonce
   ) external;
 
-  /// @notice Allows any address to attemt to insert cached observations
+  /// @notice Allows any address to attempt to insert cached observations
   /// @param _poolSalt Identifier of the pool to fetch
   /// @param _maxObservations Maximum number of observations to process
   /// @dev Use _maxObservations = 0 to process all possible cached observations

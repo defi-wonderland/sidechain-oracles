@@ -27,14 +27,14 @@ interface IDataReceiver is IGovernable {
   /// @notice Emitted when a broadcast observation is succesfully processed
   /// @param _poolSalt Identifier of the pool to fetch
   /// @return _poolNonce Nonce of the observation broadcast
-  /// @return _observationsData Array of tuples containing the dataset
   /// @return _receiverAdapter Handler of the broadcast
-  event ObservationsAdded(
-    bytes32 indexed _poolSalt,
-    uint24 _poolNonce,
-    IOracleSidechain.ObservationData[] _observationsData,
-    address _receiverAdapter
-  );
+  event ObservationsAdded(bytes32 indexed _poolSalt, uint24 _poolNonce, address _receiverAdapter);
+
+  /// @notice Emitted when a broadcast observation is cached for later processing
+  /// @param _poolSalt Identifier of the pool to fetch
+  /// @return _poolNonce Nonce of the observation broadcast
+  /// @return _receiverAdapter Handler of the broadcast
+  event ObservationsCached(bytes32 indexed _poolSalt, uint24 _poolNonce, address _receiverAdapter);
 
   /// @notice Emitted when a new adapter whitelisting rule is set
   /// @param _adapter Address of the adapter
@@ -60,6 +60,12 @@ interface IDataReceiver is IGovernable {
     bytes32 _poolSalt,
     uint24 _poolNonce
   ) external;
+
+  /// @notice Allows any address to attempt to insert cached observations
+  /// @param _poolSalt Identifier of the pool to fetch
+  /// @param _maxObservations Maximum number of observations to process
+  /// @dev Use _maxObservations = 0 to process all possible cached observations
+  function syncObservations(bytes32 _poolSalt, uint256 _maxObservations) external;
 
   /// @notice Allows governance to set an adapter whitelisted state
   /// @param _receiverAdapter Address of the adapter

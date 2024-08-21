@@ -17,11 +17,14 @@ contract DataReceiver is IDataReceiver, Governable {
   /// @inheritdoc IDataReceiver
   mapping(IBridgeReceiverAdapter => bool) public whitelistedAdapters;
 
+  mapping(bytes32 => mapping(uint24 => IOracleSidechain.ObservationData[])) internal _cachedObservations;
+
   constructor(address _governor, IOracleFactory _oracleFactory) Governable(_governor) {
     if (address(_oracleFactory) == address(0)) revert ZeroAddress();
     oracleFactory = _oracleFactory;
   }
 
+  /// @inheritdoc IDataReceiver
   function addObservations(
     IOracleSidechain.ObservationData[] memory _observationsData,
     bytes32 _poolSalt,
@@ -46,12 +49,65 @@ contract DataReceiver is IDataReceiver, Governable {
     }
     // Try to write observations data into oracle
     if (_oracle.write(_observationsData, _poolNonce)) {
-      emit ObservationsAdded(_poolSalt, _poolNonce, _observationsData, msg.sender);
+      emit ObservationsAdded(_poolSalt, _poolNonce, msg.sender);
     } else {
-      revert ObservationsNotWritable();
+      // Query pool's current nonce
+      uint24 _currentNonce = _oracle.poolNonce();
+      // Discard old observations (already written in the oracle)
+      // NOTE: if _currentNonce == _poolNonce it shouldn't reach this else block
+      if (_currentNonce > _poolNonce) revert ObservationsNotWritable();
+
+      IOracleSidechain.ObservationData[] storage _cachedObservationsData = _cachedObservations[_poolSalt][_poolNonce];
+      // Store not-added observations to cachedObservations mapping
+      if (_cachedObservationsData.length == 0) {
+        // NOTE: memory to storage is not supported
+        for (uint256 _i; _i < _observationsData.length; ++_i) {
+          _cachedObservationsData.push(_observationsData[_i]);
+        }
+        emit ObservationsCached(_poolSalt, _poolNonce, msg.sender);
+      }
+      while (_currentNonce <= _poolNonce) {
+        // Try backfilling pending observations (from current to {sent|first empty} nonce)
+        _observationsData = _cachedObservations[_poolSalt][_currentNonce];
+        // If the struct is not empty, write it into the oracle
+        if (_observationsData.length > 0) {
+          // Since observation nonce == oracle nonce, we can safely write the observations
+          _oracle.write(_observationsData, _currentNonce);
+          emit ObservationsAdded(_poolSalt, _currentNonce, msg.sender);
+          // Clear out the written observations
+          delete _cachedObservations[_poolSalt][_currentNonce];
+          _currentNonce++;
+        } else {
+          // When an empty nonce is found, break the loop
+          break;
+        }
+      }
     }
   }
 
+  /// @inheritdoc IDataReceiver
+  function syncObservations(bytes32 _poolSalt, uint256 _maxObservations) external {
+    IOracleSidechain _oracle = deployedOracles[_poolSalt];
+    if (address(_oracle) == address(0)) revert ZeroAddress();
+    IOracleSidechain.ObservationData[] memory _cachedObservationsData;
+    uint24 _currentNonce = _oracle.poolNonce();
+    uint256 _i;
+    while (_maxObservations == 0 || _i < _maxObservations) {
+      _cachedObservationsData = _cachedObservations[_poolSalt][_currentNonce];
+      if (_cachedObservationsData.length > 0) {
+        _oracle.write(_cachedObservationsData, _currentNonce);
+        emit ObservationsAdded(_poolSalt, _currentNonce, msg.sender);
+        delete _cachedObservations[_poolSalt][_currentNonce];
+        _currentNonce++;
+        _i++;
+      } else {
+        break;
+      }
+    }
+    if (_i == 0) revert ObservationsNotWritable();
+  }
+
+  /// @inheritdoc IDataReceiver
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {
     _whitelistAdapter(_receiverAdapter, _isWhitelisted);
   }

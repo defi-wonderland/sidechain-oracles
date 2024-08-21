@@ -22,9 +22,11 @@ export const addressRegistry = {
     11155111: '0x0227628f3F023bb0B980b67D528571c95c6DaC1c',
   },
   // CONNEXT DEPLOYMENTS
+  // source: https://docs.connext.network/resources/deployments
   connextHandler: {
     1: '0x8898B472C54c31894e3B9bb83cEA802a5d0e63C6',
     10: '0x8f7492DE823025b4CfaAB1D34c58963F2af5DEDA',
+    137: '0x11984dc4465481512eb5b777E44061C158CF2259',
     11155111: '0x445fbf9cCbaf7d557fd771d56937E94397f43965',
     11155420: '0x8247ed6d0a344eeae4edBC7e44572F1B70ECA82A',
   },
@@ -42,6 +44,7 @@ export const addressRegistry = {
 export const domainId: IDomainIDRecord = {
   1: 6648936,
   10: 1869640809,
+  137: 1886350457,
   11155111: 1936027759,
   11155420: 1869640549,
   42069: 42069,

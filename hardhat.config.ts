@@ -33,12 +33,19 @@ const networks: NetworksUserConfig =
           chainId: 1,
           companionNetworks: {
             receiver: 'optimism',
+            // receiver: 'polygon', // Uncomment to select as sidechain
           },
         },
         optimism: {
           url: env.getNodeUrl('optimism'),
           accounts: env.getAccounts('ethereum'),
           chainId: 10,
+          companionNetworks: { sender: 'ethereum' },
+        },
+        polygon: {
+          url: env.getNodeUrl('polygon'),
+          accounts: env.getAccounts('ethereum'),
+          chainId: 137,
           companionNetworks: { sender: 'ethereum' },
         },
         sepolia: {
@@ -108,7 +115,17 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'sepolia', 'optimisticSepolia']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'sepolia', 'optimisticSepolia']),
+    customChains: [
+      {
+        network: 'optimisticSepolia',
+        chainId: 11155420,
+        urls: {
+          apiURL: 'https://api-sepolia-optimistic.etherscan.io/api',
+          browserURL: 'https://sepolia-optimism.etherscan.io',
+        },
+      },
+    ],
   },
   typechain: {
     outDir: 'typechained',

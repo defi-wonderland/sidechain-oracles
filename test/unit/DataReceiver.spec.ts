@@ -16,6 +16,7 @@ describe('DataReceiver.sol', () => {
   let governor: SignerWithAddress;
   let fakeAdapter: SignerWithAddress;
   let randomAdapter: SignerWithAddress;
+  let randomWallet: SignerWithAddress;
   let dataReceiver: MockContract<DataReceiver>;
   let dataReceiverFactory: MockContractFactory<DataReceiver__factory>;
   let oracleFactory: FakeContract<IOracleFactory>;
@@ -27,7 +28,7 @@ describe('DataReceiver.sol', () => {
   const randomNonce = 420;
 
   before(async () => {
-    [, governor, fakeAdapter, randomAdapter] = await ethers.getSigners();
+    [randomWallet, governor, fakeAdapter, randomAdapter] = await ethers.getSigners();
 
     oracleFactory = await smock.fake('IOracleFactory');
     oracleSidechain = await smock.fake('IOracleSidechain');
@@ -57,13 +58,10 @@ describe('DataReceiver.sol', () => {
   });
 
   describe('addObservations(...)', () => {
-    let blockTimestamp1 = 1000000;
-    let tick1 = 100;
-    let observationData1 = [blockTimestamp1, tick1];
-    let blockTimestamp2 = 3000000;
-    let tick2 = 300;
-    let observationData2 = [blockTimestamp2, tick2];
-    let observationsData = [observationData1, observationData2];
+    let observationsData = [
+      [1000000, 100],
+      [300, 3000000],
+    ] as IOracleSidechain.ObservationDataStructOutput[];
 
     beforeEach(async () => {
       await dataReceiver.connect(governor).whitelistAdapter(fakeAdapter.address, true);
@@ -230,6 +228,7 @@ describe('DataReceiver.sol', () => {
             await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce - 1);
             await dataReceiver.connect(fakeAdapter).addObservations(observationsData, randomSalt, randomNonce - 2);
             oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce - 2);
+            // oracleSidechain is at poolNonce = randomNonce - 2 and cache is populated with -2, -1, +1 , +2 (nonce is empty)
 
             oracleSidechain.write.reset();
           });
@@ -281,6 +280,99 @@ describe('DataReceiver.sol', () => {
               .withArgs(randomSalt, randomNonce - 1, fakeAdapter.address);
           });
         });
+      });
+    });
+  });
+
+  describe('syncObservations(...)', () => {
+    const observationsDataA = [[1, 10]] as IOracleSidechain.ObservationDataStructOutput[];
+    const observationsDataB = [[2, 20]] as IOracleSidechain.ObservationDataStructOutput[];
+    const observationsDataC = [[3, 30]] as IOracleSidechain.ObservationDataStructOutput[];
+
+    let caller: string;
+
+    beforeEach(async () => {
+      oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce);
+      caller = randomWallet.address;
+    });
+
+    context('when an oracle is registered', () => {
+      beforeEach(async () => {
+        await dataReceiver.setVariable('deployedOracles', { [randomSalt]: oracleSidechain.address });
+      });
+
+      it('should revert when the cache is empty at the oracle nonce', async () => {
+        await expect(dataReceiver.syncObservations(randomSalt, 0)).to.be.revertedWith('ObservationsNotWritable()');
+      });
+
+      context('when the cache is populated', () => {
+        beforeEach(async () => {
+          // Cache observations
+          // NOTE: smock doesn't support setting internal mapping(bytes32 => mapping(uint => Struct)) (yet)
+          oracleSidechain.poolNonce.whenCalledWith().returns(0);
+          await dataReceiver.connect(governor).whitelistAdapter(fakeAdapter.address, true);
+          await dataReceiver.connect(fakeAdapter).addObservations(observationsDataA, randomSalt, randomNonce);
+          await dataReceiver.connect(fakeAdapter).addObservations(observationsDataB, randomSalt, randomNonce + 1);
+          await dataReceiver.connect(fakeAdapter).addObservations(observationsDataC, randomSalt, randomNonce + 2);
+          oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce);
+          // oracleSidechain is at poolNonce = randomNonce and cache is populated with nonce, +1, +2
+
+          oracleSidechain.write.reset();
+        });
+
+        it('should revert when the cache at pool nonce is empty', async () => {
+          oracleSidechain.poolNonce.whenCalledWith().returns(randomNonce + 42);
+          await expect(dataReceiver.syncObservations(randomSalt, 0)).to.be.revertedWith('ObservationsNotWritable()');
+        });
+
+        it('should all observations limited by max argument', async () => {
+          tx = await dataReceiver.syncObservations(randomSalt, 2);
+
+          expect(oracleSidechain.write).to.have.been.calledWith(observationsDataA, randomNonce);
+          expect(oracleSidechain.write).to.have.been.calledWith(observationsDataB, randomNonce + 1);
+          expect(oracleSidechain.write).not.to.have.been.calledWith(observationsDataC, randomNonce + 2);
+
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, caller);
+          await expect(tx)
+            .to.emit(dataReceiver, 'ObservationsAdded')
+            .withArgs(randomSalt, randomNonce + 1, caller);
+        });
+
+        it('should all the observations when called without max', async () => {
+          tx = await dataReceiver.syncObservations(randomSalt, 0);
+
+          expect(oracleSidechain.write).to.have.been.calledWith(observationsDataA, randomNonce);
+          expect(oracleSidechain.write).to.have.been.calledWith(observationsDataB, randomNonce + 1);
+          expect(oracleSidechain.write).to.have.been.calledWith(observationsDataC, randomNonce + 2);
+
+          await expect(tx).to.emit(dataReceiver, 'ObservationsAdded').withArgs(randomSalt, randomNonce, caller);
+          await expect(tx)
+            .to.emit(dataReceiver, 'ObservationsAdded')
+            .withArgs(randomSalt, randomNonce + 1, caller);
+          await expect(tx)
+            .to.emit(dataReceiver, 'ObservationsAdded')
+            .withArgs(randomSalt, randomNonce + 2, caller);
+        });
+
+        it.skip('should delete added cache observations', async () => {
+          // should sync nonce and nonce + 1 (nonce + 2 should remain in cache)
+          await dataReceiver.syncObservations(randomSalt, 2);
+
+          // NOTE: smock having issues with internal mapping structs
+          const postCacheA = await dataReceiver.getVariable('_cachedObservations', [randomSalt, randomNonce.toString()]);
+          const postCacheB = await dataReceiver.getVariable('_cachedObservations', [randomSalt, (randomNonce + 1).toString()]);
+          const postCacheC = await dataReceiver.getVariable('_cachedObservations', [randomSalt, (randomNonce + 2).toString()]);
+
+          expect(postCacheA).to.be.undefined;
+          expect(postCacheB).to.be.undefined;
+          expect(postCacheC).to.deep.eq(observationsDataC);
+        });
+      });
+    });
+
+    context('when an oracle is not registered', () => {
+      it('should revert', async () => {
+        await expect(dataReceiver.syncObservations(randomSalt, 0)).to.be.revertedWith('ZeroAddress()');
       });
     });
   });

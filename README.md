@@ -224,6 +224,24 @@ Scripts:
 
 ## Address Registry
 
+#### Mainnet
+
+##### Optimism (_receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| _Connext ReceiverAdapter_ | `0xe5BE7f12B94D185f892c4BBe6F88ABE65CE1A8af` |
+| _DataReceiver_            | `0x4E0CeF6426eb70b5708845825A5375688808891d` |
+| _OracleFactory_           | `0x0BcD059c1546359b45f2606Ed6E08e1F5ef4f4Bf` |
+
+##### Polygon (_receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| _Connext ReceiverAdapter_ | `0x4839750090571A0fCcBaa3a8Fffe3DE22b4B7D51` |
+| _DataReceiver_            | `0xe5BE7f12B94D185f892c4BBe6F88ABE65CE1A8af` |
+| _OracleFactory_           | `0x69ceAA797274fd85F3b3a1f5b29857BFD9B9b259` |
+
 #### Testnet
 
 ##### Sepolia (sender)
@@ -243,16 +261,9 @@ Scripts:
 | _DataReceiver_            | `0x4B11b6BEF9480d62b471a9a91a52C893143Bad19` |
 | _OracleFactory_           | `0xa32f6603F9466eF0190CAc36759E41B40653471A` |
 
-##### Polygon (_receiver_)
-
-| Contract                  | Address                                      |
-| ------------------------- | -------------------------------------------- |
-| _Connext ReceiverAdapter_ | `0x03A4371f4D531c80741cda05bf39aea5b29dd1eb` |
-| _DataReceiver_            | `0xe5BE7f12B94D185f892c4BBe6F88ABE65CE1A8af` |
-| _OracleFactory_           | `0x69ceAA797274fd85F3b3a1f5b29857BFD9B9b259` |
-
 ##### Whitelisted pipelines:
 
 | Chain - Pool                                           | Chain - OracleSidechain |
 | ------------------------------------------------------ | ----------------------- |
+| Mainnet - `0xTODO`                                     | OP - `0xTBD`            |
 | Sepolia - `0xd0EAFA86eC9C2f3f8f12798974222C645dc8DBF0` | OP Sepolia - `0xTBD`    |

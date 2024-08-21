@@ -87,9 +87,8 @@ contract DataReceiver is IDataReceiver, Governable {
   function syncObservations(bytes32 _poolSalt, uint256 _maxObservations) external {
     IOracleSidechain _oracle = deployedOracles[_poolSalt];
     if (address(_oracle) == address(0)) revert ZeroAddress();
+    IOracleSidechain.ObservationData[] memory _cachedObservationsData;
     uint24 _currentNonce = _oracle.poolNonce();
-    IOracleSidechain.ObservationData[] memory _cachedObservationsData = _cachedObservations[_poolSalt][_currentNonce];
-    if (_cachedObservationsData.length == 0) revert ObservationsNotWritable();
     uint256 _i;
     while (_maxObservations == 0 || _i < _maxObservations) {
       _cachedObservationsData = _cachedObservations[_poolSalt][_currentNonce];
@@ -103,6 +102,7 @@ contract DataReceiver is IDataReceiver, Governable {
         break;
       }
     }
+    if (_i == 0) revert ObservationsNotWritable();
   }
 
   function whitelistAdapter(IBridgeReceiverAdapter _receiverAdapter, bool _isWhitelisted) external onlyGovernor {

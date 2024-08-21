@@ -23,6 +23,7 @@ import {
   USDC_WHALE_ADDRESS,
   WETH_WHALE_ADDRESS,
   KP3R_V1_PROXY_GOVERNANCE_ADDRESS,
+  UNI_FACTORY,
   UNISWAP_V3_K3PR_ADDRESS,
   UNISWAP_V3_USDC_ADDRESS,
   KP3R,
@@ -79,9 +80,9 @@ export async function setupContracts(): Promise<{
   const precalculatedDataFeedStrategyAddress = ethers.utils.getContractAddress({ from: deployer.address, nonce: currentNonce + 1 });
   const dataFeed = (await dataFeedFactory
     .connect(deployer)
-    .deploy(governor.address, precalculatedDataFeedStrategyAddress, minLastOracleDelta)) as DataFeed;
+    .deploy(governor.address, precalculatedDataFeedStrategyAddress, UNI_FACTORY, minLastOracleDelta)) as DataFeed;
 
-  const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, {
+  const dataFeedStrategy = (await dataFeedStrategyFactory.connect(deployer).deploy(governor.address, dataFeed.address, UNI_FACTORY, {
     periodDuration,
     strategyCooldown,
     defaultTwapThreshold,

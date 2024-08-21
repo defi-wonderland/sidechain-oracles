@@ -22,3 +22,8 @@ export const getContractFromFixture = async (deploymentName: string, contractNam
   const contract = await ethers.getContractAt(contractName, deployment.address);
   return contract;
 };
+
+export const getFixtureChainId = async (): Promise<number> => {
+  const chainId = Number(await ethers.provider.getNetwork().then((network) => network.chainId));
+  return chainId;
+};

@@ -7508,10 +7508,10 @@ hardhat-watcher@^2.1.1:
   dependencies:
     chokidar "^3.5.3"
 
-hardhat@2.12.0:
-  version "2.12.0"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.0.tgz#51e59f1ff4991bcb66d1a380ea807e6c15fcac34"
-  integrity sha512-mNJFbVG479HwOzxiaLxobyvED2M1aEAuPPYhEo1+88yicMDSTrU2JIS7vV+V0GSNQKaDoiHCmV6bcKjiljT/dQ==
+hardhat@2.12.1-unknown-txs.0:
+  version "2.12.1-unknown-txs.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.1-unknown-txs.0.tgz#5bbb29c9732b10bf7819b7741bde04763e133957"
+  integrity sha512-VwooAzY/DWrr+GW9P7CBzNa8Bb2ushugznum7D2wo4rSU2ZqnM+ULcvejeEiW/blqxcy3MBYlw/4IMSbdFBLfA==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"

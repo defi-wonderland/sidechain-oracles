@@ -42,7 +42,7 @@ describe('DataFeedStrategy.sol', () => {
     });
 
     dataFeedStrategyFactory = await smock.mock('DataFeedStrategy');
-    dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, {
+    dataFeedStrategy = await dataFeedStrategyFactory.deploy(governor.address, dataFeed.address, UNI_FACTORY, {
       periodDuration: initialPeriodDuration,
       strategyCooldown: initialStrategyCooldown,
       defaultTwapThreshold: initialDefaultTwapThreshold,
@@ -59,7 +59,7 @@ describe('DataFeedStrategy.sol', () => {
   describe('constructor(...)', () => {
     it('should revert if dataFeed is set to the zero address', async () => {
       await expect(
-        dataFeedStrategyFactory.deploy(governor.address, ZERO_ADDRESS, {
+        dataFeedStrategyFactory.deploy(governor.address, ZERO_ADDRESS, UNI_FACTORY, {
           periodDuration: initialPeriodDuration,
           strategyCooldown: initialStrategyCooldown,
           defaultTwapThreshold: initialDefaultTwapThreshold,

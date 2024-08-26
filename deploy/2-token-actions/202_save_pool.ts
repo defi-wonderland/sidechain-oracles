@@ -3,14 +3,14 @@ import IUniswapV3Pool from '../../artifacts/@uniswap/v3-core/contracts/interface
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
-import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
+import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { tokenA, tokenB } = await hre.getNamedAccounts();
+  const { tokenA, tokenB, uniV3Factory } = await hre.getNamedAccounts();
 
   await hre.deployments.save('UniswapV3Factory', {
     abi: IUniswapV3Factory.abi,
-    address: UNI_V3_FACTORY,
+    address: uniV3Factory,
   });
 
   const POOL_ADDRESS = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA, tokenB, TEST_FEE);

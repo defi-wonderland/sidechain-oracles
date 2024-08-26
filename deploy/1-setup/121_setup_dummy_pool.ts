@@ -4,10 +4,10 @@ import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { calculateSalt } from '../../test/utils/misc';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
-import { TEST_FEE, UNI_V3_FACTORY } from '../../utils/constants';
+import { TEST_FEE } from '../../utils/constants';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer, tokenA, tokenB } = await hre.getNamedAccounts();
+  const { deployer, tokenA, tokenB, uniV3Factory } = await hre.getNamedAccounts();
   const DESTINATION_CHAIN_ID = await hre.getChainId();
 
   const txSettings = {
@@ -17,7 +17,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await hre.deployments.save('UniswapV3Factory', {
     abi: IUniswapV3Factory.abi,
-    address: UNI_V3_FACTORY,
+    address: uniV3Factory,
   });
 
   const POOL_ADDRESS = await hre.deployments.read('UniswapV3Factory', 'getPool', tokenA, tokenB, TEST_FEE);
@@ -39,5 +39,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 };
 
+deployFunction.dependencies = ['create-pool'];
 deployFunction.tags = ['test-pool-whitelisting'];
 export default deployFunction;

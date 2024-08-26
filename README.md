@@ -13,9 +13,9 @@
 - [Setup](#setup)
 - [Address Registry](#address-registry)
   - [Testnet](#testnet)
-    - [Goerli (sender and _receiver_)](#goerli-sender-and-receiver)
-    - [OP Goerli (_receiver_)](#op-goerli-receiver)
-    - [Mumbai (manual sender)](#mumbai-manual-sender)
+    - [Sepolia (sender and _receiver_)](#sepolia-sender-and-receiver)
+    - [OP Sepolia (_receiver_)](#op-sepolia-receiver)
+    - [Mumbai (manual sender)](#sepolia-manual-sender)
     - [Whitelisted pipelines](#whitelisted-pipelines)
 
 ## Scope
@@ -169,7 +169,7 @@ NOTE: A more gas-efficient array-filling strategy can be built by making more ex
 
 ## Setup
 
-Clone the repo in your preferred way, and fill the `.env` file using the `.env.example` as a reference. The environment is yet set to work with testnets, using Goerli to OP Goerli bridge as default.
+Clone the repo in your preferred way, and fill the `.env` file using the `.env.example` as a reference. The environment is yet set to work with testnets, using Sepolia to OP Sepolia bridge as default.
 
 For a dummy setup (without bridging) run:
 
@@ -195,45 +195,75 @@ yarn deploy:work
 ```
 
 For 1 tag manual-deployment and bridging
-`yarn deploy --network mumbai --tags manual-send-test-observation`
+`yarn deploy --network sepolia --tags manual-send-test-observation`
 
-In `/utils/constants.ts`, one can find the configuration of the strategies chosen by chain. The default for Goerli is set to refresh each 1/2 day, using periods of 1hr, and comparing a 2hr twap with 500 ticks (+-5%) threshold.
+In `/utils/constants.ts`, one can find the configuration of the strategies chosen by chain. The default for Sepolia is set to refresh each 1/2 day, using periods of 1hr, and comparing a 2hr twap with 500 ticks (+-5%) threshold.
+
+## Production deployment
+
+Make sure to have the correct addresses for `tokenA` and `tokenB` in `utils/constants.ts` as well as the desired `periodLength`, `strategyCooldown`, `twapPeriod`, and `twapThreshold`. Also check the correct fee, as if an inexistent UniswapV3 pool is referenced, the script will eventually deploy it.
+
+Setup the `receiver` network for the origin chain (e.g. `ethereum`, receiver `polygon`) and select the desired script to run using the origin chain as script selected network (even if the deployment occurs in the sidechain), with the exception of `verify` scripts. Each script will execute the required subsequent ones, so it is not necessary to run them all.
+
+This script will deploy (the OracleFactory if necessary and) the DataReceiver, in the receiver chain of `ethereum` (that it might be `optimism` or `polygon`). This is to enable the off-chain coordination.
+
+```bash
+yarn deploy --network ethereum --tags data-receiver
+```
+
+Scripts:
+
+- `data-sender`: deploys DataFeed (mainnet)
+- `data-receiver`: deploys OracleFactory and DataReceiver (sidechain)
+- `connext-setup`: runs both `data-sender` and `data-receiver` (if not yet deployed) plus deploys Connext SenderAdapter and ReceiverAdapter
+- `manual-fetch-observation`: runs `data-receiver` and attempts to fetch a new observation with arbitrary timestamps
+- `fetch-observation`: runs `data-receiver` plus deploys DataFeedStrategy and attempts to programatically fetch a new observation
+- `bridge-observation`: runs up to `connext-setup` and attempts to bridge a recently fetched observation
+- `setup-keeper`: runs up to `connext-setup` and deploys StrategyJob
+- `work-job`: (runs up to `setup-keeper` and) attempts to work StrategyJob (requires registration in Keep3r contract)
 
 ## Address Registry
 
+#### Mainnet
+
+##### Optimism (_receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| _Connext ReceiverAdapter_ | `0xe5BE7f12B94D185f892c4BBe6F88ABE65CE1A8af` |
+| _DataReceiver_            | `0x4E0CeF6426eb70b5708845825A5375688808891d` |
+| _OracleFactory_           | `0x0BcD059c1546359b45f2606Ed6E08e1F5ef4f4Bf` |
+
+##### Polygon (_receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| _Connext ReceiverAdapter_ | `0x4839750090571A0fCcBaa3a8Fffe3DE22b4B7D51` |
+| _DataReceiver_            | `0xe5BE7f12B94D185f892c4BBe6F88ABE65CE1A8af` |
+| _OracleFactory_           | `0x69ceAA797274fd85F3b3a1f5b29857BFD9B9b259` |
+
 #### Testnet
 
-##### Goerli (sender and _receiver_)
-
-| Contract                  | Address                                      |
-| ------------------------- | -------------------------------------------- |
-| DataFeed                  | `0x8Fb68E83831c7e8622e10C154CC0d24856440809` |
-| DataFeedStrategy          | `0x606e25c67B8d6550075C8085083c763769Cfe2BE` |
-| StrategyJob               | `0x606e25c67B8d6550075C8085083c763769Cfe2BE` |
-| Connext SenderAdapter     | `0xF73E6BC8ca4Fec5e9773C4f22E8EBEEEd12733d6` |
-| _Connext ReceiverAdapter_ | `0x05a6CEF3f938E8E9b3112CB44e8B9771638989Ed` |
-| _DataReceiver_            | `0xa09683377E5cE0bB7eEa90D2b64e3644f7eA1B8a` |
-| _OracleFactory_           | `0x0594Dc74043b93Bdb371f01187704C98D45bd4E6` |
-
-##### OP Goerli (_receiver_)
-
-| Contract                  | Address                                      |
-| ------------------------- | -------------------------------------------- |
-| _Connext ReceiverAdapter_ | `0x4D81A5C9F7706377df368D1716460da03faEcBcb` |
-| _DataReceiver_            | `0x768c227320165A71A4001fE23A0C38CD6B5585c0` |
-| _OracleFactory_           | `0xB8aD440Ad7A3298C73258b1Fc202A081Db9107cb` |
-
-##### Mumbai (manual sender)
+##### Sepolia (sender)
 
 | Contract              | Address                                      |
 | --------------------- | -------------------------------------------- |
-| DataFeed              | `0x1c9Bc091f070A10E23B2a90eA543AD38AA3De1EE` |
-| Connext SenderAdapter | `0x4C8589e7D1d91e454F5f30C3e1bb3e197B5Bf368` |
+| DataFeed              | `0xcDddb7c04000e492E2e6CbD924b595CdaB9DEFa9` |
+| DataFeedStrategy      | `0x8379506385432f1e02cE516f5A5F52d15E250c88` |
+| StrategyJob           | `0xa77E459Eba5F1D05Cd22C8a28fB6b2725dfd4D21` |
+| Connext SenderAdapter | `0x54B79C4B3E5BA80275B33B5bCaaeC762bf04E558` |
+
+##### OP Sepolia (_receiver_)
+
+| Contract                  | Address                                      |
+| ------------------------- | -------------------------------------------- |
+| _Connext ReceiverAdapter_ | `0x4839750090571A0fCcBaa3a8Fffe3DE22b4B7D51` |
+| _DataReceiver_            | `0x4B11b6BEF9480d62b471a9a91a52C893143Bad19` |
+| _OracleFactory_           | `0xa32f6603F9466eF0190CAc36759E41B40653471A` |
 
 ##### Whitelisted pipelines:
 
-| Chain - Pool                                          | Chain - OracleSidechain                                  |
-| ----------------------------------------------------- | -------------------------------------------------------- |
-| Goerli - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | OP Goerli - `0x4ECFF2c532d47D7be3D957E4a332AB134cad1fd9` |
-| Mumbai - `0xd69f1635dc28a11E05841AE25Fd1572FD0EF1eF4` | Goerli - `0x050BBA5E4abde750Ea5610D8412cD46171C665e7`    |
-| Goerli - `0x317ceCd3eB02158f97DF0B67B788edCda4E066e5` | Goerli - `0xED7f635EE962537b4DB13a1e1c3922EC65366fE2`    |
+| Chain - Pool                                           | Chain - OracleSidechain |
+| ------------------------------------------------------ | ----------------------- |
+| Mainnet - `0xTODO`                                     | OP - `0xTBD`            |
+| Sepolia - `0xd0EAFA86eC9C2f3f8f12798974222C645dc8DBF0` | OP Sepolia - `0xTBD`    |

@@ -22,6 +22,8 @@ export const getRealChainIdOfFork = (hre: HardhatRuntimeEnvironment): number => 
   if (config.forking?.url.includes('eth')) return 1;
   if (config.forking?.url.includes('ftm') || config.forking?.url.includes('fantom')) return 250;
   if (config.forking?.url.includes('polygon')) return 137;
+  if (config.forking?.url.includes('sepolia')) return 11155111;
+  if (config.forking?.url.includes('optimisticSepolia')) return 11155420;
   throw new Error('Should specify chain id of fork');
 };
 
@@ -78,6 +80,6 @@ export const getReceiverChainId = async (hre: HardhatRuntimeEnvironment): Promis
   const receiverChainId = await hre.companionNetworks['receiver'].getChainId();
 
   if (senderChainId != receiverChainId) return receiverChainId;
-  // returns 420 for same chain test
-  return '420';
+  // avoids `BridgeFacet__mustHaveRemote_destinationNotSupported` in local testing (chain id 11155111)
+  return '11155420';
 };

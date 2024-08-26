@@ -43,7 +43,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       abi: OracleSidechain.abi,
       address: DUMMY_ORACLE_ADDRESS,
     });
-    await verifyContractByAddress(hre, DUMMY_ORACLE_ADDRESS);
     await hre.deployments.execute('DummyOracleSidechain', txSettings, 'initializePoolInfo', tokenA, tokenB, TEST_FEE);
   }
 };

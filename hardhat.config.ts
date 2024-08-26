@@ -20,9 +20,9 @@ const networks: NetworksUserConfig =
         hardhat: {
           forking: {
             enabled: process.env.FORK ? true : false,
-            url: env.getNodeUrl('goerli'),
+            url: env.getNodeUrl('sepolia'),
           },
-          chainId: 5,
+          chainId: 11155111,
           companionNetworks: {
             receiver: 'hardhat',
           },
@@ -33,7 +33,7 @@ const networks: NetworksUserConfig =
           chainId: 1,
           companionNetworks: {
             receiver: 'optimism',
-            // receiver: 'polygon',
+            // receiver: 'polygon', // Uncomment to select as sidechain
           },
         },
         optimism: {
@@ -48,29 +48,28 @@ const networks: NetworksUserConfig =
           chainId: 137,
           companionNetworks: { sender: 'ethereum' },
         },
-        goerli: {
-          url: env.getNodeUrl('goerli'),
+        sepolia: {
+          url: env.getNodeUrl('sepolia'),
           accounts: env.getAccounts('test'),
-          chainId: 5,
+          chainId: 11155111,
           companionNetworks: {
-            receiver: 'optimisticGoerli',
-            sender: 'polygonMumbai',
+            receiver: 'optimisticSepolia',
           },
         },
-        polygonMumbai: {
-          url: env.getNodeUrl('mumbai'),
+        sepoliaDummy: {
+          url: env.getNodeUrl('sepolia'),
           accounts: env.getAccounts('test'),
-          chainId: 80001,
+          chainId: 11155111,
           companionNetworks: {
-            receiver: 'goerli',
+            receiver: 'sepoliaDummy',
           },
         },
-        optimisticGoerli: {
-          url: env.getNodeUrl('optimisticGoerli'),
+        optimisticSepolia: {
+          url: env.getNodeUrl('optimisticSepolia'),
           accounts: env.getAccounts('test'),
-          chainId: 420,
+          chainId: 11155420,
           companionNetworks: {
-            sender: 'goerli',
+            sender: 'sepolia',
           },
         },
       };
@@ -116,7 +115,17 @@ const config: HardhatUserConfig = {
     onlyCalledMethods: false,
   },
   etherscan: {
-    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'goerli', 'optimisticGoerli', 'polygonMumbai']),
+    apiKey: env.getEtherscanAPIKeys(['ethereum', 'optimisticEthereum', 'polygon', 'sepolia', 'optimisticSepolia']),
+    customChains: [
+      {
+        network: 'optimisticSepolia',
+        chainId: 11155420,
+        urls: {
+          apiURL: 'https://api-sepolia-optimistic.etherscan.io/api',
+          browserURL: 'https://sepolia-optimism.etherscan.io',
+        },
+      },
+    ],
   },
   typechain: {
     outDir: 'typechained',

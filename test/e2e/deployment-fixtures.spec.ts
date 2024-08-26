@@ -3,7 +3,7 @@ import { Contract } from 'ethers';
 import * as Type from '@typechained';
 import { evm, wallet } from '@utils';
 import { toUnit } from '@utils/bn';
-import { getContractFromFixture } from '@utils/contracts';
+import { getContractFromFixture, getFixtureChainId } from '@utils/contracts';
 import { calculateSalt } from '@utils/misc';
 import { TEST_FEE } from 'utils/constants';
 import { getNodeUrl } from 'utils/env';
@@ -37,8 +37,8 @@ describe('@skip-on-coverage Fixture', () => {
     ({ deployer } = await getNamedAccounts());
 
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('goerli'),
-      blockNumber: forkBlockNumber.goerli,
+      jsonRpcUrl: getNodeUrl('sepolia'),
+      blockNumber: forkBlockNumber.sepolia,
     });
   });
 
@@ -138,7 +138,7 @@ describe('@skip-on-coverage Fixture', () => {
 
               const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
-              const RANDOM_CHAIN_ID = 5;
+              const RANDOM_CHAIN_ID = 11155111;
 
               await expect(
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](
@@ -173,7 +173,7 @@ describe('@skip-on-coverage Fixture', () => {
 
               const fetchData = dataFeed.interface.decodeEventLog('PoolObserved', queryResults[0].data);
 
-              const REAL_CHAIN_ID = 420;
+              const REAL_CHAIN_ID = 11155420;
 
               await expect(
                 strategyJob['work(uint32,bytes32,uint24,(uint32,int24)[])'](REAL_CHAIN_ID, poolSalt, lastPoolNonce, fetchData._observationsData)
@@ -203,6 +203,7 @@ describe('@skip-on-coverage Fixture', () => {
     beforeEach(async () => {
       await deployments.fixture(['base-contracts']);
       await deployments.fixture(['connext-setup', 'pool-whitelisting'], { keepExistingDeployments: true });
+      await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
     });
 
     it('should work with manual-send-test-observation', async () => {
@@ -214,7 +215,6 @@ describe('@skip-on-coverage Fixture', () => {
         await deployments.fixture(['setup-keeper'], { keepExistingDeployments: true });
         strategyJob = (await getContractFromFixture('StrategyJob')) as Type.StrategyJob;
 
-        await evm.advanceTimeAndBlock(86400 * 5); // avoids !OLD error
         await addCreditsToJob(strategyJob.address);
       });
 
@@ -243,7 +243,20 @@ describe('@skip-on-coverage Fixture', () => {
 
 const addCreditsToJob = async (jobAddress: string) => {
   const keep3rContract = await getContractFromFixture('Keep3r', 'IKeep3r');
-  const governor = await wallet.impersonate(await keep3rContract.governance());
+  let governorAddress: string;
+  if ((await getFixtureChainId()) != 1) {
+    // NOTE: Mainnet uses `governance` while Testnet `governor'
+    governorAddress = await keep3rContract.provider.call({
+      to: keep3rContract.address,
+      data: ethers.utils.id('governor()'),
+    });
+    governorAddress = ethers.utils.hexStripZeros(governorAddress);
+  } else {
+    governorAddress = await keep3rContract.governance();
+  }
+
+  const governor = await wallet.impersonate(governorAddress);
+
   await wallet.setBalance(governor._address, toUnit(10));
   await keep3rContract.connect(governor).forceLiquidityCreditsToJob(jobAddress, toUnit(100));
 };

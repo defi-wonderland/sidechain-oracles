@@ -15,6 +15,10 @@ artifacts
 typechained
 deployments/hardhat
 deployments/localhost
+deployments/sepoliaDummy
+deployments/sepolia
+deployments/optimisticSepolia
+deployments/**/solcInputs
 
 # Config files
 .env
